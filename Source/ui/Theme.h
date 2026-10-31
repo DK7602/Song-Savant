@@ -3,6 +3,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "core/SoundKinds.h"
 
 namespace ss::ui
 {
@@ -29,6 +30,9 @@ namespace ss::ui
 
     juce::Font sans (float height, bool bold = false);
     juce::Font serif (float height, bool bold = false);   // headings
+
+    juce::Colour kindColour (Kind);                         // each kind of sound's colour (gold keys, blue bass...)
+    void drawKindIcon (juce::Graphics&, Kind, juce::Rectangle<float>, juce::Colour);   // a simple line drawing
 
     juce::Image owlImage();
     juce::Image wordmarkImage();

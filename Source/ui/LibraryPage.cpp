@@ -5,24 +5,6 @@ namespace ss::ui
 {
     namespace
     {
-        juce::Colour kindColour (Kind k)
-        {
-            const auto& p = pal();
-            switch (k)
-            {
-                case Kind::piano: case Kind::keys: case Kind::organ:        return p.gold;
-                case Kind::bass:                                           return juce::Colour (0xff4fc3f7);
-                case Kind::pad: case Kind::strings:                         return p.purple.brighter (0.3f);
-                case Kind::lead: case Kind::synth: case Kind::sequence:     return p.blue.brighter (0.3f);
-                case Kind::drums: case Kind::percussion:                    return juce::Colour (0xffff8a65);
-                case Kind::guitar: case Kind::pluck:                        return juce::Colour (0xff81c784);
-                case Kind::brass: case Kind::woodwinds:                     return juce::Colour (0xffffd54f);
-                case Kind::vocal:                                          return juce::Colour (0xfff48fb1);
-                case Kind::world: case Kind::fx: case Kind::other:          break;
-            }
-            return p.muted;
-        }
-
         juce::String countText (int n)   { return withCommas (n); }
     }
 

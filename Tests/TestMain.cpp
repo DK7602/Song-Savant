@@ -14,6 +14,7 @@
 #include "core/Catalog.h"
 #include "core/Music.h"
 #include "core/Parts.h"
+#include "core/Palette.h"
 #include <map>
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
@@ -403,6 +404,85 @@ namespace
         }
     }
 
+    void testPalettes (const sstest::FakeComputer& fc)
+    {
+        section ("Palettes");
+        std::atomic<bool> cancel { false };
+        const auto cat = ss::buildCatalog (fc.loc, cancel);
+        const auto brief = ss::readBrief ("warm worship");
+        const auto parts = ss::partsFor (brief);
+        auto pals = ss::makePalettes (cat, brief);
+        check (pals.size() == 3, "three palettes");
+        for (auto& p : pals) check (p.slots.size() == parts.size(), p.name + " has a slot for every part");
+
+        auto slotFor = [] (const ss::Palette& p, const juce::String& role) -> const ss::PaletteSlot*
+        {
+            for (auto& s : p.slots) if (s.part.role == role) return &s;
+            return nullptr;
+        };
+        auto* pad = slotFor (pals[0], "Pad");
+        check (pad != nullptr && pad->pick.isValid() && cat.sounds[(size_t) pad->pick.sound].name == "Heaven Pad", "the pad that's tagged Worship and warm wins");
+        if (pad != nullptr)
+        {
+            check (pad->pick.reasons.contains ("warm") && pad->pick.reasons.contains ("tagged worship"), "reasons: " + pad->pick.reasons.joinIntoString (", "));
+            check (ss::whyItWorks (cat, *pad).contains ("Tagged worship"), "why it works: " + ss::whyItWorks (cat, *pad));
+        }
+        auto* drums = slotFor (pals[0], "Drums");
+        check (drums != nullptr && ! drums->pick.isValid() && ss::whyItWorks (cat, *drums).startsWith ("Nothing in your library"), "no drums in this library: said plainly");
+        auto* keys1 = slotFor (pals[0], "Keys");
+        auto* keys2 = slotFor (pals[1], "Keys");
+        check (keys1 != nullptr && keys2 != nullptr && keys1->pick.isValid() && keys2->pick.isValid() && keys1->pick.sound != keys2->pick.sound,
+               "each palette is a different take");
+        check (keys1 != nullptr && keys1->alternatives.size() == 6, "alternatives for each part");
+        if (keys1 != nullptr)
+            for (auto& a : keys1->alternatives) check (a.sound != keys1->pick.sound, "an alternative is never the pick itself");
+
+        // lock the keys and ask for new palettes: the keys stay
+        if (keys1 != nullptr)
+        {
+            auto locked = *keys1;
+            locked.locked = true;
+            ss::PaletteOptions o;
+            o.seed = 42;
+            auto again = ss::makePalettes (cat, brief, o, { locked });
+            bool kept = true;
+            for (auto& p : again)
+                if (auto* k = slotFor (p, "Keys"); k == nullptr || k->pick.sound != keys1->pick.sound || ! k->locked) kept = false;
+            check (kept, "a locked part keeps its sound in every new palette");
+        }
+        const ss::Sound* notOwned = nullptr;
+        for (auto& snd : cat.sounds) if (! snd.owned) notOwned = &snd;
+        check (notOwned != nullptr && ss::scoreSound (*notOwned, parts[0], brief) < 0, "sounds you'd have to buy are never suggested");
+        check (ss::findSoundByKey (cat, ss::soundKey (cat.sounds[3])) == 3, "a sound's identity survives a rebuilt catalog");
+
+        // the song is saved and comes back the same: palettes, a locked part, a switched part
+        ss::SongSession song;
+        song.form.description = "warm worship";
+        song.form.bpm = 70;
+        song.find (cat);
+        song.current = 1;
+        auto& keysSlot = song.palettes[1].slots[2];
+        auto& bassSlot = song.palettes[1].slots[1];
+        keysSlot.cycle (2);
+        keysSlot.keepKey = ss::soundKey (cat.sounds[(size_t) keysSlot.current().sound]);
+        keysSlot.locked = true;
+        bassSlot.cycle (1);
+        bassSlot.keepKey = ss::soundKey (cat.sounds[(size_t) bassSlot.current().sound]);
+        const int keysSound = keysSlot.current().sound, bassSound = bassSlot.current().sound;
+        auto xml = song.toXml();
+        ss::SongSession again;
+        again.fromXml (*xml);
+        check (again.needsRestore() && again.form.description == "warm worship" && std::abs (again.form.bpm - 70.0) < 0.01, "the form comes back");
+        again.restore (cat);
+        check (again.palettes.size() == 3 && again.current == 1, "the palettes come back");
+        if (again.palettes.size() == 3)
+        {
+            check (again.palettes[1].slots[2].locked && again.palettes[1].slots[2].current().sound == keysSound, "the locked part comes back");
+            check (again.palettes[1].slots[1].current().sound == bassSound, "the part you switched comes back");
+            check (again.brief.bpm > 69.0 && again.brief.bpm < 71.0, "the form's BPM wins");
+        }
+    }
+
     void testCancelAndJob (const sstest::FakeComputer& fc)
     {
         section ("Cancelling and the background job");
@@ -423,7 +503,7 @@ namespace
     {
         section ("Screenshots");
         dir.createDirectory();
-        auto shoot = [&] (const juce::String& name, bool withResult, int w, int h, int page = 1, const juce::String& search = {})
+        auto shoot = [&] (const juce::String& name, bool withResult, int w, int h, int page, const juce::String& search = {}, const juce::String& song = {})
         {
             SongSavantProcessor proc;
             proc.locationProvider = [loc = fc.loc] { return loc; };
@@ -442,6 +522,11 @@ namespace
                 e->getView().getSetupCheck().refreshFromResult();
                 if (search.isNotEmpty()) e->getView().getLibrary().setSearchText (search);
                 e->getView().getLibrary().selectRow (0);
+                if (song.isNotEmpty())
+                {
+                    e->getView().getSong().setDescription (song);
+                    e->getView().getSong().find();
+                }
             }
             auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
             auto f = dir.getChildFile (name + ".png");
@@ -451,12 +536,15 @@ namespace
             check (out.openedOk() && png.writeImageToStream (img, out), "wrote " + f.getFileName());
             std::cout << "  " << f.getFullPathName() << std::endl;
         };
-        shoot ("library", false, 1240, 820, 0);
-        shoot ("library-search", false, 1240, 820, 0, "warm pad");
-        shoot ("library-small", false, 1060, 780, 0);
-        shoot ("setup-check-empty", false, 1140, 800);
-        shoot ("setup-check-results", true, 1140, 800);
-        shoot ("setup-check-small", true, 1060, 780);
+        shoot ("song-empty", false, 1240, 820, 0);
+        shoot ("song", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
+        shoot ("song-small", false, 1060, 780, 0, {}, "country");
+        shoot ("library", false, 1240, 820, 1);
+        shoot ("library-search", false, 1240, 820, 1, "warm pad");
+        shoot ("library-small", false, 1060, 780, 1);
+        shoot ("setup-check-empty", false, 1140, 800, 2);
+        shoot ("setup-check-results", true, 1140, 800, 2);
+        shoot ("setup-check-small", true, 1060, 780, 2);
         juce::ignoreUnused (r);
     }
 }
@@ -484,6 +572,7 @@ int main (int argc, char** argv)
     testReport (r, fc);
     testCatalog (fc);
     testMusic();
+    testPalettes (fc);
     testCancelAndJob (fc);
 
     if (const int i = args.indexOf ("--shots"); i >= 0)

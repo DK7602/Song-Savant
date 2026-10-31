@@ -21,8 +21,12 @@ namespace ss
 
         void prepare (Sound& s)
         {
-            s.searchText = (s.name + " " + s.instrument + " " + s.library + " " + s.origin + " " + kindName (s.kind) + " " + s.detail + " "
-                            + s.styles.joinIntoString (" ") + " " + s.character.joinIntoString (" ") + " " + s.description).toLowerCase();
+            auto t = " " + (s.name + " " + s.instrument + " " + s.library + " " + s.origin + " " + kindName (s.kind) + " " + s.detail + " "
+                            + s.styles.joinIntoString (" ") + " " + s.character.joinIntoString (" ") + " " + s.description)
+                              .toLowerCase().replaceCharacters ("_-/()[]|,:;\t\r\n", "              ") + " ";
+            while (t.contains ("  ")) t = t.replace ("  ", " ");
+            s.searchText = t;
+            s.stylesText = s.styles.joinIntoString (" ").toLowerCase();
         }
 
         juce::String colOrNull (const juce::StringArray& cols, const char* name, const juce::String& prefix = {})
@@ -391,7 +395,7 @@ namespace ss
                  + " and type the name in its preset browser.";
         else if (s.source == "Arturia")
             text = "MediaBay doesn't list Analog Lab sounds. Load Analog Lab V on an instrument track and search for " + q + " in its own sound browser"
-                 + (s.origin.isNotEmpty() ? " (from " + s.origin + ")." : juce::String ("."));
+                 + (s.origin.isNotEmpty() && ! s.origin.startsWith ("Analog Lab") ? " (from " + s.origin + ")." : juce::String ("."));
         else if (s.source == "Cymatics")
             text = "MediaBay doesn't list Cymatics sounds. Load " + s.instrument + " on an instrument track and choose " + q + " from its preset list"
                  + (s.library.isNotEmpty() ? " (" + s.library + ")." : juce::String ("."));

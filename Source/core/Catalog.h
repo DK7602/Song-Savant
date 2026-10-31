@@ -30,7 +30,8 @@ namespace ss
         bool yours = false;           // a preset you saved yourself
         bool guessed = false;         // its kind was guessed from its name
         juce::String location;        // file path or MediaBay address, for reference
-        juce::String searchText;      // everything above in lower case, for searching
+        juce::String searchText;      // everything above in lower case, words separated by single spaces, for searching
+        juce::String stylesText;      // the styles in lower case
     };
 
     struct CatalogSource

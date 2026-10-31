@@ -201,7 +201,12 @@ Built in steps, each one a build the owner can try:
   when Groove Grabber's tables change); `Source/core/Parts.*` has each genre's band, style tweaks (country rap 808,
   Americana banjo, gospel organ, ambient worship pads...), decade words, and your words first.)*
 - **1c Palettes:** the song form and palette suggestions (every part, drums included), alternatives, lock and
-  regenerate, "why it works", save and recall.
+  regenerate, "why it works", save and recall. *(Built in 0.5.0: SONG tab. `Source/core/Palette.*` scores each
+  owned sound per part: right kind (first choice 10, then -3 each), your words +4, the part's words +2.5/+1.5,
+  avoided words -4, tagged with the genre +3, rating, your own presets +0.5, guessed kinds -1.5. Three palettes,
+  each a different take; 6 alternatives per part; locked parts survive NEW PALETTES (a new seed).
+  `Source/core/SongSession.*` saves the form, seed, locks and choices with the project and rebuilds them the same
+  way. Owner to try it on the real library.)*
 - **1d Polish:** plug-in scan in a helper process, light theme, the mockup's look throughout.
 
 - Library catalog from what Phase 0 proved: **MediaBay's database** (Steinberg), **Arturia's database**, Cymatics

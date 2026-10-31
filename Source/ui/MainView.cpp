@@ -3,19 +3,21 @@
 
 namespace ss::ui
 {
-    MainView::MainView (SongSavantProcessor& p) : proc (p), libraryPage (p), setupPage (p)
+    MainView::MainView (SongSavantProcessor& p) : proc (p), songPage (p), libraryPage (p), setupPage (p)
     {
         setLookAndFeel (&lookAndFeel);
         owl = owlImage();
         wordmark = wordmarkImage();
-        for (auto* t : { &libraryTab, &setupTab })
+        for (auto* t : { &songTab, &libraryTab, &setupTab })
         {
             t->setRadioGroupId (1);
             t->setComponentID ("tab");
             addAndMakeVisible (t);
         }
+        songTab.onClick = [this] { showPage (song); };
         libraryTab.onClick = [this] { showPage (library); };
         setupTab.onClick = [this] { showPage (setupCheck); };
+        addChildComponent (songPage);
         addChildComponent (libraryPage);
         addChildComponent (setupPage);
         showPage (proc.page);
@@ -25,10 +27,12 @@ namespace ss::ui
 
     void MainView::showPage (int which)
     {
-        page = which == setupCheck ? setupCheck : library;
+        page = juce::jlimit ((int) song, (int) setupCheck, which);
         proc.page = page;
+        songPage.setVisible (page == song);
         libraryPage.setVisible (page == library);
         setupPage.setVisible (page == setupCheck);
+        songTab.setToggleState (page == song, juce::dontSendNotification);
         libraryTab.setToggleState (page == library, juce::dontSendNotification);
         setupTab.setToggleState (page == setupCheck, juce::dontSendNotification);
         repaint();
@@ -62,11 +66,14 @@ namespace ss::ui
         auto r = getLocalBounds();
         auto header = r.removeFromTop (124).reduced (24, 16);
         headerArea = header.toFloat();
-        auto tabs = header.removeFromRight (360).withSizeKeepingCentre (360, 40).translated (0, -8);
+        auto tabs = header.removeFromRight (480).withSizeKeepingCentre (480, 40).translated (0, -8);
         setupTab.setBounds (tabs.removeFromRight (170));
         tabs.removeFromRight (12);
         libraryTab.setBounds (tabs.removeFromRight (140));
+        tabs.removeFromRight (12);
+        songTab.setBounds (tabs.removeFromRight (120));
         subtitleArea = juce::Rectangle<float> ((float) setupTab.getRight() - 300.0f, (float) setupTab.getBottom() + 4.0f, 300.0f, 18.0f);
+        songPage.setBounds (r);
         libraryPage.setBounds (r);
         setupPage.setBounds (r);
     }

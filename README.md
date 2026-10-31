@@ -6,10 +6,12 @@
 through the instruments and presets you already own, then suggests a complete sound palette: rhythm, bass,
 leads, pads and drums, each with alternatives, plus starter MIDI parts to get the song moving.
 
-> **Status: Phase 1a (Library).** Song Savant reads every sound you own (Steinberg via MediaBay, Analog Lab,
-> Cymatics, your own presets) into one searchable Library: filter by kind of sound and instrument, see where a
+> **Status: Phase 1c (Song palettes).** Describe your song ("modern country like Morgan Wallen, warm, 120 BPM in
+> A minor") and Song Savant suggests a palette of sounds you already own, one card per part, with alternatives,
+> locks and new takes. The Library holds every sound you own (Steinberg via MediaBay, Analog Lab,
+> Cymatics, your own presets) in one searchable list: filter by kind of sound and instrument, see where a
 > sound lives, and copy its name (Steinberg sounds: paste into MediaBay; Analog Lab and Cymatics: into the
-> instrument's own browser). Palettes come next. The Setup Check from Phase 0 is still
+> instrument's own browser). The Setup Check from Phase 0 is still
 > there as a page. The plan and every decision so far are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 | Format | Where it works |
