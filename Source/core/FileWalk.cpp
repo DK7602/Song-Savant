@@ -6,7 +6,7 @@ namespace ss
     bool skipFolder (const juce::File& d)
     {
         const auto name = d.getFileName();
-        if (name.startsWithChar ('.') || name.startsWithChar ('$')) return true;
+        if (name.startsWithChar ('.') || name.startsWithChar ('$') || looksPrivate (name)) return true;
         if (name.endsWithIgnoreCase (".vst3") || name.endsWithIgnoreCase (".component") || name.endsWithIgnoreCase (".vst")
             || name.endsWithIgnoreCase (".app") || name.endsWithIgnoreCase (".bundle") || name.endsWithIgnoreCase (".aaxplugin"))
             return true;
@@ -73,5 +73,13 @@ namespace ss
         if (b < 1024 * 1024) return juce::String ((double) b / 1024.0, 1) + " KB";
         if (b < (juce::int64) 1024 * 1024 * 1024) return juce::String ((double) b / (1024.0 * 1024.0), 1) + " MB";
         return juce::String ((double) b / (1024.0 * 1024.0 * 1024.0), 2) + " GB";
+    }
+
+    bool looksPrivate (const juce::String& name)
+    {
+        for (auto* w : { "secret", "password", "passwd", "credential", "token", "signing", "private", "licence", "license",
+                         ".lic", ".jwt", ".pem", ".key", "keystore", "wallet" })
+            if (name.containsIgnoreCase (w)) return true;
+        return false;
     }
 }

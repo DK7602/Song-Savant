@@ -1,4 +1,5 @@
 #include "SystemLocations.h"
+#include <algorithm>
 
 namespace ss
 {
@@ -97,7 +98,7 @@ namespace ss
         F::findFileSystemRoots (drives);
         for (auto& d : drives)
             if (d.isOnHardDisk() && d.isDirectory())
-                addIfDir (s.vendorRoots, d);
+                addIfDir (s.driveRoots, d);
         return s;
        #else
         SystemLocations s;
@@ -144,12 +145,20 @@ namespace ss
        #endif
     }
 
-    juce::String SystemLocations::tidy (const juce::String& path) const
+    juce::String SystemLocations::tidy (const juce::String& text) const
     {
         const auto h = home.getFullPathName();
-        if (h.length() > 3 && path.startsWithIgnoreCase (h))
-            return "~" + path.substring (h.length());
-        return path;
+        if (h.length() <= 3) return text;
+        juce::StringArray forms { h, h.replaceCharacter ('\\', '/'), h.replaceCharacter ('/', '\\') };
+        if (h.length() > 2 && h[1] == ':')                     // "C:\Users\name" -> also "\Users\name" and "/Users/name"
+            for (auto f : juce::StringArray (forms))
+                forms.add (f.substring (2));
+        forms.removeDuplicates (true);
+        std::sort (forms.begin(), forms.end(), [] (const juce::String& x, const juce::String& y) { return x.length() > y.length(); });
+        auto out = text;
+        for (auto& f : forms)
+            if (f.length() > 3) out = out.replace (f, "~", true);
+        return out;
     }
 
     juce::String SystemLocations::tidy (const juce::File& f) const   { return tidy (f.getFullPathName()); }

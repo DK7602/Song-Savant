@@ -403,7 +403,6 @@ namespace ss
             for (auto& f : loc.extraFolders) x.add (loc.tidy (f));
             o << x.joinIntoString ("; ") << "\n";
         }
-        const auto home = loc.home.getFullPathName();
-        return home.length() > 3 ? o.replace (home, "~", true) : o;
+        return loc.tidy (o);
     }
 }

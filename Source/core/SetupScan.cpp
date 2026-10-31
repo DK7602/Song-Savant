@@ -37,6 +37,7 @@ namespace ss
             {
                 if (l.entries.size() >= 120) { l.entries.add ("..."); break; }
                 const auto f = e.getFile();
+                if (looksPrivate (f.getFileName())) continue;
                 if (e.isDirectory())
                 {
                     int n = 0;

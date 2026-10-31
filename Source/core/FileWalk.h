@@ -31,4 +31,7 @@ namespace ss
     bool skipFolder (const juce::File&);
 
     juce::String formatBytes (juce::int64);
+
+    // Names that look like keys, passwords, licences or credentials: the scan never lists or opens them
+    bool looksPrivate (const juce::String& fileOrFolderName);
 }

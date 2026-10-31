@@ -147,6 +147,10 @@ namespace sstest
             "INSERT INTO Preset_Characteristics VALUES (1, 1, 1), (2, 1, 3), (3, 2, 1), (4, 3, 1), (5, 3, 4)",
             "CREATE TABLE Genres (key_id INTEGER, name TEXT)",
             "INSERT INTO Genres VALUES (1, 'Pop'), (2, 'Worship')",
+            "CREATE TABLE Packs (key_id INTEGER, name TEXT, factory INTEGER)",
+            "INSERT INTO Packs VALUES (1, 'Analog Lab Factory', 1)",
+            "CREATE TABLE Purchasable_Packs (product_id INTEGER, instrument_id INTEGER, name TEXT, owned INTEGER)",
+            "INSERT INTO Purchasable_Packs VALUES (10, 60, 'Worship Keys', 1), (11, 60, 'Trap Leads', 0)",
             "CREATE TABLE Preset_Metadata (key_id INTEGER, preset_key INTEGER, name TEXT, value TEXT)",
             "INSERT INTO Preset_Metadata VALUES (1, 1, 'Characteristics', 'Characteristics,Warm;Genres,Pop')" });
         write (programData.getChildFile ("Arturia/Presets/Analog Lab/User/my sound.labx"), "user preset");
@@ -180,6 +184,13 @@ namespace sstest
         write (docs.getChildFile ("Cymatics/Plinko/Presets/Bell Pluck.cyp"), "preset");
         write (docs.getChildFile ("Cymatics/Plinko/Presets/Glass Keys.cyp"), "preset");
         write (docs.getChildFile ("Cymatics/Plinko/Samples/bell.wav"), "RIFF");
+        write (docs.getChildFile ("Cymatics/Hub/license.dat"), "never listed");
+
+        // the top of another drive: an exact maker folder, a near miss, and a private folder that must never be touched
+        fc.driveD = root.getChildFile ("Drive D");
+        write (fc.driveD.getChildFile ("Steinberg/Content/Extra.vstsound"), "Steinberg Resource File\r\n");
+        write (fc.driveD.getChildFile ("Steinberg Backup/old.txt"), "x");
+        write (fc.driveD.getChildFile ("Key Compass App Secret Key/signing key.txt"), "never read");
 
         // Key Compass, Groove Grabber, Sample Snagger
         write (roaming.getChildFile ("KeyCompass/Songs/Back Roads.kcsong"),
@@ -193,6 +204,7 @@ namespace sstest
         pf.getChildFile ("Common Files").createDirectory();
 
         fc.loc = ss::SystemLocations::windowsLayoutUnder (root);
+        fc.loc.driveRoots.add (fc.driveD);
         return fc;
     }
 }

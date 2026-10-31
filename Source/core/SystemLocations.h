@@ -28,8 +28,11 @@ namespace ss
         // <root>/Users/me/{Documents, AppData/Roaming, AppData/Local}, <root>/Users/Public/Documents
         static SystemLocations windowsLayoutUnder (const juce::File& root);
 
-        // "C:\Users\dk\Documents\x" -> "~\Documents\x" (keeps the user's name out of the report)
+        juce::Array<juce::File> driveRoots;      // tops of the drives: makers' folders must match exactly there
+
+        // Replaces the user's home folder with "~" anywhere in the text, in every form it appears in:
+        // C:\Users\name, C:/Users/name, /Users/name, \Users\name (keeps the user's name out of the report)
         juce::String tidy (const juce::File&) const;
-        juce::String tidy (const juce::String& path) const;
+        juce::String tidy (const juce::String& text) const;
     };
 }

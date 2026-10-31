@@ -51,10 +51,18 @@ namespace ss
     juce::Array<juce::File> findVendorFolders (const SystemLocations& loc, const juce::String& vendor)
     {
         juce::Array<juce::File> out;
-        for (auto& root : loc.vendorRoots)
+        auto consider = [&] (const juce::File& root, bool exact)
+        {
             for (const auto& e : juce::RangedDirectoryIterator (root, false, "*", juce::File::findDirectories))
-                if (sameMaker (e.getFile().getFileName(), vendor) && ! out.contains (e.getFile()))
+            {
+                const auto name = e.getFile().getFileName();
+                if (looksPrivate (name) || out.contains (e.getFile())) continue;
+                if (exact ? normaliseName (name) == normaliseName (vendor) : sameMaker (name, vendor))
                     out.add (e.getFile());
+            }
+        };
+        for (auto& root : loc.vendorRoots) consider (root, false);
+        for (auto& root : loc.driveRoots)  consider (root, true);    // D:\Steinberg yes, D:\Steinberg Backup no
         return out;
     }
 
@@ -70,6 +78,7 @@ namespace ss
 
         vf.stats = walkFiles (folder, limits, [&] (const juce::File& f, int)
         {
+            if (looksPrivate (f.getFileName())) { extCount["(private, not listed)"]++; return true; }
             auto ext = f.getFileExtension().toLowerCase();
             if (ext.isEmpty() || ext.length() > 16) ext = "(none)";
             extCount[ext]++;

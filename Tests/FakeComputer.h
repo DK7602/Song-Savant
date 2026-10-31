@@ -10,7 +10,7 @@ namespace sstest
     {
         juce::File root;
         ss::SystemLocations loc;
-        juce::File halionPreset, untaggedPreset, vstSound, arturiaDb, mediaBayDb;
+        juce::File halionPreset, untaggedPreset, vstSound, arturiaDb, mediaBayDb, driveD;
     };
 
     FakeComputer makeFakeComputer (const juce::File& root);

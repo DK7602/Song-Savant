@@ -150,6 +150,11 @@ namespace ss
                                                        "LEFT JOIN Characteristics_Types ct ON c.type_key = ct.key_id GROUP BY c.key_id ORDER BY 3 DESC", 60);
             add ("Genres", "SELECT key_id, name FROM Genres", 20);
             add ("Other flags", "SELECT SUM(favorite), SUM(hide_in_browser), SUM(analoglab_factory), COUNT(DISTINCT pack), COUNT(DISTINCT sound_designer) FROM Preset_Id");
+            add ("Analog Lab factory presets by instrument", "SELECT i.display_name, i.name, COUNT(*) FROM Preset_Id p LEFT JOIN Instruments i ON p.instrument_key = i.key_id "
+                                                             "WHERE p.analoglab_factory = 1 GROUP BY p.instrument_key ORDER BY 3 DESC", 70);
+            add ("Packs (name | factory | presets)", "SELECT k.name, k.factory, (SELECT COUNT(*) FROM Preset_Id p WHERE p.pack = k.key_id) FROM Packs k ORDER BY 3 DESC", 45);
+            add ("Packs for sale marked as owned", "SELECT name, instrument_id FROM Purchasable_Packs WHERE owned = 1", 40);
+            add ("Instruments (all)", "SELECT key_id, name, display_name, version FROM Instruments ORDER BY key_id", 70);
             add ("Preset metadata kinds", "SELECT name, COUNT(*) FROM Preset_Metadata GROUP BY name ORDER BY 2 DESC", 20);
             add ("Examples", "SELECT p.name, i.display_name, t.name, s.name, "
                              "(SELECT group_concat(c.name, ', ') FROM Preset_Characteristics pc JOIN Characteristics c ON pc.characteristic_key = c.key_id WHERE pc.preset_key = p.key_id), "

@@ -36,9 +36,13 @@ https://github.com/DK7602/Groove-Grabber), **Key Compass** (songs with key, temp
 - **AU** covers Logic Pro and GarageBand on Mac.
 - **Pro Tools** needs AAX (an Avid developer account and PACE signing). Later, only if customers ask.
 - **Dragging MIDI** into the DAW works everywhere.
-- **Loading a sound** is DAW-dependent. Cubase gets the best experience: a `.vstpreset` dragged into the
-  project creates an instrument track with that sound (to be confirmed by the Phase 0 drag test). Other DAWs:
-  drag the MIDI and use "copy preset name" or load the preset file in the instrument's own browser.
+- **Loading a sound** (confirmed by the Phase 0 drag tests, Cubase 14 Artist): dragging a `.vstpreset` file from
+  outside Cubase into the project **does not work**, so Song Savant doesn't rely on it. The flow is: Song Savant
+  shows the exact preset (name, instrument, library) with a **"copy name" button**, and you paste the name into
+  Cubase's preset search (MediaBay, the Add Track dialog's preset browser, or the instrument's own browser). The
+  same works in every DAW. **MIDI drag works both ways**: Song Savant's MIDI clips drop into Cubase, and MIDI
+  parts dragged from Cubase onto Song Savant arrive as `.mid` files (so Song Savant can read a song's chords and
+  parts later).
 
 ### 3. Built-in music knowledge, not cloud AI, for version 1
 - No internet needed, no per-use cost, no accounts or billing. This is the same approach as Groove Grabber, which
@@ -79,9 +83,21 @@ No program can write a custom reader for every plugin, so:
   owned.
 - **Cymatics:** presets are files (`C:\ProgramData\Cymatics\<plug-in>\Presets\...\*.cymatics`, Daydream `*.json`,
   Pandora `*.preset`): names and folders only, so plugin-level plus preset names.
-- Most of the owner's VST3 plug-ins keep `moduleinfo.json` in `Contents/Resources/` (fixed in 0.2.0); single-file
-  plug-ins (Analog Lab V, FM8, SSD Sampler 5, ...) don't have one, so their type comes from **Cubase's own plug-in
-  list** (`%APPDATA%\Steinberg\Cubase 14_64\VstPlugInfoV4.xml`; 0.2.0 reads it and shows its layout in the report).
+- Plug-in types: newer VST3 plug-ins keep `moduleinfo.json` in `Contents/Resources/` (read since 0.2.0: 66 of the
+  owner's 128). The rest (all the Steinberg instruments, Analog Lab V, FM8, SSD Sampler 5, MT-PowerDrumKit, older
+  Cymatics) don't say. Cubase's own plug-in list (`VstPlugInfoV4.xml`) has names, bus counts and flags but **no
+  categories**. So Phase 1 **asks each plug-in directly, the way DAWs do, in a separate helper process** (a
+  crashing plug-in can't take Song Savant down), caches the answers, and adds built-in profiles for well-known
+  plug-ins.
+- MediaBay coverage (0.2.0): 12,783 presets, 11,466 with a category, 9,460 with character tags, 5,954 with a
+  style (Pop, Electronica/Dance, Urban, Ambient, Rock, Classical, Jazz, Country...); moods are almost never set.
+  Presets made for "HALion Sonic SE" (5,807) load in HALion Sonic. Also in MediaBay: Groove Agent kits
+  (`GAInstrument`), MIDI loops, track presets, chord pads.
+- Arturia: 12,166 presets in the database, of which 2,914 are flagged as Analog Lab factory presets.
+  **Open question:** which presets can the owner actually play? (Analog Lab Pro may lock presets of instruments
+  that aren't owned.) Until that's settled, only suggest Analog Lab factory presets plus the owner's own.
+- Privacy: the scan never lists or opens files or folders named like keys, passwords, licences or credentials,
+  and replaces the user's home folder with `~` in every form (including `file://` links).
 
 **The app never suggests a preset you don't own.** Suggestions always come from the scanned catalog.
 Tags guessed from a preset's name or category are shown as guesses.
@@ -164,16 +180,22 @@ Windows, **Cubase Artist 14** (also has Artist 12/13, Elements 12/13 licences).
 - [x] Owner ran the scan (0.1.0) and sent the report: findings are under decision 4.
 - [x] 0.2.0: plug-in types (moduleinfo in `Contents/Resources`, Cubase's plug-in list), a closer look at the
   MediaBay and Arturia databases, things dragged from Cubase onto Song Savant are noted, clearer drag directions.
-- [ ] Owner runs 0.2.0: confirm plug-in types, MediaBay tag coverage, Arturia details, and **the drag tests in the
-  right direction** (cards from Song Savant into Cubase; the first try dragged from Cubase into Song Savant).
+- [x] Owner ran 0.2.0: MediaBay and Arturia fully readable; MIDI drag works both ways; preset files don't drop
+  into Cubase (so "copy name" it is); Cubase's plug-in list has no categories.
+- [x] 0.3.0: privacy fixes (user name in `file://` links; private-looking names skipped), Arturia ownership counts.
+- [ ] Settle which Arturia presets are playable (see decision 4).
 
 ### Phase 1: Sounds
-- Library scan (the real catalog, using what Phase 0 proved), cached so rescans only look at new files.
+- Library catalog from what Phase 0 proved: **MediaBay's database** (Steinberg), **Arturia's database**, Cymatics
+  preset files (names and folders), the owner's own `.vstpreset` files. Cached; rebuilt when those change.
+- Plug-in scan in a helper process (instrument or effect, maker, categories), cached, plus built-in profiles
+  for well-known plug-ins (plugin-level suggestions).
 - Song form: genre, style, mood, energy, BPM, **key**, reference artist or song; or pick a Key Compass song.
 - Palettes (several per song) with every part **including drums**. Flexible slots; lock or regenerate any
   part; alternatives for each slot; "why it works".
 - Preset browser with filters, favourites.
-- Send to DAW: drag `.vstpreset` (Cubase), copy preset name, reveal the file.
+- Send to DAW: **copy preset name** (paste into Cubase's preset search), show where it is (instrument, library),
+  drag MIDI.
 - Save and recall palettes.
 - Light and dark themes.
 

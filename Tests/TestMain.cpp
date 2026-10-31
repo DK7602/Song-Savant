@@ -126,10 +126,13 @@ namespace
         check (ss::describeDroppedFile (fc.halionPreset).contains ("VST3 preset for HALion Sonic, tags: Piano / Piano|A. Piano"), "dropped preset described");
 
         // VST Sound
-        check (r.vstSoundFiles == 1 && r.vstSounds.size() == 1, "one sound library found and looked into");
-        if (! r.vstSounds.empty())
+        check (r.vstSoundFiles == 2 && r.vstSounds.size() == 2, "two sound libraries found (one on another drive)");
+        const ss::VstSoundProbeResult* lib = nullptr;
+        for (auto& p : r.vstSounds) if (p.file == fc.vstSound) lib = &p;
+        check (lib != nullptr, "the HALion library was looked into");
+        if (lib != nullptr)
         {
-            auto& p = r.vstSounds.front();
+            auto& p = *lib;
             check (p.presetNames == 2, "two preset names (ASCII + UTF-16), got " + juce::String (p.presetNames));
             check (p.sampleNames.contains ("Bright Grand") && p.sampleNames.contains ("Airy Pad"), "preset names read");
             check (p.embeddedPresets == 1 && p.embeddedWithTags == 1, "embedded preset with tags");
@@ -167,6 +170,9 @@ namespace
             check (insight (arturia, "Presets by type").contains ("Keys | 1"), "Arturia: presets by type");
             check (insight (arturia, "Characteristics, genres and styles").contains ("Characteristics | Warm | 3"), "Arturia: characteristics");
             check (insight (arturia, "Genres").contains ("2 | Worship"), "Arturia: genres");
+            check (insight (arturia, "Analog Lab factory presets by instrument").contains ("Analog Lab | Analog Lab V | 3"), "Arturia: factory presets by instrument");
+            check (insight (arturia, "Packs (name | factory | presets)").contains ("Analog Lab Factory | 1 | 3"), "Arturia: packs");
+            check (insight (arturia, "Packs for sale marked as owned").contains ("Worship Keys | 60"), "Arturia: owned packs");
         }
         check (mediabay != nullptr && mediabay->opened && mediabay->kind == "Steinberg MediaBay", "MediaBay database found and recognised");
         check (insight (mediabay, "Presets by plug-in").contains ("HALion Sonic | 51"), "MediaBay: presets by plug-in");
@@ -185,6 +191,23 @@ namespace
             if (v.vendor == "Arturia") arturiaFolder = true;
         }
         check (cymatics, "Cymatics folder with its preset files");
+
+        // privacy: private-looking files and folders are never listed or matched
+        auto keyFolders = ss::findVendorFolders (fc.loc, "Key Compass");
+        bool touchedSecret = false;
+        for (auto& kf : keyFolders) if (kf.getFileName().containsIgnoreCase ("Secret")) touchedSecret = true;
+        check (! touchedSecret, "a folder named like a secret key is never matched");
+        auto steinbergFolders = ss::findVendorFolders (fc.loc, "Steinberg");
+        check (steinbergFolders.contains (fc.driveD.getChildFile ("Steinberg")) && ! steinbergFolders.contains (fc.driveD.getChildFile ("Steinberg Backup")),
+               "on the top of a drive, maker folders must match exactly");
+        bool privateCounted = false, privateNamed = false;
+        for (auto& v : r.vendorFolders)
+            if (v.vendor == "Cymatics")
+            {
+                for (auto& [ext, n] : v.extensions) if (ext == "(private, not listed)") privateCounted = true;
+                for (auto& [ext, names] : v.samples) for (auto& nm : names) if (nm.containsIgnoreCase ("license")) privateNamed = true;
+            }
+        check (privateCounted && ! privateNamed, "private-looking files are counted but never named");
         check (arturiaFolder, "Arturia folder");
 
         // Cubase + other apps
@@ -216,6 +239,10 @@ namespace
         check (text.contains ("table Preset_Id (3 rows)"), "database tables listed");
         check (text.contains ("~"), "paths shortened with ~");
         check (! text.contains (fc.loc.home.getFullPathName()), "the user's home folder is never written out");
+        check (! text.containsIgnoreCase ("Secret"), "nothing private-looking in the report");
+        const auto h = fc.loc.home.getFullPathName();
+        check (fc.loc.tidy ("url=file://46" + h.replaceCharacter ('\\', '/') + "/Documents/x") == "url=file://46~/Documents/x", "home folder hidden in file:// links");
+        check (fc.loc.tidy ("p=" + h.replaceCharacter ('/', '\\') + "\\Documents") == "p=~\\Documents", "home folder hidden with either slash");
         check (text.contains ("Back Roads  |  A Minor  |  92 BPM"), "Key Compass song listed");
         check (text.contains ("Cubase -> Song Savant:           nothing dropped"), "nothing dragged from Cubase yet");
         check (text.contains ("type from Cubase's list"), "where a plug-in's type came from");
