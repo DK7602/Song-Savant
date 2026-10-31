@@ -51,6 +51,7 @@ namespace ss::ui
         void resized() override;
 
         void find();                                  // FIND MY SOUNDS (also the tests)
+        void themeChanged();
         void setDescription (const juce::String&);    // tests
 
     private:

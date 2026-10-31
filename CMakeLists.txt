@@ -82,7 +82,9 @@ juce_add_binary_data(SongSavantBinaryData
     NAMESPACE   SSBinary
     SOURCES
         Resources/owl.png
-        Resources/wordmark.png)
+        Resources/wordmark.png
+        Resources/owl-light.png
+        Resources/wordmark-light.png)
 
 set(SS_CORE_SOURCES
     Source/core/Paths.cpp

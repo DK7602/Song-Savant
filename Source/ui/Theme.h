@@ -26,7 +26,11 @@ namespace ss::ui
         juce::Colour bad         { 0xffff6b88 };
     };
 
-    const Palette& pal();
+    const Palette& pal();                   // the current theme's colours
+
+    // Dark (navy, gold, blue, purple) or light (ivory and marble with the same accents); saved for next time
+    bool isLightTheme();
+    void setLightTheme (bool);
 
     juce::Font sans (float height, bool bold = false);
     juce::Font serif (float height, bool bold = false);   // headings
@@ -46,6 +50,7 @@ namespace ss::ui
     {
     public:
         SavantLookAndFeel();
+        void applyColours();                 // after the theme changes
         juce::Font getComboBoxFont (juce::ComboBox&) override              { return sans (14.5f); }
         juce::Font getPopupMenuFont() override                              { return sans (15.0f); }
         void drawComboBox (juce::Graphics&, int w, int h, bool down, int, int, int, int, juce::ComboBox&) override;

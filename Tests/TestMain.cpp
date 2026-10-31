@@ -545,6 +545,12 @@ namespace
         shoot ("setup-check-empty", false, 1140, 800, 2);
         shoot ("setup-check-results", true, 1140, 800, 2);
         shoot ("setup-check-small", true, 1060, 780, 2);
+        ss::ui::setLightTheme (true);
+        shoot ("song-light", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
+        shoot ("library-light", false, 1240, 820, 1, "warm pad");
+        shoot ("setup-check-light", true, 1140, 800, 2);
+        ss::ui::setLightTheme (false);
+        check (! ss::ui::isLightTheme(), "back to dark");
         juce::ignoreUnused (r);
     }
 }

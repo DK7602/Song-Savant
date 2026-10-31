@@ -38,6 +38,7 @@ namespace ss::ui
         void resized() override;
 
         void refreshCatalog();            // pick up a newly built catalog
+        void themeChanged();
         void selectRow (int row);         // tests
         void setSearchText (const juce::String&);   // tests
 

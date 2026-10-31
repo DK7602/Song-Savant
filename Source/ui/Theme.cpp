@@ -1,13 +1,68 @@
 #include "Theme.h"
 #include "SSBinaryData.h"
+#include "core/Paths.h"
 #include <cmath>
 
 namespace ss::ui
 {
+    namespace
+    {
+        Palette lightPalette()
+        {
+            Palette p;
+            p.bgTop    = juce::Colour (0xfffbf7ef);
+            p.bgBottom = juce::Colour (0xffefe6d6);
+            p.panel    = juce::Colour (0xd8fffdf8);
+            p.panelHi  = juce::Colour (0xfffffcf5);
+            p.gold     = juce::Colour (0xffb8861f);    // a deeper gold, readable on ivory
+            p.goldDeep = juce::Colour (0xff8a6014);
+            p.goldText = juce::Colour (0xff2a1e05);
+            p.blue     = juce::Colour (0xff3d5afe);
+            p.purple   = juce::Colour (0xff7c4dff);
+            p.text     = juce::Colour (0xff1d1640);
+            p.muted    = juce::Colour (0xff57527c);
+            p.dim      = juce::Colour (0xff9a95b5);
+            p.good     = juce::Colour (0xff1e9e5a);
+            p.warn     = juce::Colour (0xffc77700);
+            p.bad      = juce::Colour (0xffd93d5e);
+            return p;
+        }
+
+        juce::PropertiesFile& settings()
+        {
+            static juce::PropertiesFile file = []
+            {
+                juce::PropertiesFile::Options o;
+                o.applicationName = "settings";
+                o.filenameSuffix = ".xml";
+                o.storageFormat = juce::PropertiesFile::storeAsXML;
+                o.millisecondsBeforeSaving = 300;
+                return juce::PropertiesFile (ss::paths::appDataDir().getChildFile ("settings.xml"), o);
+            }();
+            return file;
+        }
+
+        bool& lightFlag()
+        {
+            static bool light = settings().getBoolValue ("lightTheme", false);
+            return light;
+        }
+    }
+
     const Palette& pal()
     {
-        static const Palette p;
-        return p;
+        static const Palette dark;
+        static const Palette light = lightPalette();
+        return lightFlag() ? light : dark;
+    }
+
+    bool isLightTheme()   { return lightFlag(); }
+
+    void setLightTheme (bool on)
+    {
+        lightFlag() = on;
+        settings().setValue ("lightTheme", on);
+        settings().saveIfNeeded();
     }
 
     juce::Font sans (float h, bool bold)
@@ -27,8 +82,16 @@ namespace ss::ui
         return juce::Font (juce::FontOptions (name, h, bold ? juce::Font::bold : juce::Font::plain));
     }
 
-    juce::Image owlImage()      { return juce::ImageCache::getFromMemory (SSBinary::owl_png, SSBinary::owl_pngSize); }
-    juce::Image wordmarkImage() { return juce::ImageCache::getFromMemory (SSBinary::wordmark_png, SSBinary::wordmark_pngSize); }
+    juce::Image owlImage()
+    {
+        return isLightTheme() ? juce::ImageCache::getFromMemory (SSBinary::owllight_png, SSBinary::owllight_pngSize)
+                              : juce::ImageCache::getFromMemory (SSBinary::owl_png, SSBinary::owl_pngSize);
+    }
+    juce::Image wordmarkImage()
+    {
+        return isLightTheme() ? juce::ImageCache::getFromMemory (SSBinary::wordmarklight_png, SSBinary::wordmarklight_pngSize)
+                              : juce::ImageCache::getFromMemory (SSBinary::wordmark_png, SSBinary::wordmark_pngSize);
+    }
 
     void drawBackground (juce::Graphics& g, juce::Rectangle<float> r)
     {
@@ -53,7 +116,7 @@ namespace ss::ui
         juce::Path path;
         path.addRoundedRectangle (r, radius);
 
-        juce::DropShadow (juce::Colours::black.withAlpha (0.45f), 22, { 0, 6 }).drawForPath (g, path);
+        juce::DropShadow (juce::Colours::black.withAlpha (isLightTheme() ? 0.10f : 0.45f), 22, { 0, 6 }).drawForPath (g, path);
         g.setGradientFill (juce::ColourGradient (p.panelHi.withAlpha (0.82f), r.getX(), r.getY(), p.panel, r.getX(), r.getBottom(), false));
         g.fillPath (path);
 
@@ -107,7 +170,9 @@ namespace ss::ui
     }
 
     //==============================================================================
-    SavantLookAndFeel::SavantLookAndFeel()
+    SavantLookAndFeel::SavantLookAndFeel()   { applyColours(); }
+
+    void SavantLookAndFeel::applyColours()
     {
         const auto& p = pal();
         setColourScheme ({ p.bgTop, p.panelHi, p.panelHi, p.dim, p.text, p.purple, p.goldText, p.gold, p.text });

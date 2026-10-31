@@ -198,6 +198,15 @@ namespace ss::ui
     }
 
     void LibraryPage::selectRow (int row)                       { list.selectRow (row); }
+
+    void LibraryPage::themeChanged()
+    {
+        searchBox.setTextToShowWhenEmpty ("Search your sounds: warm piano, country, Retrologue, pad...", pal().dim);
+        searchBox.applyColourToAllText (pal().text, true);
+        list.getVerticalScrollBar().setColour (juce::ScrollBar::thumbColourId, pal().purple);
+        list.repaint();
+        repaint();
+    }
     void LibraryPage::setSearchText (const juce::String& t)    { searchBox.setText (t, true); filter.text = t; applyFilter(); }
 
     //==============================================================================

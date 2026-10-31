@@ -1,4 +1,5 @@
 #include "Widgets.h"
+#include <cmath>
 
 namespace ss::ui
 {
@@ -259,5 +260,37 @@ namespace ss::ui
         g.setColour (p.muted);
         g.setFont (sans (13.5f));
         g.drawText (stage, r.withTrimmedTop (4.0f), juce::Justification::centredLeft, true);
+    }
+
+    //==============================================================================
+    void ThemeButton::paintButton (juce::Graphics& g, bool over, bool)
+    {
+        const auto& p = pal();
+        auto r = getLocalBounds().toFloat().reduced (2.0f);
+        g.setColour (p.panelHi.withAlpha (over ? 1.0f : 0.7f));
+        g.fillEllipse (r);
+        g.setColour (p.gold.withAlpha (over ? 1.0f : 0.8f));
+        g.drawEllipse (r, 1.2f);
+        auto c = r.reduced (r.getWidth() * 0.28f);
+        if (isLightTheme())
+        {
+            // a moon: you're in the light theme, click for dark
+            g.fillEllipse (c);
+            g.setColour (p.panelHi);
+            g.fillEllipse (c.translated (c.getWidth() * 0.36f, -c.getHeight() * 0.24f));
+        }
+        else
+        {
+            // a sun: click for light
+            auto core = c.reduced (c.getWidth() * 0.22f);
+            g.fillEllipse (core);
+            for (int i = 0; i < 8; ++i)
+            {
+                const float a = juce::MathConstants<float>::twoPi * (float) i / 8.0f;
+                const auto ctr = c.getCentre();
+                const float r1 = c.getWidth() * 0.42f, r2 = c.getWidth() * 0.58f;
+                g.drawLine (ctr.x + std::cos (a) * r1, ctr.y + std::sin (a) * r1, ctr.x + std::cos (a) * r2, ctr.y + std::sin (a) * r2, 1.6f);
+            }
+        }
     }
 }

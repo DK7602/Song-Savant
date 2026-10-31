@@ -29,6 +29,8 @@ namespace ss::ui
         SongSavantProcessor& proc;
         SavantLookAndFeel lookAndFeel;
         juce::Image owl, wordmark;
+        ThemeButton themeBtn;
+        void applyTheme();
         PillButton songTab { "SONG", PillButton::Style::subtle },
                    libraryTab { "LIBRARY", PillButton::Style::subtle },
                    setupTab { "SETUP CHECK", PillButton::Style::subtle };

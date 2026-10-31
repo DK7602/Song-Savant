@@ -278,6 +278,14 @@ namespace ss::ui
 
     void SongPage::setDescription (const juce::String& t)   { describeBox.setText (t, false); }
 
+    void SongPage::themeChanged()
+    {
+        describeBox.setTextToShowWhenEmpty ("Describe your song: modern country like Morgan Wallen, warm, 120 BPM in A minor", pal().dim);
+        bpmBox.setTextToShowWhenEmpty ("BPM", pal().dim);
+        for (auto* ed : { &describeBox, &bpmBox }) ed->applyColourToAllText (pal().text, true);
+        refresh();
+    }
+
     void SongPage::timerCallback()
     {
         if (proc.catalog.generation() != seenGeneration)

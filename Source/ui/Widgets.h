@@ -16,6 +16,14 @@ namespace ss::ui
         Style style;
     };
 
+    // The sun / moon button that switches between the light and dark themes
+    class ThemeButton : public juce::Button
+    {
+    public:
+        ThemeButton() : juce::Button ("theme")   { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+        void paintButton (juce::Graphics&, bool over, bool down) override;
+    };
+
     // Something the user drags out of Song Savant into their DAW (a preset file, a MIDI clip)
     class DragChip : public juce::Component, public juce::SettableTooltipClient
     {

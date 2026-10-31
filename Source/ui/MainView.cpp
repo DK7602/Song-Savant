@@ -14,6 +14,9 @@ namespace ss::ui
             t->setComponentID ("tab");
             addAndMakeVisible (t);
         }
+        themeBtn.setTooltip ("Light or dark");
+        themeBtn.onClick = [this] { setLightTheme (! isLightTheme()); applyTheme(); };
+        addAndMakeVisible (themeBtn);
         songTab.onClick = [this] { showPage (song); };
         libraryTab.onClick = [this] { showPage (library); };
         setupTab.onClick = [this] { showPage (setupCheck); };
@@ -24,6 +27,17 @@ namespace ss::ui
     }
 
     MainView::~MainView()   { setLookAndFeel (nullptr); }
+
+    void MainView::applyTheme()
+    {
+        lookAndFeel.applyColours();
+        owl = owlImage();
+        wordmark = wordmarkImage();
+        sendLookAndFeelChange();
+        songPage.themeChanged();
+        libraryPage.themeChanged();
+        repaint();
+    }
 
     void MainView::showPage (int which)
     {
@@ -66,12 +80,14 @@ namespace ss::ui
         auto r = getLocalBounds();
         auto header = r.removeFromTop (124).reduced (24, 16);
         headerArea = header.toFloat();
-        auto tabs = header.removeFromRight (480).withSizeKeepingCentre (480, 40).translated (0, -8);
+        auto tabs = header.removeFromRight (540).withSizeKeepingCentre (540, 40).translated (0, -8);
         setupTab.setBounds (tabs.removeFromRight (170));
         tabs.removeFromRight (12);
         libraryTab.setBounds (tabs.removeFromRight (140));
         tabs.removeFromRight (12);
         songTab.setBounds (tabs.removeFromRight (120));
+        tabs.removeFromRight (16);
+        themeBtn.setBounds (tabs.removeFromRight (40));
         subtitleArea = juce::Rectangle<float> ((float) setupTab.getRight() - 300.0f, (float) setupTab.getBottom() + 4.0f, 300.0f, 18.0f);
         songPage.setBounds (r);
         libraryPage.setBounds (r);
