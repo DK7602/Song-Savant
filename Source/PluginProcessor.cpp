@@ -52,6 +52,8 @@ void SongSavantProcessor::getStateInformation (juce::MemoryBlock& dest)
     d->setAttribute ("preset", dragTests.userPreset);
     d->setAttribute ("factory", dragTests.factoryPreset);
     d->setAttribute ("midi", dragTests.midiClip);
+    for (auto& line : dragTests.fromDaw)
+        d->createNewChildElement ("FromDaw")->setAttribute ("what", line);
     for (auto& f : extraFolders)
         x.createNewChildElement ("ExtraFolder")->setAttribute ("path", f.getFullPathName());
     copyXmlToBinary (x, dest);
@@ -66,6 +68,9 @@ void SongSavantProcessor::setStateInformation (const void* data, int size)
         dragTests.userPreset    = juce::jlimit (-1, 1, d->getIntAttribute ("preset"));
         dragTests.factoryPreset = juce::jlimit (-1, 1, d->getIntAttribute ("factory"));
         dragTests.midiClip      = juce::jlimit (-1, 1, d->getIntAttribute ("midi"));
+        dragTests.fromDaw.clear();
+        for (auto* e : d->getChildWithTagNameIterator ("FromDaw"))
+            dragTests.fromDaw.add (e->getStringAttribute ("what"));
     }
     extraFolders.clear();
     for (auto* e : x->getChildWithTagNameIterator ("ExtraFolder"))

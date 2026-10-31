@@ -51,7 +51,7 @@ Name: "{group}\Song Savant"; Filename: "{app}\Song Savant.exe"; Components: app
 Name: "{autodesktop}\Song Savant"; Filename: "{app}\Song Savant.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\Song Savant.exe"; Description: "Open Song Savant"; Flags: nowait postinstall skipifsilent; Components: app
+Filename: "{app}\Song Savant.exe"; Description: "Open Song Savant"; Flags: nowait postinstall skipifsilent runasoriginaluser; Components: app
 
 [Messages]
 FinishedLabel=Song Savant is installed.%n%nOpen it and click SCAN MY SETUP. Then try the drag tests with Cubase and send back the report (Documents\Song Savant\Setup Report.txt).

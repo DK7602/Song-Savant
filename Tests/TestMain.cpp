@@ -10,6 +10,7 @@
 #include "core/VstPreset.h"
 #include "core/PluginScanner.h"
 #include "core/Paths.h"
+#include "core/DropInfo.h"
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include <iostream>
@@ -82,6 +83,13 @@ namespace
             }
         check (noteOns == 16, "16 notes (4 chords of 4), got " + juce::String (noteOns));
         check (std::abs (tempo - 120.0) < 0.01, "tempo 120");
+
+        const auto midiDrop = ss::describeDroppedFile (midi);
+        check (midiDrop.startsWith ("chords.mid: MIDI file, 1 track with notes, 16 notes, about 4.0 bars at 120 BPM"), "dropped MIDI described: " + midiDrop);
+        check (ss::describeDroppedFile (midi.getParentDirectory()).endsWith (": a folder"), "dropped folder");
+        auto other = midi.getSiblingFile ("thing.xyz");
+        other.replaceWithText ("hello");
+        check (ss::describeDroppedFile (other) == "thing.xyz: .xyz file (5 B)", "dropped unknown file: " + ss::describeDroppedFile (other));
     }
 
     ss::ScanResult testScan (const sstest::FakeComputer& fc)
@@ -101,7 +109,11 @@ namespace
         check (halion != nullptr && halion->isInstrument && halion->vendor == "Steinberg Media Technologies", "HALion Sonic: instrument by Steinberg (JSON5 moduleinfo)");
         auto* plinko = findPlugin (r, "Plinko");
         check (plinko != nullptr && ! plinko->categoriesKnown && plinko->vendor == "Cymatics" && ! plinko->bundle, "Plinko: single file, maker from its folder");
-        check (findPlugin (r, "Retrologue") != nullptr, "Retrologue found inside the Cubase folder");
+        check (findPlugin (r, "Retrologue") != nullptr && findPlugin (r, "Retrologue")->categorySource == "moduleinfo",
+               "Retrologue found inside the Cubase folder (moduleinfo in Contents/Resources)");
+        auto* lab = findPlugin (r, "Analog Lab V");
+        check (lab != nullptr && ! lab->bundle && lab->isInstrument && lab->categorySource == "Cubase", "Analog Lab V: type from Cubase's plug-in list");
+        check (r.pluginTypesFromCubase == 1 && r.cubasePluginList.existsAsFile(), "Cubase's plug-in list read");
         auto* eq = findPlugin (r, "Pro-Q 3");
         check (eq != nullptr && ! eq->isInstrument && eq->categoriesKnown, "an effect isn't an instrument");
 
@@ -111,6 +123,7 @@ namespace
         check (r.presets.byPlugin["HALion Sonic"] == 1 && r.presets.byPlugin["Retrologue"] == 1, "presets by plug-in (tags, then folder)");
         check (r.presets.categories["Piano"] == 1, "category from tags");
         check (r.userPreset == fc.halionPreset, "drag test prefers the HALion Sonic preset");
+        check (ss::describeDroppedFile (fc.halionPreset).contains ("VST3 preset for HALion Sonic, tags: Piano / Piano|A. Piano"), "dropped preset described");
 
         // VST Sound
         check (r.vstSoundFiles == 1 && r.vstSounds.size() == 1, "one sound library found and looked into");
@@ -136,15 +149,31 @@ namespace
             if (d.file == fc.arturiaDb) arturia = &d;
             if (d.file == fc.mediaBayDb) mediabay = &d;
         }
-        check (arturia != nullptr && arturia->opened, "Arturia database opened");
-        if (arturia != nullptr && ! arturia->tables.empty())
+        check (arturia != nullptr && arturia->opened && arturia->kind == "Arturia presets", "Arturia database opened and recognised");
+        auto insight = [] (const ss::SqliteProbeResult* db, const juce::String& title) -> juce::StringArray
         {
-            check (arturia->tables.front().name == "Preset_Id", "preset table ranked first, got " + arturia->tables.front().name);
-            check (arturia->tables.front().rows == 3 && arturia->tables.front().sampleRows.size() == 3, "row count and sample rows");
-            check (arturia->tables.front().sampleRows[0].contains ("name=Classic Jun Keys") && arturia->tables.front().sampleRows[0].contains ("<blob 4 bytes>"),
-                   "sample row text and blob");
+            if (db != nullptr)
+                for (auto& [t, lines] : db->insights) if (t == title) return lines;
+            return {};
+        };
+        if (arturia != nullptr)
+        {
+            const ss::SqliteTable* presetTable = nullptr;
+            for (auto& tb : arturia->tables) if (tb.name == "Preset_Id") presetTable = &tb;
+            check (presetTable != nullptr && presetTable->rows == 3 && presetTable->sampleRows.size() == 3, "Preset_Id: row count and sample rows");
+            if (presetTable != nullptr && ! presetTable->sampleRows.isEmpty())
+                check (presetTable->sampleRows[0].contains ("name=Classic Jun Keys") && presetTable->sampleRows[0].contains ("..."), "sample row text (cut at 14 columns)");
+            check (insight (arturia, "Presets by instrument").contains ("Analog Lab | 3"), "Arturia: presets by instrument");
+            check (insight (arturia, "Presets by type").contains ("Keys | 1"), "Arturia: presets by type");
+            check (insight (arturia, "Characteristics, genres and styles").contains ("Characteristics | Warm | 3"), "Arturia: characteristics");
+            check (insight (arturia, "Genres").contains ("2 | Worship"), "Arturia: genres");
         }
-        check (mediabay != nullptr && mediabay->opened, "MediaBay database in Cubase's settings found");
+        check (mediabay != nullptr && mediabay->opened && mediabay->kind == "Steinberg MediaBay", "MediaBay database found and recognised");
+        check (insight (mediabay, "Presets by plug-in").contains ("HALion Sonic | 51"), "MediaBay: presets by plug-in");
+        check (insight (mediabay, "Presets with tags").joinIntoString ("").startsWith ("51 | 50 | 50 | 50"), "MediaBay: how many presets have tags");
+        check (insight (mediabay, "Most common MusicalCategory").contains ("Keyboard | 50"), "MediaBay: categories");
+        check (insight (mediabay, "Examples: HALion Sonic").size() == 4, "MediaBay: examples");
+        check (insight (mediabay, "Examples: your own presets").joinIntoString ("").contains ("My Keys"), "MediaBay: your own presets");
         check (fc.arturiaDb.existsAsFile() && ! fc.arturiaDb.getSiblingFile ("db.db3-wal").exists(), "original database untouched");
 
         // makers' folders
@@ -188,6 +217,20 @@ namespace
         check (text.contains ("~"), "paths shortened with ~");
         check (! text.contains (fc.loc.home.getFullPathName()), "the user's home folder is never written out");
         check (text.contains ("Back Roads  |  A Minor  |  92 BPM"), "Key Compass song listed");
+        check (text.contains ("Cubase -> Song Savant:           nothing dropped"), "nothing dragged from Cubase yet");
+        check (text.contains ("type from Cubase's list"), "where a plug-in's type came from");
+        check (text.contains ("recognised as: Steinberg MediaBay") && text.contains ("recognised as: Arturia presets"), "recognised databases");
+        bool mediaBayRow = false, arturiaRow = false;
+        for (auto& it : items)
+        {
+            if (it.title == "Steinberg MediaBay") mediaBayRow = it.status == 1 && it.detail.contains ("51 presets (50 with a category)");
+            if (it.title == "Arturia (Analog Lab)") arturiaRow = it.status == 1 && it.detail.contains ("3 presets, 1 instrument");
+        }
+        check (mediaBayRow, "summary: MediaBay (not the decoy database)");
+        check (arturiaRow, "summary: Arturia");
+
+        drag.fromDaw.add ("Piano.mid: MIDI file");
+        check (ss::buildReport (r, fc.loc, drag).contains ("Cubase -> Song Savant:           1 dropped\n  Piano.mid: MIDI file"), "things dragged from Cubase are listed");
     }
 
     void testCancelAndJob (const sstest::FakeComputer& fc)
@@ -232,7 +275,7 @@ namespace
         };
         shoot ("setup-check-empty", false, 1140, 800);
         shoot ("setup-check-results", true, 1140, 800);
-        shoot ("setup-check-small", true, 1060, 760);
+        shoot ("setup-check-small", true, 1060, 780);
     }
 }
 

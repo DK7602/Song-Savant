@@ -67,7 +67,7 @@ namespace ss
                     juce::StringArray bits;
                     if (genre.isNotEmpty()) bits.add (genre);
                     if ((int) v.getProperty ("key", -1) >= 0) bits.add (keyName ((int) v["key"]));
-                    if ((double) v.getProperty ("bpm", 0.0) > 0) bits.add (juce::String ((double) v["bpm"], 0) + " BPM");
+                    if ((double) v.getProperty ("bpm", 0.0) > 0) bits.add (juce::String (juce::roundToInt ((double) v["bpm"])) + " BPM");
                     a.kitSamples.add (line + (bits.isEmpty() ? juce::String() : " (" + bits.joinIntoString (", ") + ")"));
                 }
                 return true;

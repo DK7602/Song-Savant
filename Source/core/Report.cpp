@@ -134,11 +134,46 @@ namespace ss
             out.push_back (it);
         }
 
-        out.push_back (databaseItem (r, "Arturia (Analog Lab)", [] (const juce::File& f) { return pathHas (f, "Arturia"); },
-                                     "No Arturia preset database found"));
-        out.push_back (databaseItem (r, "Steinberg MediaBay database",
-                                     [] (const juce::File& f) { return pathHas (f, "Steinberg") || pathHas (f, "Cubase") || pathHas (f, "MediaBay"); },
-                                     "Not found"));
+        {
+            SummaryItem it { "Arturia (Analog Lab)", "No Arturia preset database found", 0 };
+            for (auto& db : r.databases)
+                if (db.kind == "Arturia presets")
+                {
+                    juce::int64 presets = 0, instruments = 0, characteristics = 0;
+                    for (auto& t : db.tables)
+                    {
+                        if (t.name == "Preset_Id") presets = t.rows;
+                        if (t.name == "Instruments") instruments = t.rows;
+                        if (t.name == "Characteristics") characteristics = t.rows;
+                    }
+                    it = { "Arturia (Analog Lab)", "Preset library readable: " + plural (presets, "preset", "presets") + ", "
+                                                   + plural (instruments, "instrument", "instruments") + ", "
+                                                   + plural (characteristics, "sound tag", "sound tags") + " (types, genres, styles)", 1 };
+                }
+            if (it.status == 0)
+                it = databaseItem (r, "Arturia (Analog Lab)", [] (const juce::File& f) { return pathHas (f, "Arturia"); }, it.detail);
+            out.push_back (it);
+        }
+        {
+            SummaryItem it { "Steinberg MediaBay", "MediaBay's database wasn't found", 0 };
+            for (auto& db : r.databases)
+                if (db.kind == "Steinberg MediaBay")
+                {
+                    juce::int64 items = 0;
+                    for (auto& t : db.tables) if (t.name == "media") items = t.rows;
+                    juce::String detail = "Database readable: " + plural (items, "item", "items");
+                    for (auto& [title, lines] : db.insights)
+                        if (title == "Presets with tags" && ! lines.isEmpty())
+                        {
+                            const auto n = juce::StringArray::fromTokens (lines[0], "|", "");
+                            if (n.size() >= 2)
+                                detail << ", " << withCommas (n[0].trim().getLargeIntValue()) << " presets ("
+                                       << withCommas (n[1].trim().getLargeIntValue()) << " with a category)";
+                        }
+                    it = { "Steinberg MediaBay", detail, 1 };
+                }
+            out.push_back (it);
+        }
 
         for (auto* maker : { "Cymatics", "Native Instruments" })
         {
@@ -170,7 +205,7 @@ namespace ss
         juce::String o;
         o << "SONG SAVANT - SETUP REPORT\n"
           << "Song Savant " << SS_VERSION << " | " << juce::SystemStats::getOperatingSystemName() << " | "
-          << r.started.formatted ("%d %b %Y %H:%M") << " | scan took " << juce::String (r.seconds, 0) << " seconds"
+          << r.started.formatted ("%d %b %Y %H:%M") << " | scan took " << juce::roundToInt (r.seconds) << " seconds"
           << (r.cancelled ? " (STOPPED EARLY)" : "") << "\n"
           << "Nothing on this computer was changed. Paths in your user folder start with ~ (your user name is left out).\n";
 
@@ -183,6 +218,9 @@ namespace ss
         o << "Factory preset (copied out) -> Cubase: " << dragResult (drag.factoryPreset)
           << (r.factoryPreset != juce::File() ? "   (" + r.factoryPresetLabel + ")" : juce::String ("   (no preset could be copied out of a library)")) << "\n";
         o << "MIDI clip -> Cubase:             " << dragResult (drag.midiClip) << "\n";
+        o << "Cubase -> Song Savant:           ";
+        if (drag.fromDaw.isEmpty()) o << "nothing dropped\n";
+        else o << drag.fromDaw.size() << " dropped\n  " << drag.fromDaw.joinIntoString ("\n  ") << "\n";
         if (drag.notes.isNotEmpty()) o << "Notes: " << drag.notes << "\n";
 
         // ---- plug-ins
@@ -198,6 +236,7 @@ namespace ss
                     if (p.version.isNotEmpty()) line << "  |  " << p.version;
                     if (! p.categories.isEmpty()) line << "  |  " << p.categories.joinIntoString ("/");
                     if (p.format == "VST3" && ! p.bundle) line << "  |  single file";
+                    if (p.categorySource == "Cubase") line << "  |  type from Cubase's list";
                     lines.add (line);
                 }
             o << title << " (" << lines.size() << "):\n" << (lines.isEmpty() ? juce::String ("  none\n") : lines.joinIntoString ("\n") + "\n");
@@ -265,9 +304,15 @@ namespace ss
                 o << s.joinIntoString (", ") << "\n";
             }
         }
-        int shown = 0;
+        int shown = 0, patches = 0, emptyShown = 0;
+        for (auto& p : r.vstSounds)
+            if (p.textAtStart.joinIntoString (" ").contains ("Steinberg MediaPatch")) ++patches;
+        if (patches > 0) o << withCommas (patches) << " of them are small MediaBay update files (\"Steinberg MediaPatch\"), not listed below.\n";
         for (auto& p : r.vstSounds)
         {
+            if (p.textAtStart.joinIntoString (" ").contains ("Steinberg MediaPatch")) continue;
+            const bool found = p.presetNames + p.embeddedPresets + p.metaInfoBlocks > 0;
+            if (! found && ++emptyShown > 8) continue;
             ++shown;
             o << "\n" << loc.tidy (p.file) << "  [" << formatBytes (p.size) << (p.scannedWhole ? ", read whole" : ", read start and end") << "]\n"
               << "  first bytes: " << p.headerHex << "  |" << p.headerText << "|\n"
@@ -276,6 +321,7 @@ namespace ss
             if (! p.sampleTags.isEmpty())  o << "  tags:  " << p.sampleTags.joinIntoString (" ; ") << "\n";
             if (shown <= 6 && ! p.textAtStart.isEmpty()) o << "  text near the start: " << p.textAtStart.joinIntoString (" ; ") << "\n";
         }
+        if (emptyShown > 8) o << "\n(" << withCommas (emptyShown - 8) << " more with nothing recognisable inside, mostly sample libraries, not listed)\n";
 
         // ---- databases
         heading (o, "4. Preset databases");
@@ -284,10 +330,17 @@ namespace ss
         {
             o << "\n" << loc.tidy (db.file) << "  [" << formatBytes (db.size) << "]  "
               << (db.opened ? juce::String ("opened") : "couldn't open: " + db.error) << "\n";
+            if (db.kind.isNotEmpty()) o << "  recognised as: " << db.kind << "\n";
+            for (auto& [title, lines] : db.insights)
+                o << "  -- " << title << "\n      " << (lines.isEmpty() ? juce::String ("(none)") : lines.joinIntoString ("\n      ")) << "\n";
             for (auto& t : db.tables)
             {
-                o << "  table " << t.name << " (" << withCommas (t.rows) << " rows): " << t.columns.joinIntoString (", ") << "\n";
-                for (auto& row : t.sampleRows) o << "      " << row << "\n";
+                o << "  table " << t.name << " (" << withCommas (t.rows) << " rows): ";
+                // recognised databases: the closer look above says more than long column lists
+                if (db.kind.isNotEmpty() && t.columns.size() > 12) o << t.columns.size() << " columns\n";
+                else o << t.columns.joinIntoString (", ") << "\n";
+                if (db.kind.isEmpty())
+                    for (auto& row : t.sampleRows) o << "      " << row << "\n";
             }
         }
 
@@ -314,6 +367,14 @@ namespace ss
         // ---- Cubase
         heading (o, "6. Cubase");
         if (r.cubase.empty()) o << "No Cubase folders found.\n";
+        if (r.cubasePluginList != juce::File())
+        {
+            o << "Cubase's plug-in list: " << loc.tidy (r.cubasePluginList) << " - gave the type of "
+              << plural (r.pluginTypesFromCubase, "plug-in", "plug-ins") << "\n  names used: ";
+            juce::StringArray k;
+            for (auto& [name, n] : r.cubasePluginListKeys) k.add (name + " (" + withCommas (n) + ")");
+            o << k.joinIntoString (", ") << "\n  first lines:\n    " << r.cubasePluginListSample.joinIntoString ("\n    ") << "\n";
+        }
         for (auto& c : r.cubase)
             o << "\n" << loc.tidy (c.folder) << "\n  " << c.entries.joinIntoString ("\n  ") << "\n";
 
@@ -322,7 +383,7 @@ namespace ss
         const auto& s = r.siblings;
         o << "Key Compass songs (" << loc.tidy (loc.keyCompassSongs) << "): " << (s.keyCompassFolder ? juce::String ((int) s.songs.size()) : juce::String ("folder not found")) << "\n";
         for (auto& song : s.songs)
-            o << "  " << song.name << "  |  " << keyName (song.key) << "  |  " << (song.bpm > 0 ? juce::String (song.bpm, 0) + " BPM" : juce::String ("no BPM"))
+            o << "  " << song.name << "  |  " << keyName (song.key) << "  |  " << (song.bpm > 0 ? juce::String (juce::roundToInt (song.bpm)) + " BPM" : juce::String ("no BPM"))
               << "  |  sections: " << song.sections.joinIntoString (", ") << "  |  " << plural (song.chords.size(), "chord", "chords") << "\n";
         o << "Groove Grabber kits (" << loc.tidy (loc.grooveGrabberKits) << "): " << (s.grooveGrabberFolder ? juce::String (s.grooveGrabberKits) : juce::String ("folder not found")) << "\n";
         for (auto& [g, n] : s.kitsByGenre) o << "  " << g << ": " << n << "\n";

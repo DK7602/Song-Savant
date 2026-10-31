@@ -42,6 +42,10 @@ namespace ss
         std::vector<SqliteProbeResult> databases;
         std::vector<VendorFolder> vendorFolders;
         std::vector<FolderListing> cubase;           // Cubase installs and settings folders
+        juce::File cubasePluginList;                 // Cubase's VstPlugInfoV4.xml, if found
+        int pluginTypesFromCubase = 0;               // plug-ins whose type came from it
+        juce::StringArray cubasePluginListSample;    // its first lines, to learn its layout
+        std::vector<std::pair<juce::String, int>> cubasePluginListKeys;   // name="..." values used in it
         SiblingApps siblings;
         juce::StringArray notes;                     // limits hit, things skipped
 

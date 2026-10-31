@@ -23,7 +23,9 @@ leads, pads and drums, each with alternatives, plus starter MIDI parts to get th
    (Windows may say "Windows protected your PC" because the app isn't signed yet: click **More info > Run anyway**.)
 2. Open **Song Savant** from the Start menu and click **SCAN MY SETUP**. It only reads; it never changes or moves
    your files. It takes a minute or two.
-3. Try the two **drag tests** with Cubase open, and click *Worked* or *Didn't work* for each.
+3. Try the **drag tests** with a Cubase project open: drag each card **from Song Savant into Cubase** (onto the
+   empty area under your tracks), then click *Worked* or *Didn't work* for each. You can also drag things from
+   Cubase onto Song Savant: it notes what arrives.
 4. Click **SAVE REPORT**. The report is saved as `Documents/Song Savant/Setup Report.txt`. Send that file back.
 
 ## Building

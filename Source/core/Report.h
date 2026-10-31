@@ -16,6 +16,7 @@ namespace ss
     struct DragTests
     {
         int userPreset = 0, factoryPreset = 0, midiClip = 0;
+        juce::StringArray fromDaw;   // things dragged from Cubase onto Song Savant (describeDroppedFile lines)
         juce::String notes;
     };
 

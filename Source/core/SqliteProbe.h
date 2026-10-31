@@ -24,6 +24,10 @@ namespace ss
         bool opened = false;
         juce::String error;
         std::vector<SqliteTable> tables;   // most preset-like first
+
+        // Databases we recognise get a closer look: what's in them, counted and sampled
+        juce::String kind;                 // "Steinberg MediaBay", "Arturia presets" or empty
+        std::vector<std::pair<juce::String, juce::StringArray>> insights;   // title -> lines
     };
 
     bool looksLikeSqlite (const juce::File&);    // checks the 16-byte "SQLite format 3" header

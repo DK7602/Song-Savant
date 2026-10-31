@@ -197,7 +197,29 @@ namespace ss
 
         // 7. Cubase, and the owner's other apps
         report (0.96f, "Checking Cubase and your other apps...");
-        for (auto& d : loc.cubaseSettings) r.cubase.push_back (listFolder (d, loc));
+        for (auto& d : loc.cubaseSettings)
+        {
+            r.cubase.push_back (listFolder (d, loc));
+            if (r.cubasePluginList != juce::File()) continue;
+            for (const auto& e : juce::RangedDirectoryIterator (d, false, "VstPlugInfo*.xml", juce::File::findFiles))
+            {
+                r.cubasePluginList = e.getFile();
+                r.pluginTypesFromCubase = applyCubasePluginList (r.plugins, readCubasePluginList (e.getFile()));
+
+                juce::StringArray lines;
+                lines.addLines (e.getFile().loadFileAsString().substring (0, 400000));
+                for (int i = 0; i < lines.size() && r.cubasePluginListSample.size() < 45; ++i)
+                    if (lines[i].trim().isNotEmpty()) r.cubasePluginListSample.add (lines[i].substring (0, 200));
+                std::map<juce::String, int> keys;
+                for (auto& l : lines)
+                    for (int pos = l.indexOf ("name=\""); pos >= 0; pos = l.indexOf (pos + 6, "name=\""))
+                        keys[l.substring (pos + 6).upToFirstOccurrenceOf ("\"", false, false)]++;
+                r.cubasePluginListKeys.assign (keys.begin(), keys.end());
+                std::sort (r.cubasePluginListKeys.begin(), r.cubasePluginListKeys.end(), [] (auto& a, auto& b) { return a.second > b.second; });
+                if (r.cubasePluginListKeys.size() > 40) r.cubasePluginListKeys.resize (40);
+                break;
+            }
+        }
         for (auto& d : loc.cubaseInstalls) r.cubase.push_back (listFolder (d, loc));
         r.siblings = checkSiblingApps (loc);
 

@@ -84,6 +84,90 @@ namespace ss
             sqlite3_finalize (st);
             return true;
         }
+
+        // every row of a query as "a | b | c" (empty array and the error text if the query fails)
+        juce::StringArray rowsOf (sqlite3* db, const juce::String& sql, int maxRows = 40)
+        {
+            juce::StringArray out;
+            const bool ok = query (db, sql, [&] (sqlite3_stmt* st)
+            {
+                juce::StringArray cells;
+                for (int i = 0; i < sqlite3_column_count (st); ++i) cells.add (cell (st, i));
+                out.add (cells.joinIntoString (" | "));
+                return out.size() < maxRows;
+            });
+            if (! ok) out.add ("(query failed: " + juce::String (sqlite3_errmsg (db)) + ")");
+            return out;
+        }
+
+        bool hasTable (const SqliteProbeResult& r, const juce::String& name, const juce::StringArray& columns = {})
+        {
+            for (auto& t : r.tables)
+                if (t.name.equalsIgnoreCase (name))
+                {
+                    for (auto& c : columns)
+                        if (! t.columns.contains (c, true)) return false;
+                    return true;
+                }
+            return false;
+        }
+
+        // Steinberg MediaBay (mediabay3.db): one row per file or preset, with its MediaBay tags as columns
+        void mediaBayInsights (sqlite3* db, SqliteProbeResult& r)
+        {
+            r.kind = "Steinberg MediaBay";
+            auto add = [&] (const juce::String& title, const juce::String& sql, int maxRows = 40) { r.insights.push_back ({ title, rowsOf (db, sql, maxRows) }); };
+            const juce::String presets = "MediaType LIKE '%reset%'";
+
+            add ("Rows by media type", "SELECT MediaType, COUNT(*) FROM media GROUP BY MediaType ORDER BY 2 DESC", 30);
+            add ("Presets by plug-in", "SELECT PlugInName, COUNT(*) FROM media WHERE " + presets + " GROUP BY PlugInName ORDER BY 2 DESC", 60);
+            add ("Presets with tags", "SELECT COUNT(*), SUM(MusicalCategory IS NOT NULL AND MusicalCategory <> ''), SUM(MusicalStyle IS NOT NULL AND MusicalStyle <> ''), "
+                                      "SUM(MusicalCharacter IS NOT NULL AND MusicalCharacter <> ''), SUM(MusicalMoods IS NOT NULL AND MusicalMoods <> '') FROM media WHERE " + presets);
+            for (auto* col : { "MusicalCategory", "MusicalInstrument", "MusicalStyle", "MusicalSubStyle", "MusicalCharacter", "MusicalMoods",
+                               "MusicalProperties", "MediaLibraryName" })
+                add (juce::String ("Most common ") + col, juce::String ("SELECT ") + col + ", COUNT(*) FROM media WHERE " + presets + " AND " + col
+                                                      + " IS NOT NULL AND " + col + " <> '' GROUP BY " + col + " ORDER BY 2 DESC", 25);
+            const juce::String cols = "FileName, url, PlugInName, MusicalCategory, MusicalInstrument, MusicalStyle, MusicalSubStyle, MusicalCharacter, "
+                                      "MusicalMoods, MediaLibraryName, MediaRating, MediaComment";
+            for (auto* plugin : { "HALion Sonic", "HALion", "Retrologue", "Padshop", "Groove Agent" })
+                add (juce::String ("Examples: ") + plugin, "SELECT " + cols + " FROM media WHERE " + presets + " AND PlugInName = '" + plugin
+                                                    + "' AND MusicalCategory IS NOT NULL ORDER BY id LIMIT 4 OFFSET 40", 4);
+            add ("Examples: your own presets", "SELECT " + cols + " FROM media WHERE " + presets + " AND url NOT LIKE 'vstsound:%' LIMIT 4", 4);
+            add ("Libraries (volumes)", "SELECT id, root, name FROM volumes LIMIT 6", 6);
+        }
+
+        // Arturia's preset library (db.db3): presets, instruments, types, characteristics, genres and styles
+        void arturiaInsights (sqlite3* db, SqliteProbeResult& r)
+        {
+            r.kind = "Arturia presets";
+            auto add = [&] (const juce::String& title, const juce::String& sql, int maxRows = 40) { r.insights.push_back ({ title, rowsOf (db, sql, maxRows) }); };
+
+            add ("Presets by instrument", "SELECT i.display_name, COUNT(*) FROM Preset_Id p LEFT JOIN Instruments i ON p.instrument_key = i.key_id "
+                                          "GROUP BY p.instrument_key ORDER BY 2 DESC", 70);
+            add ("Presets by type", "SELECT t.name, COUNT(*) FROM Preset_Id p LEFT JOIN Types_V2 t ON p.type_v2 = t.key_id GROUP BY p.type_v2 ORDER BY 2 DESC", 20);
+            add ("Presets by sub-type", "SELECT s.name, COUNT(*) FROM Preset_Id p LEFT JOIN Subtypes_V2 s ON p.subtype_v2 = s.key_id GROUP BY p.subtype_v2 ORDER BY 2 DESC", 30);
+            add ("Characteristics, genres and styles", "SELECT ct.name, c.name, COUNT(*) FROM Preset_Characteristics pc JOIN Characteristics c ON pc.characteristic_key = c.key_id "
+                                                       "LEFT JOIN Characteristics_Types ct ON c.type_key = ct.key_id GROUP BY c.key_id ORDER BY 3 DESC", 60);
+            add ("Genres", "SELECT key_id, name FROM Genres", 20);
+            add ("Other flags", "SELECT SUM(favorite), SUM(hide_in_browser), SUM(analoglab_factory), COUNT(DISTINCT pack), COUNT(DISTINCT sound_designer) FROM Preset_Id");
+            add ("Preset metadata kinds", "SELECT name, COUNT(*) FROM Preset_Metadata GROUP BY name ORDER BY 2 DESC", 20);
+            add ("Examples", "SELECT p.name, i.display_name, t.name, s.name, "
+                             "(SELECT group_concat(c.name, ', ') FROM Preset_Characteristics pc JOIN Characteristics c ON pc.characteristic_key = c.key_id WHERE pc.preset_key = p.key_id), "
+                             "p.comment, p.file_path FROM Preset_Id p LEFT JOIN Instruments i ON p.instrument_key = i.key_id "
+                             "LEFT JOIN Types_V2 t ON p.type_v2 = t.key_id LEFT JOIN Subtypes_V2 s ON p.subtype_v2 = s.key_id "
+                             "ORDER BY p.key_id LIMIT 8 OFFSET 1500", 8);
+
+            // are the preset files themselves on disk?
+            juce::StringArray fileCheck;
+            query (db, "SELECT file_path FROM Preset_Id WHERE file_path IS NOT NULL AND file_path <> '' ORDER BY key_id LIMIT 6 OFFSET 3000", [&] (sqlite3_stmt* st)
+            {
+                const juce::File f (juce::String::fromUTF8 (reinterpret_cast<const char*> (sqlite3_column_text (st, 0))).replaceCharacter ('/', juce::File::getSeparatorChar()));
+                fileCheck.add ((f.existsAsFile() ? "on disk (" + juce::String (f.getSize()) + " bytes, " + f.getFileExtension() + "): "
+                                                 : juce::String ("missing: ")) + f.getFileName());
+                return true;
+            });
+            r.insights.push_back ({ "Preset files on disk", fileCheck });
+        }
     }
 
     SqliteProbeResult probeSqlite (const juce::File& original, int tablesToSample, int rowsPerTable)
@@ -170,6 +254,14 @@ namespace ss
                     return true;
                 });
             }
+        }
+
+        if (r.opened)
+        {
+            if (hasTable (r, "media", { "MediaType", "PlugInName", "MusicalCategory" }))
+                mediaBayInsights (db.db, r);
+            else if (hasTable (r, "Preset_Id", { "name", "instrument_key" }) && hasTable (r, "Instruments") && hasTable (r, "Characteristics"))
+                arturiaInsights (db.db, r);
         }
 
         if (copied)

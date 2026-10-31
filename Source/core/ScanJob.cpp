@@ -66,7 +66,7 @@ namespace ss
         });
         {
             const juce::ScopedLock sl (lock);
-            stageText = r.cancelled ? "Stopped." : "Done in " + juce::String (r.seconds, 0) + " seconds.";
+            stageText = r.cancelled ? "Stopped." : "Done in " + juce::String (juce::roundToInt (r.seconds)) + " seconds.";
             latest = std::make_shared<const ScanResult> (std::move (r));
         }
         progressValue = 1.0f;

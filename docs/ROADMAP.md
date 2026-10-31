@@ -61,6 +61,28 @@ No program can write a custom reader for every plugin, so:
    owner's Cymatics plugins and most plugins on the market). The list of known plugins grows over time.
 3. **Unknown:** listed, and you can tag it yourself.
 
+**What the first real scan (setup check 0.1.0, October 2026) proved:**
+- **Steinberg: read MediaBay's own database**, not the `.vstsound` files. `%LOCALAPPDATA%\Steinberg\Steinberg MediaBay
+  Server\mediabay3.db` (SQLite, read-only from a copy) has one row per file and preset (~44,500 on the owner's PC) in
+  the table `media`, with `url` (`vstsound://<library GUID>/path` or a file path), `MediaType`, `FileName`,
+  `PlugInName`, `MediaLibraryName` and the MediaBay tags as columns (`MusicalCategory`, `MusicalInstrument`,
+  `MusicalStyle`, `MusicalSubStyle`, `MusicalCharacter`, `MusicalMoods`, `MusicalProperties`, `MediaRating`,
+  `MediaComment`...); `volumes` maps libraries. That covers HALion, HALion Sonic, Retrologue, Padshop, Groove
+  Agent and the free libraries.
+- `.vstsound` containers ("Steinberg Resource File" header) hold readable preset names but no plain VST3 presets
+  (except Cubase's own effect presets), so copying a factory instrument preset out of one needs more work.
+  Loose `.vstpreset` files (the owner's own) read fine but carry no tags.
+- **Arturia: fully readable.** `C:\ProgramData\Arturia\Presets\db.db3`: `Preset_Id` (~12,000 presets: name, type_v2,
+  subtype_v2, instrument_key, sound_designer, comment, file_path, favorite...), `Instruments`, `Types_V2`,
+  `Subtypes_V2`, `Characteristics` (+ `Characteristics_Types`: characteristics, genres, styles) linked through
+  `Preset_Characteristics`, `Genres`, `SubGenres`. **Ignore `Purchasable_Packs*`**: those are presets for sale, not
+  owned.
+- **Cymatics:** presets are files (`C:\ProgramData\Cymatics\<plug-in>\Presets\...\*.cymatics`, Daydream `*.json`,
+  Pandora `*.preset`): names and folders only, so plugin-level plus preset names.
+- Most of the owner's VST3 plug-ins keep `moduleinfo.json` in `Contents/Resources/` (fixed in 0.2.0); single-file
+  plug-ins (Analog Lab V, FM8, SSD Sampler 5, ...) don't have one, so their type comes from **Cubase's own plug-in
+  list** (`%APPDATA%\Steinberg\Cubase 14_64\VstPlugInfoV4.xml`; 0.2.0 reads it and shows its layout in the report).
+
 **The app never suggests a preset you don't own.** Suggestions always come from the scanned catalog.
 Tags guessed from a preset's name or category are shown as guesses.
 
@@ -139,8 +161,11 @@ Windows, **Cubase Artist 14** (also has Artist 12/13, Elements 12/13 licences).
   Grabber kits and Sample Snagger.
 - [x] **Drag test**: drag a real `.vstpreset` and a MIDI clip into Cubase and record whether it worked.
 - [x] Windows installer builds on GitHub (download from the Actions run's *Artifacts*: `Song-Savant-Windows`).
-- [ ] Owner runs the scan and sends `Documents/Song Savant/Setup Report.txt`.
-- [ ] Decide, from the report, how to read each library (update decision 4 above with what's confirmed).
+- [x] Owner ran the scan (0.1.0) and sent the report: findings are under decision 4.
+- [x] 0.2.0: plug-in types (moduleinfo in `Contents/Resources`, Cubase's plug-in list), a closer look at the
+  MediaBay and Arturia databases, things dragged from Cubase onto Song Savant are noted, clearer drag directions.
+- [ ] Owner runs 0.2.0: confirm plug-in types, MediaBay tag coverage, Arturia details, and **the drag tests in the
+  right direction** (cards from Song Savant into Cubase; the first try dragged from Cubase into Song Savant).
 
 ### Phase 1: Sounds
 - Library scan (the real catalog, using what Phase 0 proved), cached so rescans only look at new files.

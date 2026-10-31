@@ -2,6 +2,7 @@
 #include "PluginProcessor.h"
 #include "core/MidiClip.h"
 #include "core/Paths.h"
+#include "core/DropInfo.h"
 
 namespace ss::ui
 {
@@ -10,8 +11,9 @@ namespace ss::ui
         const juce::String scanText = "Song Savant looks at your plug-ins, preset files, sound libraries and preset databases to learn "
                                       "what it can read. It only reads: nothing on your computer is changed or moved. "
                                       "It takes a minute or two.";
-        const juce::String dragText = "Open a project in Cubase. Drag each item below onto the empty area under your tracks, "
-                                      "then tell us what happened.";
+        const juce::String dragText = "Drag each card FROM here INTO Cubase, onto the empty area under your tracks. "
+                                      "Then click Worked or Didn't work.";
+        const juce::String dropHint = "Dragging from Cubase onto Song Savant works too: we note what arrives.";
         const juce::String reportText = "The report is saved automatically after the scan and after each drag test. "
                                         "Send the file back so we can plan the next step.";
     }
@@ -72,6 +74,36 @@ namespace ss::ui
     }
 
     SetupCheckPage::~SetupCheckPage()   { stopTimer(); }
+
+    void SetupCheckPage::setDropHover (bool on)
+    {
+        if (dropHover == on) return;
+        dropHover = on;
+        repaint();
+    }
+
+    void SetupCheckPage::noteDrop (const juce::String& line)
+    {
+        auto& list = proc.dragTests.fromDaw;
+        if (list.size() >= 30) list.remove (0);
+        list.add (line);
+        dropLine = "Got it: " + line;
+        saveReportQuietly();
+    }
+
+    void SetupCheckPage::filesDropped (const juce::StringArray& files, int, int)
+    {
+        setDropHover (false);
+        for (auto& path : files)
+            noteDrop (describeDroppedFile (juce::File (path)));
+    }
+
+    void SetupCheckPage::textDropped (const juce::String& text, int, int)
+    {
+        setDropHover (false);
+        auto t = text.replaceCharacters ("\r\n\t", "   ").trim();
+        noteDrop ("text: \"" + (t.length() > 100 ? t.substring (0, 97) + "..." : t) + "\"");
+    }
 
     void SetupCheckPage::updateButtons()
     {
@@ -195,6 +227,9 @@ namespace ss::ui
 
         drawParagraph (g, scanText, scanIntro, sans (14.5f), p.muted);
         drawParagraph (g, dragText, dragIntro, sans (14.5f), p.muted);
+        g.setColour (dropLine.isNotEmpty() ? p.good : p.dim);
+        g.setFont (sans (13.0f));
+        g.drawFittedText (dropLine.isNotEmpty() ? dropLine : dropHint, dropArea.toNearestInt(), juce::Justification::centredLeft, 2, 0.9f);
         drawParagraph (g, reportText, reportIntro, sans (14.5f), p.muted);
 
         if (extraFoldersText.isNotEmpty())
@@ -206,6 +241,26 @@ namespace ss::ui
         g.setColour (reportStatus.isNotEmpty() ? p.good : p.dim);
         g.setFont (sans (13.5f));
         g.drawText (reportStatus.isNotEmpty() ? reportStatus : juce::String ("No report yet: scan first."), reportLine, juce::Justification::centredLeft, true);
+    }
+
+    void SetupCheckPage::paintOverChildren (juce::Graphics& g)
+    {
+        if (! dropHover) return;
+        const auto& p = pal();
+        auto r = getLocalBounds().toFloat().reduced (10.0f);
+        g.setColour (p.bgTop.withAlpha (0.82f));
+        g.fillRoundedRectangle (r, 20.0f);
+        juce::Path box, dashed;
+        box.addRoundedRectangle (r.reduced (6.0f), 18.0f);
+        const float dashes[] = { 10.0f, 7.0f };
+        juce::PathStrokeType (2.0f).createDashedStroke (dashed, box, dashes, 2);
+        g.setColour (p.gold);
+        g.fillPath (dashed);
+        g.setFont (serif (30.0f));
+        g.drawText ("Drop it here", r.withTrimmedBottom (r.getHeight() * 0.1f), juce::Justification::centred);
+        g.setColour (p.muted);
+        g.setFont (sans (16.0f));
+        g.drawText ("Song Savant will note what Cubase sends", r.withTrimmedTop (r.getHeight() * 0.18f), juce::Justification::centred);
     }
 
     void SetupCheckPage::resized()
@@ -264,7 +319,9 @@ namespace ss::ui
         {
             auto in = dragPanel.reduced (22.0f).withTrimmedTop (44.0f);
             dragIntro = in.removeFromTop (paragraphHeight (dragText, in.getWidth(), sans (14.5f)));
-            in.removeFromTop (10.0f);
+            in.removeFromTop (2.0f);
+            dropArea = in.removeFromTop (22.0f);
+            in.removeFromTop (4.0f);
             const float each = juce::jmin (118.0f, in.getHeight() / 3.0f);
             for (auto [chip, picker] : { std::pair<DragChip*, ResultPicker*> { &userChip, &userResult },
                                          std::pair<DragChip*, ResultPicker*> { &factoryChip, &factoryResult },

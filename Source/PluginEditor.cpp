@@ -4,7 +4,7 @@ SongSavantEditor::SongSavantEditor (SongSavantProcessor& p) : juce::AudioProcess
 {
     addAndMakeVisible (page);
     setResizable (true, true);
-    setResizeLimits (1060, 760, 2400, 1600);
+    setResizeLimits (1060, 780, 2400, 1600);
     setSize (1140, 800);
 }
 

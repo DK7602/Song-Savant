@@ -36,9 +36,11 @@ namespace sstest
             return j;
         }
 
+        // json5 plug-ins also use the older place for moduleinfo.json (Contents/ rather than Contents/Resources/)
         void plugin (const juce::File& dir, const juce::String& file, const juce::String& name, const juce::String& vendor, const juce::String& subs, bool json5 = false)
         {
-            write (dir.getChildFile (file + ".vst3/Contents/moduleinfo.json"), moduleInfo (name, vendor, subs, json5));
+            write (dir.getChildFile (file + (json5 ? ".vst3/Contents/moduleinfo.json" : ".vst3/Contents/Resources/moduleinfo.json")),
+                   moduleInfo (name, vendor, subs, json5));
             write (dir.getChildFile (file + ".vst3/Contents/x86_64-win/" + file + ".vst3"), "binary");
         }
 
@@ -89,7 +91,7 @@ namespace sstest
 
         // plug-ins
         plugin (vst3.getChildFile ("Steinberg"), "HALion Sonic", "HALion Sonic", "Steinberg Media Technologies", "Instrument|Synth", true);
-        plugin (vst3, "Analog Lab V", "Analog Lab V", "Arturia", "Instrument|Synth");
+        write (vst3.getChildFile ("Analog Lab V.vst3"), "single-file plug-in: its type comes from Cubase's list");
         plugin (vst3, "Groove Grabber", "Groove Grabber", "Grabber Audio", "Instrument|Drum|Sampler");
         plugin (vst3, "Pro-Q 3", "Pro-Q 3", "FabFilter", "Fx|EQ");
         write (vst3.getChildFile ("Cymatics/Plinko.vst3"), "single-file plug-in");
@@ -125,20 +127,53 @@ namespace sstest
         // Arturia-style preset database
         fc.arturiaDb = programData.getChildFile ("Arturia/Presets/db.db3");
         makeDb (fc.arturiaDb, {
-            "CREATE TABLE Preset_Id (key_id INTEGER PRIMARY KEY, name TEXT, instrument_key INTEGER, type TEXT, sound_designer TEXT, data BLOB)",
-            "INSERT INTO Preset_Id VALUES (1, 'Classic Jun Keys', 3, 'Keys', 'Arturia', x'00112233')",
-            "INSERT INTO Preset_Id VALUES (2, 'Warm Analog Bass', 4, 'Bass', 'Someone', NULL)",
-            "INSERT INTO Preset_Id VALUES (3, 'Heaven Pad', 5, 'Pad', 'Arturia', NULL)",
-            "CREATE TABLE Characteristics (key_id INTEGER, name TEXT)",
-            "INSERT INTO Characteristics VALUES (1, 'Warm'), (2, 'Bright')",
-            "CREATE TABLE Version (v INTEGER)",
-            "INSERT INTO Version VALUES (7)" });
+            "CREATE TABLE Preset_Id (key_id INTEGER PRIMARY KEY, name TEXT, type INTEGER, type_v2 INTEGER, subtype_v2 INTEGER, instrument_key INTEGER, "
+                "sound_designer INTEGER, rating REAL, pack INTEGER, comment TEXT, file_path TEXT, favorite INTEGER, hide_in_browser INTEGER, "
+                "analoglab_factory INTEGER, data BLOB)",
+            "INSERT INTO Preset_Id VALUES (1, 'Classic Jun Keys', 1, 3, 7, 60, 1, 0, 1, 'Warm 80s keys', 'C:/ProgramData/Arturia/Presets/x.labx', 0, 0, 1, x'00112233')",
+            "INSERT INTO Preset_Id VALUES (2, 'Warm Analog Bass', 2, 1, 2, 60, 2, 0, 1, 'Round low end', 'C:/ProgramData/Arturia/Presets/y.labx', 1, 0, 1, NULL)",
+            "INSERT INTO Preset_Id VALUES (3, 'Heaven Pad', 3, 4, 9, 60, 1, 0, 1, 'Wide worship pad', 'C:/ProgramData/Arturia/Presets/z.labx', 0, 0, 1, NULL)",
+            "CREATE TABLE Instruments (key_id INTEGER, name TEXT, display_name TEXT, version INTEGER, category_id INTEGER)",
+            "INSERT INTO Instruments VALUES (60, 'Analog Lab V', 'Analog Lab', 5, 8)",
+            "CREATE TABLE Types_V2 (key_id INTEGER, name TEXT)",
+            "INSERT INTO Types_V2 VALUES (1, 'Bass'), (3, 'Keys'), (4, 'Pad')",
+            "CREATE TABLE Subtypes_V2 (key_id INTEGER, name TEXT, type_key INTEGER)",
+            "INSERT INTO Subtypes_V2 VALUES (2, 'Analog Bass', 1), (7, 'Electric Piano', 3), (9, 'Warm Pad', 4)",
+            "CREATE TABLE Characteristics_Types (key_id INTEGER, name TEXT)",
+            "INSERT INTO Characteristics_Types VALUES (1, 'Characteristics'), (2, 'Genres'), (3, 'Styles')",
+            "CREATE TABLE Characteristics (key_id INTEGER, name TEXT, type_key INTEGER)",
+            "INSERT INTO Characteristics VALUES (1, 'Warm', 1), (2, 'Bright', 1), (3, 'Pop', 2), (4, 'Worship', 2)",
+            "CREATE TABLE Preset_Characteristics (key_id INTEGER, preset_key INTEGER, characteristic_key INTEGER)",
+            "INSERT INTO Preset_Characteristics VALUES (1, 1, 1), (2, 1, 3), (3, 2, 1), (4, 3, 1), (5, 3, 4)",
+            "CREATE TABLE Genres (key_id INTEGER, name TEXT)",
+            "INSERT INTO Genres VALUES (1, 'Pop'), (2, 'Worship')",
+            "CREATE TABLE Preset_Metadata (key_id INTEGER, preset_key INTEGER, name TEXT, value TEXT)",
+            "INSERT INTO Preset_Metadata VALUES (1, 1, 'Characteristics', 'Characteristics,Warm;Genres,Pop')" });
         write (programData.getChildFile ("Arturia/Presets/Analog Lab/User/my sound.labx"), "user preset");
 
-        // Cubase settings with a MediaBay-style database
-        fc.mediaBayDb = roaming.getChildFile ("Steinberg/Cubase 14_64/MediaBay/mediabay3.db");
-        makeDb (fc.mediaBayDb, { "CREATE TABLE media (id INTEGER, path TEXT, category TEXT)",
-                                 "INSERT INTO media VALUES (1, 'x.vstpreset', 'Piano')" });
+        // MediaBay's database (the real place), a decoy database in the same maker's folder, and Cubase's plug-in list
+        const auto localAppData = home.getChildFile ("AppData/Local");
+        fc.mediaBayDb = localAppData.getChildFile ("Steinberg/Steinberg MediaBay Server/mediabay3.db");
+        {
+            juce::StringArray sql { "CREATE TABLE media (id INTEGER PRIMARY KEY, depth INTEGER, url TEXT, volume_id INTEGER, MediaType TEXT, FileName TEXT, "
+                                    "PlugInName TEXT, MusicalCategory TEXT, MusicalInstrument TEXT, MusicalStyle TEXT, MusicalSubStyle TEXT, "
+                                    "MusicalCharacter TEXT, MusicalMoods TEXT, MusicalProperties TEXT, MediaLibraryName TEXT, MediaRating INTEGER, MediaComment TEXT)",
+                                    "CREATE TABLE volumes (id INTEGER, serial INTEGER, root TEXT, name TEXT, flags INTEGER)",
+                                    "INSERT INTO volumes VALUES (1, 0, 'vstsound://F6ADB7B8D7C04F50A3968D24D463240F', 'HALion Sonic Library', 0)",
+                                    "INSERT INTO media (url, MediaType, FileName) VALUES ('vstsound://F6AD/Audio Files/01 bass.wav', 'Audio', '01 bass.wav')" };
+            for (int i = 0; i < 50; ++i)
+                sql.add ("INSERT INTO media (url, MediaType, FileName, PlugInName, MusicalCategory, MusicalInstrument, MusicalStyle, MusicalCharacter, MediaLibraryName) "
+                         "VALUES ('vstsound://F6AD/Presets/Keys " + juce::String (i) + ".vstpreset', 'VstPreset', 'Keys " + juce::String (i)
+                         + "', 'HALion Sonic', 'Keyboard', 'Keyboard|E-Piano', 'Pop/Rock', 'Warm|Clean', 'HALion Sonic Library')");
+            sql.add ("INSERT INTO media (url, MediaType, FileName, PlugInName) VALUES ('file:///C:/Users/me/Documents/VST3 Presets/x.vstpreset', 'VstPreset', 'My Keys', 'HALion Sonic')");
+            makeDb (fc.mediaBayDb, sql);
+        }
+        makeDb (roaming.getChildFile ("Steinberg/EBWebView/Default/declarative_performance_observer.db"),
+                { "CREATE TABLE meta (key TEXT, value TEXT)", "INSERT INTO meta VALUES ('version', '2')" });
+        write (roaming.getChildFile ("Steinberg/Cubase 14_64/VstPlugInfoV4.xml"),
+               "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<VstPlugInfoV4>\n <list name=\"Plugins\" type=\"obj\">\n"
+               "  <obj class=\"PlugInfo\">\n   <string name=\"Name\" value=\"Analog Lab V\"/>\n   <string name=\"Vendor\" value=\"Arturia\"/>\n"
+               "   <string name=\"SubCategories\" value=\"Instrument|Synth\"/>\n  </obj>\n </list>\n</VstPlugInfoV4>\n");
         write (roaming.getChildFile ("Steinberg/Cubase 14_64/Defaults.xml"), "<Defaults/>");
 
         // Cymatics
