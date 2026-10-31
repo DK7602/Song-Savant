@@ -12,6 +12,7 @@ on:
   push:
     branches: [ '**' ]
     tags: [ 'v*' ]
+    paths-ignore: [ 'docs/**', '**.md' ]   # a change to the notes alone doesn't need a new build
   pull_request:
   workflow_dispatch:
 

@@ -138,6 +138,7 @@ Windows, **Cubase Artist 14** (also has Artist 12/13, Elements 12/13 licences).
   rows); each instrument maker's folders (what file types their presets use); Key Compass songs, Groove
   Grabber kits and Sample Snagger.
 - [x] **Drag test**: drag a real `.vstpreset` and a MIDI clip into Cubase and record whether it worked.
+- [x] Windows installer builds on GitHub (download from the Actions run's *Artifacts*: `Song-Savant-Windows`).
 - [ ] Owner runs the scan and sends `Documents/Song Savant/Setup Report.txt`.
 - [ ] Decide, from the report, how to read each library (update decision 4 above with what's confirmed).
 
@@ -179,6 +180,11 @@ Windows, **Cubase Artist 14** (also has Artist 12/13, Elements 12/13 licences).
 ---
 
 ## Things to remember
+- **Before selling:** the Windows installer tool (Inno Setup 6.7) prints "Non-commercial use only" in the build
+  log. Check its licence (buy one or switch installers) before selling Song Savant or Groove Grabber, and sign
+  the installers so Windows stops warning "Windows protected your PC".
+- The repo started empty, so GitHub made the first branch (`claude/tender-hamilton-6xru5d`) the default branch.
+  The owner may want a `main` branch (releases with `[release]` in the commit message only publish from `main`).
 - Spotify no longer gives new apps tempo and key data (since 2024). Don't plan on it.
 - Steinberg factory content is in `.vstsound` containers. Groove Agent's factory sounds are copy-protected.
 - Arturia keeps presets in a local database. It's undocumented and an update could change it, so reading it has to fail
