@@ -90,7 +90,15 @@ namespace ss
         w.programFiles = envDir ("ProgramW6432", F::getSpecialLocation (F::globalApplicationsDirectory));
         w.commonFiles  = envDir ("CommonProgramW6432", w.programFiles.getChildFile ("Common Files"));
         w.publicDocs   = envDir ("PUBLIC", F ("C:\\Users\\Public")).getChildFile ("Documents");
-        return fromWindowsDirs (w);
+        auto s = fromWindowsDirs (w);
+
+        // makers' folders moved to the top of a drive (D:\Steinberg, E:\Arturia ...): only names are compared
+        juce::Array<F> drives;
+        F::findFileSystemRoots (drives);
+        for (auto& d : drives)
+            if (d.isOnHardDisk() && d.isDirectory())
+                addIfDir (s.vendorRoots, d);
+        return s;
        #else
         SystemLocations s;
         s.home = home;

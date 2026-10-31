@@ -122,6 +122,7 @@ namespace
             check (p.embeddedPresets == 1 && p.embeddedWithTags == 1, "embedded preset with tags");
             check (p.plugins.count ("HALion Sonic") == 1 && p.categories.count ("Synth Pad") == 1, "embedded tags read");
             check (p.headerText.startsWith ("VSTSOUND"), "header shown");
+            check (p.textAtStart.contains ("/.AppData/Steinberg/HALion Sonic/Factory Presets/Pianos/Bright Grand.vstpreset"), "readable text near the start");
         }
         check (r.factoryPreset.existsAsFile(), "a factory preset was copied out for the drag test");
         auto fp = ss::readVstPreset (r.factoryPreset);

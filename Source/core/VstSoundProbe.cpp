@@ -122,6 +122,23 @@ namespace ss
             r.headerText << (printable (head[i]) ? juce::String::charToString ((juce::juce_wchar) head[i]) : juce::String ("."));
         }
 
+        // readable text in the first 256 KB: names, paths and keys in the container's index, if it has one
+        {
+            juce::MemoryBlock start ((size_t) std::min<juce::int64> (r.size, 256 * 1024));
+            if (in.setPosition (0) && in.read (start.getData(), (int) start.getSize()) > 0)
+            {
+                auto* d = static_cast<const juce::uint8*> (start.getData());
+                size_t runStart = 0;
+                for (size_t i = 0; i <= start.getSize() && r.textAtStart.size() < 12; ++i)
+                {
+                    if (i < start.getSize() && printable (d[i])) continue;
+                    if (i - runStart >= 10)
+                        r.textAtStart.addIfNotAlreadyThere (juce::String ((const char*) d + runStart, std::min<size_t> (i - runStart, 120)));
+                    runStart = i + 1;
+                }
+            }
+        }
+
         auto readAt = [&] (juce::int64 offset, juce::int64 count)
         {
             count = std::min (count, budget);

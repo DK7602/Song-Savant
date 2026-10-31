@@ -265,13 +265,16 @@ namespace ss
                 o << s.joinIntoString (", ") << "\n";
             }
         }
+        int shown = 0;
         for (auto& p : r.vstSounds)
         {
+            ++shown;
             o << "\n" << loc.tidy (p.file) << "  [" << formatBytes (p.size) << (p.scannedWhole ? ", read whole" : ", read start and end") << "]\n"
               << "  first bytes: " << p.headerHex << "  |" << p.headerText << "|\n"
               << "  preset names " << p.presetNames << ", presets " << p.embeddedPresets << " (" << p.embeddedWithTags << " with tags), tag blocks " << p.metaInfoBlocks << "\n";
             if (! p.sampleNames.isEmpty()) o << "  names: " << p.sampleNames.joinIntoString (" ; ") << "\n";
             if (! p.sampleTags.isEmpty())  o << "  tags:  " << p.sampleTags.joinIntoString (" ; ") << "\n";
+            if (shown <= 6 && ! p.textAtStart.isEmpty()) o << "  text near the start: " << p.textAtStart.joinIntoString (" ; ") << "\n";
         }
 
         // ---- databases

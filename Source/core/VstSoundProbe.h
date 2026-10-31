@@ -23,6 +23,7 @@ namespace ss
         std::map<juce::String, int> plugins;      // PlugInName -> count
         std::map<juce::String, int> categories;   // MusicalCategory -> count
         juce::StringArray sampleTags;             // a few "Category / Instrument / Style / Character" lines
+        juce::StringArray textAtStart;            // readable text near the start (clues to how the container is laid out)
 
         struct Embedded { juce::int64 offset = -1, size = 0; juce::String plugin, label; };
         Embedded example;                         // the first embedded preset with tags (offset in the file)

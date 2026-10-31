@@ -13,7 +13,17 @@ namespace ss
         for (auto* n : { "node_modules", "System Volume Information", "Windows", "WinSxS", "Temp", "Cache", "Caches", "GPUCache", "Code Cache",
                          "CrashDumps", "Crashpad", "Logs" })
             if (name.equalsIgnoreCase (n)) return true;
+       #if JUCE_WINDOWS
+        // Windows marks OneDrive folders as "reparse points" too, so links can't simply be skipped there;
+        // skip the old compatibility junctions instead (they loop back on themselves). Depth limits do the rest.
+        for (auto* n : { "Application Data", "My Documents", "My Music", "My Pictures", "My Videos", "Local Settings",
+                         "NetHood", "PrintHood", "Recent", "SendTo", "Start Menu", "Templates", "Cookies",
+                         "Default User", "All Users", "Documents and Settings" })
+            if (name.equalsIgnoreCase (n)) return true;
+        return false;
+       #else
         return d.isSymbolicLink();
+       #endif
     }
 
     WalkStats walkFiles (const juce::File& root, const WalkLimits& limits,
