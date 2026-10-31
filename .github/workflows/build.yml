@@ -1,0 +1,204 @@
+name: Build Song Savant
+
+# Builds the app + plug-in (Standalone / VST3, + AU on macOS, + LV2 on Linux) for Windows, macOS and Linux,
+# runs the tests, and makes installers:
+#   Windows -> Song-Savant-<version>-Windows-Setup.exe (+ a portable zip)
+#   macOS   -> Song-Savant-<version>-macOS.pkg   (universal: Apple Silicon + Intel)
+#   Linux   -> Song-Savant-<version>-Linux.tar.gz
+# Every push builds them (download from the run's "Artifacts"). To publish a GitHub Release, push a tag like
+# v0.1.0, or put [release] in a commit message on main; the release is named after the version in CMakeLists.txt.
+
+on:
+  push:
+    branches: [ '**' ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  windows:
+    name: Windows (x64)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        shell: bash
+        run: |
+          set -o pipefail
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel 4 2>&1 | tee build.log
+
+      - name: Show compile errors
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "error( |:)|error C[0-9]|error LNK|undefined reference|Undefined symbols|ld: " build.log \
+            | grep -v "warning" | head -25 | while IFS= read -r line; do echo "::error::${line:0:1000}"; done || true
+
+      - name: Test
+        run: build\SSTests_artefacts\${{ env.BUILD_TYPE }}\SSTests.exe
+
+      - name: Smoke test (scan this build machine for real)
+        continue-on-error: true
+        run: build\SSTests_artefacts\${{ env.BUILD_TYPE }}\SSTests.exe --real
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+            if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; }
+            $env:PATH += ";${env:ProgramFiles(x86)}\Inno Setup 6"
+          }
+          $version = (Select-String -Path CMakeLists.txt -Pattern 'project\(SongSavant VERSION ([0-9.]+)').Matches[0].Groups[1].Value
+          iscc /DAppVersion=$version /DArtefacts="$PWD\build\SongSavant_artefacts\${{ env.BUILD_TYPE }}" /O"$PWD\dist" packaging\windows\SongSavant.iss
+          Compress-Archive -Path "build\SongSavant_artefacts\${{ env.BUILD_TYPE }}\VST3\Song Savant.vst3", "build\SongSavant_artefacts\${{ env.BUILD_TYPE }}\Standalone\Song Savant.exe" -DestinationPath "dist\Song-Savant-$version-Windows-portable.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Song-Savant-Windows
+          path: dist/*
+
+  macos:
+    name: macOS (universal)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        run: brew install ninja
+
+      - name: Configure
+        run: >
+          cmake -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+
+      - name: Build
+        run: |
+          set -o pipefail
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel 4 2>&1 | tee build.log
+
+      - name: Show compile errors
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "error( |:)|error C[0-9]|error LNK|undefined reference|Undefined symbols|ld: " build.log \
+            | grep -v "warning" | head -25 | while IFS= read -r line; do echo "::error::${line:0:1000}"; done || true
+
+      - name: Test
+        run: ./build/SSTests_artefacts/${{ env.BUILD_TYPE }}/SSTests
+
+      - name: Ad-hoc sign bundles
+        run: |
+          ART="build/SongSavant_artefacts/${{ env.BUILD_TYPE }}"
+          codesign --force --deep -s - "$ART/AU/Song Savant.component"
+          codesign --force --deep -s - "$ART/VST3/Song Savant.vst3"
+          codesign --force --deep -s - "$ART/Standalone/Song Savant.app"
+
+      - name: Validate Audio Unit (auval)
+        continue-on-error: true
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "build/SongSavant_artefacts/${{ env.BUILD_TYPE }}/AU/Song Savant.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar || true
+          auval -v aumu SgSv Grbr
+
+      - name: Build installer
+        run: bash packaging/mac/build_pkg.sh "build/SongSavant_artefacts/${{ env.BUILD_TYPE }}" dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Song-Savant-macOS
+          path: dist/*
+
+  linux:
+    name: Linux (x64)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libasound2-dev libjack-jackd2-dev libx11-dev libxext-dev \
+            libxrandr-dev libxinerama-dev libxcursor-dev libxcomposite-dev libfreetype-dev libfontconfig1-dev xvfb
+
+      - name: Configure
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+      - name: Build
+        run: |
+          set -o pipefail
+          cmake --build build --parallel 4 2>&1 | tee build.log
+
+      - name: Show compile errors
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "error( |:)|error C[0-9]|error LNK|undefined reference|Undefined symbols|ld: " build.log \
+            | grep -v "warning" | head -25 | while IFS= read -r line; do echo "::error::${line:0:1000}"; done || true
+
+      - name: Test (+ screenshots)
+        run: xvfb-run -a -s "-screen 0 1920x1200x24" ./build/SSTests_artefacts/${{ env.BUILD_TYPE }}/SSTests --shots screenshots
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Song-Savant-screenshots
+          path: screenshots/*
+
+      - name: Package
+        run: |
+          VERSION=$(grep -oP 'project\(SongSavant VERSION \K[0-9.]+' CMakeLists.txt)
+          ART="build/SongSavant_artefacts/${{ env.BUILD_TYPE }}"
+          mkdir -p dist stage
+          cp -R "$ART/VST3/Song Savant.vst3" "$ART/LV2/Song Savant.lv2" "$ART/Standalone/Song Savant" stage/
+          tar -C stage -czf "dist/Song-Savant-$VERSION-Linux.tar.gz" .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Song-Savant-Linux
+          path: dist/*
+
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]'))
+    needs: [ windows, macos, linux ]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: echo "tag=v$(grep -oP 'project\(SongSavant VERSION \K[0-9.]+' CMakeLists.txt)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: Song-Savant-[MWL]*
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || steps.version.outputs.tag }}
+          name: Song Savant ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          files: dist/*
+          make_latest: true
+          body: |
+            **Windows:** download `Song-Savant-*-Windows-Setup.exe` (app + VST3).
+            **Mac:** download `Song-Savant-*-macOS.pkg` (app + AU + VST3, Apple Silicon and Intel).
+            **Linux:** `Song-Savant-*-Linux.tar.gz`.

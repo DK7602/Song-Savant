@@ -1,0 +1,51 @@
+<p align="center"><img src="docs/design/logo-dark.png" width="360" alt="Song Savant"></p>
+
+# Song Savant
+
+**Your instruments. Your song. The right sounds.** Describe the song you're making and Song Savant looks
+through the instruments and presets you already own, then suggests a complete sound palette: rhythm, bass,
+leads, pads and drums, each with alternatives, plus starter MIDI parts to get the song moving.
+
+> **Status: Phase 0 (setup check).** This build doesn't suggest sounds yet. It scans your computer to find out
+> which of your instruments' presets can be read, and runs a drag-and-drop test with Cubase. The plan and
+> every decision so far are in [docs/ROADMAP.md](docs/ROADMAP.md).
+
+| Format | Where it works |
+|---|---|
+| **VST3** | Cubase, Cakewalk, FL Studio, Ableton Live, Studio One, Reaper, Bitwig... (Windows + Mac) |
+| **AU** | Logic Pro, GarageBand (Mac) |
+| **Standalone app** | Windows, Mac, Linux |
+
+## Phase 0: run the setup check
+
+1. Download the Windows build: on GitHub open **Actions**, click the newest **Build Song Savant** run, and
+   download **Song-Savant-Windows** under *Artifacts*. Unzip it and run `Song-Savant-...-Windows-Setup.exe`.
+   (Windows may say "Windows protected your PC" because the app isn't signed yet: click **More info > Run anyway**.)
+2. Open **Song Savant** from the Start menu and click **SCAN MY SETUP**. It only reads; it never changes or moves
+   your files. It takes a minute or two.
+3. Try the two **drag tests** with Cubase open, and click *Worked* or *Didn't work* for each.
+4. Click **SAVE REPORT**. The report is saved as `Documents/Song Savant/Setup Report.txt`. Send that file back.
+
+## Building
+
+Needs CMake 3.24+ and a C++20 compiler (Visual Studio 2022, Xcode 15+, GCC 11+). JUCE and SQLite are fetched
+automatically.
+
+```
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+```
+
+**Tests:** `SSTests` builds a fake computer (plug-ins, Steinberg presets with tags, a VST Sound container, an
+Arturia-style database, a Cymatics folder, Key Compass songs, Groove Grabber kits), scans it and checks what was
+found and what the report says. `--shots DIR` also draws the screen to a PNG.
+
+| Folder | |
+|---|---|
+| `Source/core` | scanner, preset and database readers, report, MIDI (no UI) |
+| `Source/ui` | theme and screens |
+| `Tests` | the test runner |
+| `packaging` | Windows installer (Inno Setup), macOS package |
+| `docs` | roadmap and design (mockups, logo, icons) |
+
+Credits: [JUCE](https://juce.com), [SQLite](https://sqlite.org) (public domain).

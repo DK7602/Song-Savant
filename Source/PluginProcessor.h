@@ -1,0 +1,51 @@
+// Song Savant - the plug-in / app. Phase 0: it holds the setup scan and the drag-test answers, and makes no
+// sound yet (later it plays the palette preview and the starter MIDI parts in time with the DAW).
+#pragma once
+
+#include <juce_audio_processors/juce_audio_processors.h>
+#include "core/ScanJob.h"
+#include "core/Report.h"
+
+class SongSavantProcessor : public juce::AudioProcessor
+{
+public:
+    SongSavantProcessor();
+    ~SongSavantProcessor() override = default;
+
+    // the setup check
+    ss::ScanJob scan;
+    ss::DragTests dragTests;
+    juce::Array<juce::File> extraFolders;
+    std::function<ss::SystemLocations()> locationProvider;   // the real computer, or a fake one in the tests
+
+    void startScan();
+    juce::File saveReport();                 // writes Documents/Song Savant/Setup Report.txt (if there's a result)
+    juce::String reportText() const;
+
+    //==============================================================================
+    void prepareToPlay (double, int) override {}
+    void releaseResources() override {}
+    bool isBusesLayoutSupported (const BusesLayout&) const override;
+    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+
+    juce::AudioProcessorEditor* createEditor() override;
+    bool hasEditor() const override                 { return true; }
+
+    const juce::String getName() const override     { return "Song Savant"; }
+    bool acceptsMidi() const override               { return true; }
+    bool producesMidi() const override              { return true; }
+    bool isMidiEffect() const override              { return false; }
+    double getTailLengthSeconds() const override    { return 0.0; }
+
+    int getNumPrograms() override                   { return 1; }
+    int getCurrentProgram() override                { return 0; }
+    void setCurrentProgram (int) override           {}
+    const juce::String getProgramName (int) override { return {}; }
+    void changeProgramName (int, const juce::String&) override {}
+
+    void getStateInformation (juce::MemoryBlock&) override;
+    void setStateInformation (const void*, int) override;
+
+private:
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SongSavantProcessor)
+};

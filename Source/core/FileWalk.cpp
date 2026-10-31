@@ -1,0 +1,67 @@
+#include "FileWalk.h"
+#include <vector>
+
+namespace ss
+{
+    bool skipFolder (const juce::File& d)
+    {
+        const auto name = d.getFileName();
+        if (name.startsWithChar ('.') || name.startsWithChar ('$')) return true;
+        if (name.endsWithIgnoreCase (".vst3") || name.endsWithIgnoreCase (".component") || name.endsWithIgnoreCase (".vst")
+            || name.endsWithIgnoreCase (".app") || name.endsWithIgnoreCase (".bundle") || name.endsWithIgnoreCase (".aaxplugin"))
+            return true;
+        for (auto* n : { "node_modules", "System Volume Information", "Windows", "WinSxS", "Temp", "Cache", "Caches", "GPUCache", "Code Cache",
+                         "CrashDumps", "Crashpad", "Logs" })
+            if (name.equalsIgnoreCase (n)) return true;
+        return d.isSymbolicLink();
+    }
+
+    WalkStats walkFiles (const juce::File& root, const WalkLimits& limits,
+                         const std::function<bool (const juce::File&, int)>& onFile,
+                         const std::atomic<bool>* cancel)
+    {
+        WalkStats st;
+        if (! root.isDirectory()) return st;
+        const auto start = juce::Time::getMillisecondCounterHiRes();
+
+        std::vector<std::pair<juce::File, int>> stack { { root, 0 } };
+        while (! stack.empty())
+        {
+            auto [dir, depth] = stack.back();
+            stack.pop_back();
+            ++st.folders;
+
+            for (const auto& e : juce::RangedDirectoryIterator (dir, false, "*", juce::File::findFilesAndDirectories))
+            {
+                if (cancel != nullptr && cancel->load()) { st.truncated = true; return st; }
+                const auto f = e.getFile();
+                if (e.isDirectory())
+                {
+                    if (depth + 1 <= limits.maxDepth && ! skipFolder (f))
+                        stack.push_back ({ f, depth + 1 });
+                    else if (depth + 1 > limits.maxDepth)
+                        st.truncated = true;
+                    continue;
+                }
+                ++st.files;
+                st.bytes += e.getFileSize();
+                if (! onFile (f, depth)) { st.truncated = true; return st; }
+                if (st.files >= limits.maxFiles
+                    || (st.files % 256 == 0 && (juce::Time::getMillisecondCounterHiRes() - start) / 1000.0 > limits.maxSeconds))
+                {
+                    st.truncated = true;
+                    return st;
+                }
+            }
+        }
+        return st;
+    }
+
+    juce::String formatBytes (juce::int64 b)
+    {
+        if (b < 1024) return juce::String (b) + " B";
+        if (b < 1024 * 1024) return juce::String ((double) b / 1024.0, 1) + " KB";
+        if (b < (juce::int64) 1024 * 1024 * 1024) return juce::String ((double) b / (1024.0 * 1024.0), 1) + " MB";
+        return juce::String ((double) b / (1024.0 * 1024.0 * 1024.0), 2) + " GB";
+    }
+}
