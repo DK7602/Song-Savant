@@ -15,7 +15,10 @@
 #include "core/Music.h"
 #include "core/Parts.h"
 #include "core/Palette.h"
+#include "core/PluginProfiles.h"
+#include "core/PluginTypes.h"
 #include <map>
+#include <algorithm>
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include <iostream>
@@ -109,7 +112,7 @@ namespace
         // plug-ins
         int vst3 = 0;
         for (auto& p : r.plugins) if (p.format == "VST3") ++vst3;
-        check (vst3 == 6, "6 VST3 plug-ins, got " + juce::String (vst3));
+        check (vst3 == 11, "11 VST3 plug-ins, got " + juce::String (vst3));
         auto* halion = findPlugin (r, "HALion Sonic");
         check (halion != nullptr && halion->isInstrument && halion->vendor == "Steinberg Media Technologies", "HALion Sonic: instrument by Steinberg (JSON5 moduleinfo)");
         auto* plinko = findPlugin (r, "Plinko");
@@ -238,7 +241,7 @@ namespace
         drag.midiClip = -1;
         const auto text = ss::buildReport (r, fc.loc, drag);
         check (text.startsWith ("SONG SAVANT - SETUP REPORT"), "title");
-        check (text.contains ("[OK]  Plug-ins: 6 VST3 plug-ins, 4 of them instruments"), "plug-in summary line");
+        check (text.contains ("[OK]  Plug-ins: 11 VST3 plug-ins, 6 of them instruments"), "plug-in summary line");
         check (text.contains ("Preset file -> Cubase:           WORKED"), "drag test answers");
         check (text.contains ("MIDI clip -> Cubase:             DIDN'T WORK"), "drag test answers (2)");
         check (text.contains ("table Preset_Id (6 rows)"), "database tables listed");
@@ -311,7 +314,9 @@ namespace
 
         std::atomic<bool> cancel { false };
         auto cat = ss::buildCatalog (fc.loc, cancel);
-        check (cat.sources.size() == 3 && cat.sounds.size() == 51 + 5 + 3, "catalog: 3 sources, 59 sounds, got " + juce::String ((int) cat.sounds.size()));
+        // + plug-ins: Groove Grabber and SSD Sampler (drums), FM8 (6 kinds), Mystery Keys (piano, from its own categories),
+        //   Retrologue (synth: none of its presets are in this library)
+        check (cat.sources.size() == 4 && cat.sounds.size() == 51 + 5 + 3 + 10, "catalog: 4 sources, 69 sounds, got " + juce::String ((int) cat.sounds.size()));
         check (cat.sounds.front().kind == ss::Kind::keys || cat.sounds.front().kind == ss::Kind::piano, "sorted by kind");
         check (cat.instruments().contains ("Analog Lab V") && cat.instruments().contains ("HALion Sonic") && cat.instruments().contains ("Cymatics Plinko"), "instruments");
 
@@ -322,7 +327,7 @@ namespace
         f.text = "";
         f.kinds = { ss::Kind::bass };
         hits = ss::findSounds (cat, f);
-        check (hits.size() == 3, "filter by kind (owned only): 3 basses, got " + juce::String ((int) hits.size()));
+        check (hits.size() == 4, "filter by kind (owned only): 3 bass presets + FM8, got " + juce::String ((int) hits.size()));
         f.kinds.clear();
         f.text = "jupiter";
         check (ss::findSounds (cat, f).empty(), "presets you'd have to buy are hidden");
@@ -341,6 +346,107 @@ namespace
                && ss::whereToPaste (*cyByName["Glass Bell"]).contains ("Cymatics Plinko's preset list"), "where to paste depends on the library");
         check (ss::guessKind ("Bassoon Solo") == ss::Kind::woodwinds && ss::guessKind ("Deep Sub 808 Bass") == ss::Kind::bass
                && ss::guessKind ("Kick 808") == ss::Kind::drums && ss::guessKind ("Warm Rhodes") == ss::Kind::keys, "guessing a kind from words");
+    }
+
+    void testPluginSuggestions (const sstest::FakeComputer& fc)
+    {
+        section ("Plug-ins suggested as instruments");
+        check (ss::profileFor ("SSDSampler5") != nullptr && juce::String (ss::profileFor ("SSDSampler5")->name) == "SSD Sampler 5", "known by name");
+        check (ss::profileFor ("Vital") != nullptr && ss::profileFor ("SPL Vitalizer") == nullptr && ss::profileFor ("AudioLabs Gate") == nullptr
+               && ss::profileFor ("Serum2") != nullptr, "short names must match the whole name");
+        ss::PluginInfo plinko;
+        plinko.name = "Plinko";
+        plinko.file = fc.loc.vst3Folders.getFirst().getChildFile ("Cymatics/Plinko.vst3");
+        check (ss::profileFor (plinko) != nullptr && juce::String (ss::profileFor (plinko)->name) == "Cymatics Plinko", "maker found from the folder");
+        ss::PluginInfo fx;
+        fx.name = "Serum FX";
+        fx.categoriesKnown = true;
+        check (ss::profileFor (fx) == nullptr, "an effect is never suggested as an instrument");
+
+        std::atomic<bool> cancel { false };
+        auto cat = ss::buildCatalog (fc.loc, cancel);
+        std::map<juce::String, std::vector<const ss::Sound*>> plugins;
+        for (auto& snd : cat.sounds)
+            if (snd.source == "Plug-in") plugins[snd.name].push_back (&snd);
+        juce::StringArray names;
+        for (auto& [n, v] : plugins) names.add (n);
+        check (plugins.size() == 5, "5 plug-ins suggested, got " + names.joinIntoString (", "));
+        check (plugins["SSD Sampler 5"].size() == 1 && plugins["SSD Sampler 5"][0]->kind == ss::Kind::drums
+               && plugins["SSD Sampler 5"][0]->detail == "Pick a kit in the plug-in", "SSD Sampler 5 for drums");
+        check (plugins["Groove Grabber"].size() == 1 && plugins["Groove Grabber"][0]->kind == ss::Kind::drums, "Groove Grabber for drums");
+        check (plugins["FM8"].size() == 6, "FM8 for several kinds");
+        check (plugins["Mystery Keys"].size() == 1 && plugins["Mystery Keys"][0]->kind == ss::Kind::piano, "an unknown instrument goes by its own categories");
+        check (plugins.count ("HALion Sonic") == 0 && plugins.count ("Analog Lab V") == 0 && plugins.count ("Cymatics Plinko") == 0,
+               "instruments whose presets are listed aren't suggested twice");
+        check (plugins["Retrologue"].size() == 1 && plugins["Retrologue"][0]->kind == ss::Kind::synth, "an instrument with no listed presets is suggested");
+        check (plugins.count ("Odd Synth") == 0 && plugins.count ("SPL Vitalizer MK2-T") == 0 && plugins.count ("Pro-Q 3") == 0, "effects and unknowns left out");
+        if (! plugins["SSD Sampler 5"].empty())
+        {
+            const auto& ssd = *plugins["SSD Sampler 5"][0];
+            check (ss::howToLoad (ssd).contains ("SSD Sampler 5 (SSDSampler5 in your plug-in list)") && ss::whereToPaste (ssd).contains ("instrument list")
+                   && ss::nameToCopy (ssd) == "SSDSampler5", "how to load a plug-in, and the name your DAW knows it by");
+            ss::PartSpec drums;
+            drums.role = "Drums";
+            drums.kinds = { ss::Kind::drums };
+            ss::Sound preset = ssd;
+            preset.source = "MediaBay";
+            const auto brief = ss::readBrief ("rock", {}, {});
+            check (ss::scoreSound (ssd, drums, brief) < ss::scoreSound (preset, drums, brief), "a real preset beats a plug-in suggestion");
+        }
+    }
+
+    void testPluginCheck (const sstest::FakeComputer& fc)
+    {
+        section ("Finding out what a plug-in is (Song Savant Scanner)");
+        const juce::File scanner (SS_TEST_SCANNER);
+        const juce::File realPlugin (SS_TEST_VST3);
+        check (scanner.existsAsFile() && realPlugin.exists(), "the scanner and the Song Savant plug-in were built");
+
+        // a copy of the real plug-in without its moduleinfo.json, so nothing on disk says what it is
+        const auto copyDir = fc.loc.home.getChildFile ("Plug-ins to check");
+        const auto copy = copyDir.getChildFile (realPlugin.getFileName());   // a bundle's name must match the file inside
+        copyDir.createDirectory();
+        check (realPlugin.isDirectory() ? realPlugin.copyDirectoryTo (copy) : realPlugin.copyFileTo (copy), "copied the plug-in");
+        copy.getChildFile ("Contents/Resources/moduleinfo.json").deleteFile();
+        copy.getChildFile ("Contents/moduleinfo.json").deleteFile();
+
+        std::vector<ss::PluginInfo> list (2);
+        list[0].name = "Song Savant (copy)";
+        list[0].format = "VST3";
+        list[0].file = copy;
+        list[1].name = "Odd Synth";
+        list[1].format = "VST3";
+        list[1].file = fc.loc.vst3Folders.getFirst().getChildFile ("Odd Synth.vst3");
+
+        std::atomic<bool> cancel { false };
+        const auto one = ss::checkPlugin (copy, scanner, cancel);
+        check (one.ok && one.instrument && one.category.contains ("Instrument") && one.vendor == "Grabber Audio",
+               "the scanner says what the plug-in is: " + one.category + " by " + one.vendor);
+        check (! ss::checkPlugin (list[1].file, scanner, cancel).ok, "a file that isn't really a plug-in fails safely");
+
+       #if JUCE_WINDOWS
+        _putenv_s ("SS_SCANNER", scanner.getFullPathName().toRawUTF8());
+       #else
+        setenv ("SS_SCANNER", scanner.getFullPathName().toRawUTF8(), 1);
+       #endif
+        check (ss::pluginsToCheck (list).size() == 2, "both need checking");
+        int calls = 0;
+        check (ss::checkPlugins (ss::pluginsToCheck (list), cancel, 120, [&calls] (int, int) { ++calls; }) == 2 && calls >= 2, "checked both, with progress");
+        check (ss::pluginsToCheck (list).empty(), "each plug-in is checked only once (even the one that failed)");
+        ss::applyKnownTypes (list);
+        check (list[0].categoriesKnown && list[0].isInstrument && list[0].categorySource == "checked" && list[0].categories.contains ("Instrument"),
+               "the answer is remembered");
+        check (! list[1].categoriesKnown, "a failed check doesn't make anything up");
+        check (ss::paths::appDataDir().getChildFile ("plugin-types.json").existsAsFile(), "remembered in Song Savant's own folder");
+
+        std::atomic<bool> stop { true };
+        check (! ss::checkPlugin (copy, scanner, stop).ok, "a check can be stopped");
+       #if JUCE_WINDOWS
+        _putenv_s ("SS_SCANNER", "");
+       #else
+        unsetenv ("SS_SCANNER");
+       #endif
+        copyDir.deleteRecursively();
     }
 
     void testMusic()
@@ -428,12 +534,59 @@ namespace
             check (ss::whyItWorks (cat, *pad).contains ("Tagged worship"), "why it works: " + ss::whyItWorks (cat, *pad));
         }
         auto* drums = slotFor (pals[0], "Drums");
-        check (drums != nullptr && ! drums->pick.isValid() && ss::whyItWorks (cat, *drums).startsWith ("Nothing in your library"), "no drums in this library: said plainly");
+        check (drums != nullptr && drums->pick.isValid() && cat.sounds[(size_t) drums->pick.sound].source == "Plug-in",
+               "no drum presets: a drum plug-in is suggested instead");
+        if (drums != nullptr && drums->pick.isValid())
+        {
+            const auto points = ss::whyItWorksPoints (cat, *drums);
+            check (points[0] == "Drums for the Drums part" && points.contains ("Pick a kit in the plug-in"), "why it works, as a list: " + points.joinIntoString (" / "));
+        }
+        {
+            auto many = cat;          // lots of tagged drum kits that fit even better: the plug-ins are still offered
+            juce::String drumWords;
+            for (auto& part : parts) if (part.role == "Drums") drumWords = part.want.joinIntoString (" ");
+            for (int i = 0; i < 12; ++i)
+            {
+                ss::Sound kit;
+                kit.name = "Worship Kit " + juce::String (i);
+                kit.instrument = "Groove Agent SE";
+                kit.source = "MediaBay";
+                kit.kind = ss::Kind::drums;
+                kit.styles.add ("Worship");
+                kit.character.add ("Warm");
+                kit.searchText = " worship kit groove agent se warm " + drumWords.toLowerCase() + " ";
+                kit.rating = 5;
+                kit.stylesText = " worship ";
+                many.sounds.push_back (kit);
+            }
+            auto manyPals = ss::makePalettes (many, brief);
+            auto* d = slotFor (manyPals[0], "Drums");
+            int plugins = 0;
+            if (d != nullptr)
+                for (auto& a : d->alternatives) if (many.sounds[(size_t) a.sound].source == "Plug-in") ++plugins;
+            juce::StringArray seen;
+            if (d != nullptr) for (auto& a : d->alternatives) seen.add (many.sounds[(size_t) a.sound].name + " " + juce::String (a.score, 1));
+            int fitting = 0;          // drum plug-ins that suit this song at all
+            if (d != nullptr)
+                for (auto& x : many.sounds)
+                    if (x.source == "Plug-in" && ss::scoreSound (x, d->part, brief) > 0.0f) ++fitting;
+            check (d != nullptr && d->pick.isValid() && many.sounds[(size_t) d->pick.sound].source == "MediaBay" && fitting >= 1
+                   && plugins == juce::jmin (2, fitting),
+                   "a real kit comes first, and the drum plug-ins are still offered: " + seen.joinIntoString (", "));
+        }
+        {
+            auto bare = cat;          // no drum plug-ins either
+            bare.sounds.erase (std::remove_if (bare.sounds.begin(), bare.sounds.end(), [] (const ss::Sound& x) { return x.source == "Plug-in"; }),
+                               bare.sounds.end());
+            auto barePals = ss::makePalettes (bare, brief);
+            auto* none = slotFor (barePals[0], "Drums");
+            check (none != nullptr && ! none->pick.isValid() && ss::whyItWorks (bare, *none).startsWith ("Nothing in your library"), "no drums at all: said plainly");
+        }
         auto* keys1 = slotFor (pals[0], "Keys");
         auto* keys2 = slotFor (pals[1], "Keys");
         check (keys1 != nullptr && keys2 != nullptr && keys1->pick.isValid() && keys2->pick.isValid() && keys1->pick.sound != keys2->pick.sound,
                "each palette is a different take");
-        check (keys1 != nullptr && keys1->alternatives.size() == 6, "alternatives for each part");
+        check (keys1 != nullptr && keys1->alternatives.size() >= 6 && keys1->alternatives.size() <= 8, "alternatives for each part (6, plus up to 2 plug-ins)");
         if (keys1 != nullptr)
             for (auto& a : keys1->alternatives) check (a.sound != keys1->pick.sound, "an alternative is never the pick itself");
 
@@ -577,6 +730,8 @@ int main (int argc, char** argv)
     auto r = testScan (fc);
     testReport (r, fc);
     testCatalog (fc);
+    testPluginSuggestions (fc);
+    testPluginCheck (fc);
     testMusic();
     testPalettes (fc);
     testCancelAndJob (fc);

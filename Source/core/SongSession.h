@@ -35,6 +35,7 @@ namespace ss
         void fromXml (const juce::XmlElement&);       // the palettes come back when restore() gets a catalog
         bool needsRestore() const                     { return pending != nullptr; }
         void restore (const Catalog&);
+        void moveTo (const Catalog&);                 // the library was read again: find the same sounds in the new one
 
     private:
         std::unique_ptr<juce::XmlElement> pending;

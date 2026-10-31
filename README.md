@@ -6,9 +6,11 @@
 through the instruments and presets you already own, then suggests a complete sound palette: rhythm, bass,
 leads, pads and drums, each with alternatives, plus starter MIDI parts to get the song moving.
 
-> **Status: Phase 1c (Song palettes).** Describe your song ("modern country like Morgan Wallen, warm, 120 BPM in
-> A minor") and Song Savant suggests a palette of sounds you already own, one card per part, with alternatives,
-> locks and new takes. The Library holds every sound you own (Steinberg via MediaBay, Analog Lab,
+> **Status: Phase 1d (polish), version 0.6.0.** Describe your song ("modern country like Morgan Wallen, warm,
+> 120 BPM in A minor") and Song Savant suggests a palette of sounds you already own, one card per part, with
+> alternatives, locks and new takes. Instruments whose presets it can't read (SSD Sampler, FM8...) are suggested as
+> the plug-in itself, and a small helper program (Song Savant Scanner) safely finds out what unlabelled plug-ins
+> are. Light and dark themes (the sun / moon button). The Library holds every sound you own (Steinberg via MediaBay, Analog Lab,
 > Cymatics, your own presets) in one searchable list: filter by kind of sound and instrument, see where a
 > sound lives, and copy its name (Steinberg sounds: paste into MediaBay; Analog Lab and Cymatics: into the
 > instrument's own browser). The Setup Check from Phase 0 is still
@@ -44,12 +46,14 @@ cmake --build build --config Release
 
 **Tests:** `SSTests` builds a fake computer (plug-ins, Steinberg presets with tags, a VST Sound container, an
 Arturia-style database, a Cymatics folder, Key Compass songs, Groove Grabber kits), scans it and checks what was
-found and what the report says. `--shots DIR` also draws the screen to a PNG.
+found and what the report says, and runs the real Song Savant Scanner on the real plug-in. `--shots DIR` also
+draws the screens to PNGs.
 
 | Folder | |
 |---|---|
 | `Source/core` | scanner, preset and database readers, report, MIDI (no UI) |
 | `Source/ui` | theme and screens |
+| `Source/scanner` | Song Savant Scanner: loads one plug-in in its own process and says what it is |
 | `Tests` | the test runner |
 | `packaging` | Windows installer (Inno Setup), macOS package |
 | `docs` | roadmap and design (mockups, logo, icons) |

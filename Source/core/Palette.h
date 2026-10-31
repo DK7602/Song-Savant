@@ -57,4 +57,5 @@ namespace ss
 
     // "Warm, grand piano for the Keys part. Tagged Pop."
     juce::String whyItWorks (const Catalog&, const PaletteSlot&);
+    juce::StringArray whyItWorksPoints (const Catalog&, const PaletteSlot&);   // the same, as a short list of reasons
 }

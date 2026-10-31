@@ -120,4 +120,12 @@ namespace ss
         current = juce::jlimit (0, juce::jmax (0, (int) palettes.size() - 1), current);
         pending.reset();
     }
+
+    void SongSession::moveTo (const Catalog& c)
+    {
+        if (palettes.empty()) return;
+        const auto saved = toXml();      // sounds are saved by name, so this finds them again in the new catalog
+        fromXml (*saved);
+        restore (c);
+    }
 }

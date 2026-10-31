@@ -95,6 +95,12 @@ namespace sstest
         plugin (vst3, "Groove Grabber", "Groove Grabber", "Grabber Audio", "Instrument|Drum|Sampler");
         plugin (vst3, "Pro-Q 3", "Pro-Q 3", "FabFilter", "Fx|EQ");
         write (vst3.getChildFile ("Cymatics/Plinko.vst3"), "single-file plug-in");
+        // instruments whose presets Song Savant can't read: suggested as plug-ins
+        write (vst3.getChildFile ("SSDSampler5.vst3"), "single-file plug-in, known by name");
+        plugin (vst3, "FM8", "FM8", "Native Instruments", "Instrument|Synth");
+        plugin (vst3, "Mystery Keys", "Mystery Keys", "Small Maker", "Instrument|Piano");
+        plugin (vst3, "SPL Vitalizer", "SPL Vitalizer MK2-T", "Plugin Alliance", "Fx|Mastering");   // an effect, not "Vital"
+        write (vst3.getChildFile ("Odd Synth.vst3"), "single-file plug-in nothing knows about");
         plugin (pf.getChildFile ("Steinberg/Cubase 14/VST3"), "Retrologue", "Retrologue", "Steinberg Media Technologies", "Instrument|Synth");
         write (pf.getChildFile ("Steinberg/Cubase 14/Cubase14.exe"), "exe");
 

@@ -62,8 +62,8 @@ jobs:
             $env:PATH += ";${env:ProgramFiles(x86)}\Inno Setup 6"
           }
           $version = (Select-String -Path CMakeLists.txt -Pattern 'project\(SongSavant VERSION ([0-9.]+)').Matches[0].Groups[1].Value
-          iscc /DAppVersion=$version /DArtefacts="$PWD\build\SongSavant_artefacts\${{ env.BUILD_TYPE }}" /O"$PWD\dist" packaging\windows\SongSavant.iss
-          Compress-Archive -Path "build\SongSavant_artefacts\${{ env.BUILD_TYPE }}\VST3\Song Savant.vst3", "build\SongSavant_artefacts\${{ env.BUILD_TYPE }}\Standalone\Song Savant.exe" -DestinationPath "dist\Song-Savant-$version-Windows-portable.zip"
+          iscc /DAppVersion=$version /DArtefacts="$PWD\build\SongSavant_artefacts\${{ env.BUILD_TYPE }}" /DScanner="$PWD\build\SongSavantScanner_artefacts\${{ env.BUILD_TYPE }}\Song Savant Scanner.exe" /O"$PWD\dist" packaging\windows\SongSavant.iss
+          Compress-Archive -Path "build\SongSavant_artefacts\${{ env.BUILD_TYPE }}\VST3\Song Savant.vst3", "build\SongSavant_artefacts\${{ env.BUILD_TYPE }}\Standalone\Song Savant.exe", "build\SongSavantScanner_artefacts\${{ env.BUILD_TYPE }}\Song Savant Scanner.exe" -DestinationPath "dist\Song-Savant-$version-Windows-portable.zip"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -104,6 +104,7 @@ jobs:
       - name: Ad-hoc sign bundles
         run: |
           ART="build/SongSavant_artefacts/${{ env.BUILD_TYPE }}"
+          cp "build/SongSavantScanner_artefacts/${{ env.BUILD_TYPE }}/Song Savant Scanner" "$ART/Standalone/Song Savant.app/Contents/MacOS/"
           codesign --force --deep -s - "$ART/AU/Song Savant.component"
           codesign --force --deep -s - "$ART/VST3/Song Savant.vst3"
           codesign --force --deep -s - "$ART/Standalone/Song Savant.app"

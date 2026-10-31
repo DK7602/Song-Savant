@@ -70,7 +70,8 @@ namespace ss::ui
             g.drawFittedText (sound->name, in.removeFromTop (38.0f).toNearestInt(), juce::Justification::centred, 2, 0.85f);
             g.setColour (p.gold);
             g.setFont (sans (12.0f));
-            g.drawFittedText (sound->instrument, in.removeFromTop (18.0f).toNearestInt(), juce::Justification::centred, 1, 0.8f);
+            g.drawFittedText (sound->source == "Plug-in" ? juce::String ("Plug-in: pick inside") : sound->instrument,
+                              in.removeFromTop (18.0f).toNearestInt(), juce::Justification::centred, 1, 0.8f);
         }
         else
         {
@@ -291,8 +292,10 @@ namespace ss::ui
         if (proc.catalog.generation() != seenGeneration)
         {
             seenGeneration = proc.catalog.generation();
+            const auto previous = catalog;
             catalog = proc.catalog.catalog();
             if (catalog != nullptr && proc.song.needsRestore()) proc.song.restore (*catalog);
+            else if (catalog != nullptr && previous != nullptr && previous != catalog) proc.song.moveTo (*catalog);
             refresh();
         }
     }
@@ -333,8 +336,8 @@ namespace ss::ui
         auto* s = selectedSlot();
         if (s == nullptr || catalog == nullptr || ! s->current().isValid()) return;
         const auto& snd = catalog->sounds[(size_t) s->current().sound];
-        juce::SystemClipboard::copyTextToClipboard (snd.name);
-        copiedNote = "Copied \"" + snd.name + "\". " + whereToPaste (snd);
+        juce::SystemClipboard::copyTextToClipboard (nameToCopy (snd));
+        copiedNote = "Copied \"" + nameToCopy (snd) + "\". " + whereToPaste (snd);
         repaint();
     }
 
@@ -433,15 +436,60 @@ namespace ss::ui
         {
             g.setColour (p.gold);
             g.setFont (sans (14.5f, true));
-            juce::String inst = snd->instrument;
-            if (snd->library.isNotEmpty()) inst << "  |  " << snd->library;
+            juce::String inst = snd->source == "Plug-in" ? juce::String ("Plug-in  |  you pick the sound inside it") : snd->instrument;
+            if (snd->library.isNotEmpty() && snd->source != "Plug-in") inst << "  |  " << snd->library;
             g.drawText (inst, why.removeFromTop (22.0f), juce::Justification::centredLeft, true);
+
+            // its tags, as chips
+            juce::StringArray chips;
+            for (auto& t : snd->character) chips.addIfNotAlreadyThere (t.trim(), true);
+            for (auto& t : snd->styles) chips.addIfNotAlreadyThere (t.trim(), true);
+            chips.removeEmptyStrings();
+            if (! chips.isEmpty())
+            {
+                why.removeFromTop (4.0f);
+                auto row = why.removeFromTop (22.0f);
+                const auto f = sans (11.5f, true);
+                g.setFont (f);
+                for (int i = 0; i < chips.size() && i < 6; ++i)
+                {
+                    const float w = juce::GlyphArrangement::getStringWidth (f, chips[i]) + 20.0f;
+                    if (w > row.getWidth()) break;
+                    auto chip = row.removeFromLeft (w);
+                    row.removeFromLeft (6.0f);
+                    g.setColour (p.purple.withAlpha (0.22f));
+                    g.fillRoundedRectangle (chip, 11.0f);
+                    g.setColour (p.purple.withAlpha (0.65f));
+                    g.drawRoundedRectangle (chip.reduced (0.5f), 11.0f, 1.0f);
+                    g.setColour (p.text);
+                    g.drawText (chips[i], chip, juce::Justification::centred, false);
+                }
+            }
         }
         why.removeFromTop (8.0f);
         g.setColour (p.muted);
         g.setFont (sans (12.0f, true));
         g.drawText ("WHY IT WORKS", why.removeFromTop (18.0f), juce::Justification::centredLeft);
-        drawParagraph (g, catalog != nullptr ? whyItWorks (*catalog, *sel) : juce::String(), why, sans (14.0f), p.text);
+        if (catalog != nullptr)
+        {
+            // a tick for each reason, as many as fit
+            const auto f = sans (13.5f);
+            for (auto& point : whyItWorksPoints (*catalog, *sel))
+            {
+                if (why.getHeight() < 17.0f) break;
+                auto line = why.removeFromTop (19.0f);
+                auto tick = line.removeFromLeft (20.0f).withSizeKeepingCentre (11.0f, 11.0f);
+                juce::Path t;
+                t.startNewSubPath (tick.getX(), tick.getCentreY());
+                t.lineTo (tick.getX() + tick.getWidth() * 0.38f, tick.getBottom() - 1.0f);
+                t.lineTo (tick.getRight(), tick.getY() + 1.0f);
+                g.setColour (p.gold);
+                g.strokePath (t, juce::PathStrokeType (1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+                g.setColour (p.text);
+                g.setFont (f);
+                g.drawFittedText (point, line.toNearestInt(), juce::Justification::centredLeft, 1, 0.85f);
+            }
+        }
 
         g.setColour (p.muted);
         g.setFont (sans (12.0f, true));
@@ -451,7 +499,14 @@ namespace ss::ui
         g.setColour (p.muted);
         g.setFont (sans (12.0f, true));
         g.drawText ("HOW TO LOAD IT", how.removeFromTop (18.0f), juce::Justification::centredLeft);
-        if (snd != nullptr) drawParagraph (g, howToLoad (*snd), how, sans (13.5f), p.text);
+        if (snd != nullptr)
+        {
+            // smaller type when it's long, so it never runs into the COPY NAME button
+            const auto text = howToLoad (*snd);
+            float size = 13.5f;
+            while (size > 11.0f && paragraphHeight (text, how.getWidth(), sans (size)) > how.getHeight()) size -= 0.5f;
+            drawParagraph (g, text, how, sans (size), p.text);
+        }
         if (copiedNote.isNotEmpty())
         {
             g.setColour (p.good);

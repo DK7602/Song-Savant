@@ -2,6 +2,8 @@
 #include "Database.h"
 #include "FileWalk.h"
 #include "VstPreset.h"
+#include "PluginProfiles.h"
+#include "PluginTypes.h"
 #include <sqlite3.h>
 #include <algorithm>
 #include <map>
@@ -336,6 +338,15 @@ namespace ss
 
         if (! loc.cymaticsRoots.isEmpty())
             add ("Cymatics", loc.cymaticsRoots.getFirst(), readCymatics (loc.cymaticsRoots), {});
+        if (cancel.load()) return c;
+
+        // instruments whose presets Song Savant can't read: suggest the plug-in itself
+        {
+            auto plugins = installedPlugins (loc, &cancel);
+            auto level = pluginLevelSounds (plugins, c.sounds);
+            for (auto& s : level) prepare (s);
+            add ("Other instruments (pick a sound inside)", {}, std::move (level), {});
+        }
 
         std::map<Kind, int> order;
         for (size_t i = 0; i < allKinds().size(); ++i) order[allKinds()[i]] = (int) i;
@@ -385,6 +396,16 @@ namespace ss
         return out;
     }
 
+    namespace
+    {
+        // "SSD Sampler 5 (SSDSampler5 in your plug-in list)": the friendly name, and the one the DAW shows
+        juce::String pluginLabel (const Sound& s)
+        {
+            if (s.instrument.isEmpty() || s.instrument == s.name) return s.name;
+            return s.name + " (" + s.instrument + " in your plug-in list)";
+        }
+    }
+
     juce::String howToLoad (const Sound& s)
     {
         const auto q = "\"" + s.name + "\"";
@@ -396,6 +417,9 @@ namespace ss
         else if (s.source == "Arturia")
             text = "MediaBay doesn't list Analog Lab sounds. Load Analog Lab V on an instrument track and search for " + q + " in its own sound browser"
                  + (s.origin.isNotEmpty() && ! s.origin.startsWith ("Analog Lab") ? " (from " + s.origin + ")." : juce::String ("."));
+        else if (s.source == "Plug-in")
+            text = "Load " + pluginLabel (s) + " on an instrument track and " + s.detail.toLowerCase().replace (" in the plug-in", "")
+                 + " that fits. (Song Savant can't see this plug-in's presets.)";
         else if (s.source == "Cymatics")
             text = "MediaBay doesn't list Cymatics sounds. Load " + s.instrument + " on an instrument track and choose " + q + " from its preset list"
                  + (s.library.isNotEmpty() ? " (" + s.library + ")." : juce::String ("."));
@@ -405,11 +429,14 @@ namespace ss
         return text;
     }
 
+    juce::String nameToCopy (const Sound& s)   { return s.source == "Plug-in" && s.instrument.isNotEmpty() ? s.instrument : s.name; }
+
     juce::String whereToPaste (const Sound& s)
     {
         if (s.source == "MediaBay") return "Paste it into MediaBay's search (with All Media selected).";
         if (s.source == "Arturia")  return "Paste it into Analog Lab's search box. (MediaBay doesn't list Analog Lab sounds.)";
         if (s.source == "Cymatics") return "Find it in " + s.instrument + "'s preset list. (MediaBay doesn't list Cymatics sounds.)";
+        if (s.source == "Plug-in")  return "Find it in your DAW's instrument list, load it on an instrument track and pick a sound in it.";
         return "Find it in " + s.instrument + "'s preset browser.";
     }
 }

@@ -207,12 +207,27 @@ Built in steps, each one a build the owner can try:
   each a different take; 6 alternatives per part; locked parts survive NEW PALETTES (a new seed).
   `Source/core/SongSession.*` saves the form, seed, locks and choices with the project and rebuilds them the same
   way. Owner to try it on the real library.)*
-- **1d Polish:** plug-in scan in a helper process, light theme, the mockup's look throughout.
+- **1d Polish:** plug-in scan in a helper process, light theme, the mockup's look throughout. *(In 0.6.0:
+  light theme with a sun / moon switch in the header, remembered. **Plug-in suggestions:** instruments whose
+  presets Song Savant can't read are suggested as the plug-in itself ("SSD Sampler 5: pick a kit in the plug-in"),
+  from built-in profiles of well-known instruments (`Source/core/PluginProfiles.*`: what each is good for and
+  describing words) or, for others, the kinds the plug-in declares (Instrument|Drum, Piano, Synth...). Plug-ins
+  whose presets are already listed (HALion, Analog Lab, Cymatics with presets) aren't suggested twice, effects never
+  are. A plug-in suggestion scores 3 points less than a preset that matches as well (a preset is more specific), and
+  each part always offers up to two of them among its alternatives (so SSD Sampler 5 still shows up next to dozens of
+  Groove Agent kits). COPY NAME copies the name the DAW lists the plug-in under. **Song Savant Scanner** (`Source/scanner/`):
+  a small helper program, installed next to the app, that loads one plug-in the way a DAW does and says what it
+  is. After reading the libraries, Song Savant runs it (in the background, one plug-in at a time, 20 seconds
+  each, 5 minutes at most per run) on VST3 plug-ins that don't say what they are and that it doesn't know by
+  name, and remembers each answer in `plugin-types.json` (in Song Savant's settings folder) until that plug-in is
+  updated. A plug-in that crashes or hangs only takes the helper down. The plug-in version finds the helper through
+  the installer's registry entry. Song page details now show the sound's tags as chips and "why it works" as a
+  ticked list, like the mockup. If the library is read again, the palettes find their sounds in the new list.)*
 
 - Library catalog from what Phase 0 proved: **MediaBay's database** (Steinberg), **Arturia's database**, Cymatics
   preset files (names and folders), the owner's own `.vstpreset` files. Cached; rebuilt when those change.
 - Plug-in scan in a helper process (instrument or effect, maker, categories), cached, plus built-in profiles
-  for well-known plug-ins (plugin-level suggestions).
+  for well-known plug-ins (plugin-level suggestions). *(Done in 0.6.0, see 1d.)*
 - Song form: genre, style, mood, energy, BPM, **key**, reference artist or song; or pick a Key Compass song.
 - Palettes (several per song) with every part **including drums**. Flexible slots; lock or regenerate any
   part; alternatives for each slot; "why it works".

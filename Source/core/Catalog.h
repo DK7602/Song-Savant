@@ -77,4 +77,5 @@ namespace ss
 
     // Where to paste a copied name: "MediaBay's search (All Media)", "Analog Lab's search", "Cymatics Plinko's preset list"
     juce::String whereToPaste (const Sound&);
+    juce::String nameToCopy (const Sound&);     // the preset name, or for a plug-in the name your DAW lists it under
 }

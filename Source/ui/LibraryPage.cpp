@@ -114,8 +114,8 @@ namespace ss::ui
     void LibraryPage::timerCallback()
     {
         if (proc.catalog.generation() != seenGeneration) refreshCatalog();
-        refreshBtn.setEnabled (! proc.catalog.isBuilding());
-        if (proc.catalog.isBuilding()) repaint (sourcesArea.toNearestInt());
+        refreshBtn.setEnabled (! proc.catalog.isBuilding() && ! proc.catalog.isCheckingPlugins());
+        if (proc.catalog.isBuilding() || proc.catalog.isCheckingPlugins()) repaint (sourcesArea.toNearestInt());
     }
 
     void LibraryPage::refreshCatalog()
@@ -191,8 +191,8 @@ namespace ss::ui
     {
         if (auto* s = selectedSound())
         {
-            juce::SystemClipboard::copyTextToClipboard (s->name);
-            copiedNote = "Copied \"" + s->name + "\". " + whereToPaste (*s);
+            juce::SystemClipboard::copyTextToClipboard (nameToCopy (*s));
+            copiedNote = "Copied \"" + nameToCopy (*s) + "\". " + whereToPaste (*s);
             repaint();
         }
     }
@@ -245,7 +245,7 @@ namespace ss::ui
 
         g.setColour (kindColour (s.kind).withAlpha (0.9f));
         g.setFont (sans (12.5f, true));
-        g.drawText ((s.detail.isNotEmpty() ? s.detail : kindName (s.kind)).toUpperCase(), right.withTrimmedBottom (right.getHeight() * 0.48f),
+        g.drawText ((s.source == "Plug-in" ? "Plug-in: " + kindName (s.kind) : s.detail.isNotEmpty() ? s.detail : kindName (s.kind)).toUpperCase(), right.withTrimmedBottom (right.getHeight() * 0.48f),
                     juce::Justification::bottomRight, true);
         juce::String badge = ! s.owned ? "NOT OWNED" : s.yours ? "YOURS" : juce::String();
         if (badge.isNotEmpty())
@@ -285,6 +285,11 @@ namespace ss::ui
                     }
                     s << "\n";
                 }
+            if (proc.catalog.isCheckingPlugins())
+            {
+                const auto [done, total] = proc.catalog.pluginCheckProgress();
+                s << "Finding out what your other plug-ins are: " << juce::jmin (done + 1, total) << " of " << total << "\n";
+            }
             drawParagraph (g, s.trimEnd(), sourcesArea, sans (12.5f), p.dim);
         }
 
@@ -385,7 +390,7 @@ namespace ss::ui
             in.removeFromTop (6.0f);
             refreshBtn.setBounds (in.removeFromBottom (40.0f).toNearestInt());
             in.removeFromBottom (8.0f);
-            sourcesArea = in.removeFromBottom (64.0f);
+            sourcesArea = in.removeFromBottom (80.0f);
             in.removeFromBottom (8.0f);
             yoursToggle.setBounds (in.removeFromBottom (32.0f).toNearestInt());
             in.removeFromBottom (6.0f);

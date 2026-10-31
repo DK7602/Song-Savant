@@ -68,6 +68,7 @@ namespace ss
                 if (reasons != nullptr) reasons->add ("tagged " + tag);
                 break;
             }
+        if (s.source == "Plug-in") score -= 3.0f;    // a plug-in to explore is less specific than an actual preset
         score += 0.4f * (float) s.rating;
         if (s.yours) score += 0.5f;
         return score;
@@ -152,6 +153,23 @@ namespace ss
                     if ((int) slot.alternatives.size() >= opt.alternatives) break;
                     if (cand.sound != slot.pick.sound) slot.alternatives.push_back (cand);
                 }
+                // always offer up to two instruments whose presets Song Savant can't list (SSD Sampler for the drums,
+                // even when there are dozens of Groove Agent kits ahead of it)
+                {
+                    auto isPlugin = [&c] (const Pick& x) { return x.isValid() && c.sounds[(size_t) x.sound].source == "Plug-in"; };
+                    int plugins = isPlugin (slot.pick) ? 1 : 0;
+                    for (auto& a : slot.alternatives) if (isPlugin (a)) ++plugins;
+                    for (auto& cand : cands)
+                    {
+                        if (plugins >= 2) break;
+                        if (! isPlugin (cand) || cand.sound == slot.pick.sound) continue;
+                        bool there = false;
+                        for (auto& a : slot.alternatives) there = there || a.sound == cand.sound;
+                        if (there) continue;
+                        slot.alternatives.push_back (cand);
+                        ++plugins;
+                    }
+                }
                 pal.slots.push_back (std::move (slot));
             }
             out.push_back (std::move (pal));
@@ -174,5 +192,28 @@ namespace ss
         if (s.guessed) text << " (Its kind is a guess from its name.)";
         if (slot.locked) text << " Locked: it stays when you make new palettes.";
         return text;
+    }
+
+    juce::StringArray whyItWorksPoints (const Catalog& c, const PaletteSlot& slot)
+    {
+        juce::StringArray out;
+        if (! slot.current().isValid()) { out.add ("Nothing in your library fits this part yet"); return out; }
+        const auto& s = c.sounds[(size_t) slot.current().sound];
+        juce::StringArray words, tags;
+        for (auto& r : slot.current().reasons)
+            (r.startsWith ("tagged ") ? tags : words).add (r.startsWith ("tagged ") ? r.substring (7) : r);
+        const auto what = s.detail.isNotEmpty() && s.source != "Plug-in" ? s.detail : kindName (s.kind);
+        out.add (what + " for the " + slot.part.role + " part");
+        if (! words.isEmpty()) out.add ("Matches what the part needs: " + words.joinIntoString (", "));
+        if (! tags.isEmpty()) out.add ("Tagged " + tags.joinIntoString (", ") + " in your library");
+        if (s.source == "Plug-in")
+        {
+            if (s.description.isNotEmpty()) out.add (s.description);
+            out.add (s.detail);
+        }
+        if (s.yours) out.add ("One of your own presets");
+        if (s.guessed) out.add ("Its kind is a guess from its name");
+        if (slot.locked) out.add ("Locked: it stays when you make new palettes");
+        return out;
     }
 }
