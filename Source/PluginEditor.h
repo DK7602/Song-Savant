@@ -1,8 +1,8 @@
-// Song Savant - the window. Phase 0 shows the setup check; Phase 1 adds the song form, palettes and browser.
+// Song Savant - the window: the Library (Phase 1) and the Setup Check (Phase 0). Palettes come next.
 #pragma once
 
 #include "PluginProcessor.h"
-#include "ui/SetupCheckPage.h"
+#include "ui/MainView.h"
 
 class SongSavantEditor : public juce::AudioProcessorEditor
 {
@@ -11,9 +11,8 @@ public:
     void resized() override;
     void paint (juce::Graphics&) override {}
 
-    ss::ui::SetupCheckPage& getPage()   { return page; }
+    ss::ui::MainView& getView()   { return view; }
 
 private:
-    ss::ui::SetupCheckPage page;
-    juce::TooltipWindow tooltips { this, 500 };
+    ss::ui::MainView view;
 };

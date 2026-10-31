@@ -129,7 +129,7 @@ namespace ss
                                                       + " IS NOT NULL AND " + col + " <> '' GROUP BY " + col + " ORDER BY 2 DESC", 25);
             const juce::String cols = "FileName, url, PlugInName, MusicalCategory, MusicalInstrument, MusicalStyle, MusicalSubStyle, MusicalCharacter, "
                                       "MusicalMoods, MediaLibraryName, MediaRating, MediaComment";
-            for (auto* plugin : { "HALion Sonic", "HALion", "Retrologue", "Padshop", "Groove Agent" })
+            for (auto* plugin : { "HALion Sonic SE", "HALion Sonic", "HALion", "Retrologue", "Padshop", "Groove Agent" })
                 add (juce::String ("Examples: ") + plugin, "SELECT " + cols + " FROM media WHERE " + presets + " AND PlugInName = '" + plugin
                                                     + "' AND MusicalCategory IS NOT NULL ORDER BY id LIMIT 4 OFFSET 40", 4);
             add ("Examples: your own presets", "SELECT " + cols + " FROM media WHERE " + presets + " AND url NOT LIKE 'vstsound:%' LIMIT 4", 4);

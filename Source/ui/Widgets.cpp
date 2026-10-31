@@ -41,11 +41,11 @@ namespace ss::ui
         }
         else
         {
-            const auto fill = on ? (getComponentID() == "bad" ? p.bad : p.good).withAlpha (0.22f)
-                                 : p.panelHi.withAlpha (over ? 0.9f : 0.55f);
+            const auto onColour = getComponentID() == "bad" ? p.bad : getComponentID() == "tab" ? p.gold : p.good;
+            const auto fill = on ? onColour.withAlpha (0.22f) : p.panelHi.withAlpha (over ? 0.9f : 0.55f);
             g.setColour (fill.withMultipliedAlpha (alpha));
             g.fillPath (path);
-            g.setColour ((on ? (getComponentID() == "bad" ? p.bad : p.good) : p.dim).withAlpha (alpha));
+            g.setColour ((on ? onColour : p.dim).withAlpha (alpha));
             g.strokePath (path, juce::PathStrokeType (1.0f));
             g.setColour ((on ? p.text : p.muted).withAlpha (alpha));
         }

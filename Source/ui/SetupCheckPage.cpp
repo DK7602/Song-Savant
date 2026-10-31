@@ -20,9 +20,6 @@ namespace ss::ui
 
     SetupCheckPage::SetupCheckPage (SongSavantProcessor& p) : proc (p)
     {
-        owl = owlImage();
-        wordmark = wordmarkImage();
-
         for (auto* b : { &scanBtn, &stopBtn, &folderBtn, &openBtn, &showBtn, &copyBtn })
             addAndMakeVisible (b);
         addAndMakeVisible (progress);
@@ -192,32 +189,7 @@ namespace ss::ui
     void SetupCheckPage::paint (juce::Graphics& g)
     {
         const auto& p = pal();
-        drawBackground (g, getLocalBounds().toFloat());
-
-        // header: owl + wordmark, then the page name
-        {
-            auto h = headerArea;
-            if (owl.isValid())
-            {
-                auto o = h.removeFromLeft (h.getHeight() * (float) owl.getWidth() / (float) owl.getHeight());
-                g.drawImage (owl, o, juce::RectanglePlacement::centred);
-            }
-            h.removeFromLeft (10.0f);
-            if (wordmark.isValid())
-            {
-                const float wh = h.getHeight() * 0.86f;
-                auto w = h.removeFromLeft (wh * (float) wordmark.getWidth() / (float) wordmark.getHeight()).withSizeKeepingCentre (wh * (float) wordmark.getWidth() / (float) wordmark.getHeight(), wh);
-                g.drawImage (wordmark, w, juce::RectanglePlacement::centred);
-            }
-            auto right = h.removeFromRight (300.0f);
-            g.setColour (p.gold);
-            g.setFont (serif (26.0f));
-            g.drawText ("Setup Check", right.removeFromTop (right.getHeight() * 0.58f), juce::Justification::bottomRight);
-            g.setColour (p.muted);
-            g.setFont (sans (13.5f));
-            g.drawText ("Phase 0  |  version " SS_VERSION, right, juce::Justification::topRight);
-        }
-
+        // the background and the header (logo, pages) are drawn by the main view
         for (auto r : { scanPanel, dragPanel, reportPanel }) drawPanel (g, r);
 
         auto titleOf = [] (juce::Rectangle<float> panel) { return panel.reduced (22.0f, 0.0f).withTrimmedTop (18.0f).withHeight (30.0f); };
@@ -265,9 +237,7 @@ namespace ss::ui
 
     void SetupCheckPage::resized()
     {
-        auto r = getLocalBounds().toFloat().reduced (24.0f, 16.0f);
-        headerArea = r.removeFromTop (92.0f);
-        r.removeFromTop (12.0f);
+        auto r = getLocalBounds().toFloat().reduced (24.0f, 0.0f).withTrimmedBottom (16.0f);
 
         const float gap = 20.0f;
         auto left = r.removeFromLeft (r.getWidth() * 0.56f);

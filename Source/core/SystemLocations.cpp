@@ -49,6 +49,12 @@ namespace ss
             for (auto& d : { w.documents, w.appData, w.localAppData, w.programData, w.programFiles, w.commonFiles, w.publicDocs })
                 addIfDir (s.vendorRoots, d);
 
+            s.mediaBayDb = w.localAppData.getChildFile ("Steinberg/Steinberg MediaBay Server/mediabay3.db");
+            s.arturiaDb  = w.programData.getChildFile ("Arturia/Presets/db.db3");
+            addIfDir (s.cymaticsRoots, w.programData.getChildFile ("Cymatics"));
+            addIfDir (s.cymaticsRoots, w.appData.getChildFile ("Cymatics"));
+            addIfDir (s.cymaticsRoots, w.documents.getChildFile ("Cymatics"));
+
             s.keyCompassSongs     = w.appData.getChildFile ("KeyCompass").getChildFile ("Songs");
             s.grooveGrabberKits   = w.documents.getChildFile ("Groove Grabber").getChildFile ("Kits");
             s.sampleSnaggerLibrary = w.documents.getChildFile ("Sample Snagger").getChildFile ("Samples");
@@ -125,6 +131,11 @@ namespace ss
             for (const auto& e : juce::RangedDirectoryIterator (prefs, false, "Cubase*", F::findDirectories))
                 s.cubaseSettings.add (e.getFile());
         s.keyCompassSongs = appData.getChildFile ("KeyCompass/Songs");
+        s.mediaBayDb = home.getChildFile ("Library/Application Support/Steinberg/Steinberg MediaBay Server/mediabay3.db");
+        s.arturiaDb  = F ("/Library/Arturia/Presets/db.db3");
+        addIfDir (s.cymaticsRoots, F ("/Library/Application Support/Cymatics"));
+        addIfDir (s.cymaticsRoots, home.getChildFile ("Library/Application Support/Cymatics"));
+        addIfDir (s.cymaticsRoots, docs.getChildFile ("Cymatics"));
        #else
         addIfDir (s.vst3Folders, home.getChildFile (".vst3"));
         addIfDir (s.vst3Folders, F ("/usr/lib/vst3"));

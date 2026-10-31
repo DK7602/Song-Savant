@@ -104,4 +104,62 @@ namespace ss::ui
         tl.draw (g, r);
         return tl.getHeight();
     }
+
+    //==============================================================================
+    SavantLookAndFeel::SavantLookAndFeel()
+    {
+        const auto& p = pal();
+        setColourScheme ({ p.bgTop, p.panelHi, p.panelHi, p.dim, p.text, p.purple, p.goldText, p.gold, p.text });
+        setColour (juce::TextEditor::backgroundColourId, p.panelHi.withAlpha (0.8f));
+        setColour (juce::TextEditor::textColourId, p.text);
+        setColour (juce::TextEditor::highlightColourId, p.purple.withAlpha (0.5f));
+        setColour (juce::CaretComponent::caretColourId, p.gold);
+        setColour (juce::ComboBox::textColourId, p.text);
+        setColour (juce::PopupMenu::backgroundColourId, p.panelHi);
+        setColour (juce::PopupMenu::highlightedBackgroundColourId, p.purple.withAlpha (0.6f));
+        setColour (juce::PopupMenu::highlightedTextColourId, p.text);
+        setColour (juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
+        setColour (juce::TooltipWindow::backgroundColourId, p.panelHi);
+        setColour (juce::TooltipWindow::textColourId, p.text);
+        setColour (juce::TooltipWindow::outlineColourId, p.gold.withAlpha (0.6f));
+    }
+
+    void SavantLookAndFeel::drawComboBox (juce::Graphics& g, int w, int h, bool, int, int, int, int, juce::ComboBox& box)
+    {
+        const auto& p = pal();
+        auto r = juce::Rectangle<float> ((float) w, (float) h).reduced (1.0f);
+        g.setColour (p.panelHi.withAlpha (box.isMouseOver (true) ? 1.0f : 0.8f));
+        g.fillRoundedRectangle (r, 9.0f);
+        g.setColour ((box.hasKeyboardFocus (true) ? p.gold : p.dim).withAlpha (0.9f));
+        g.drawRoundedRectangle (r, 9.0f, 1.0f);
+        juce::Path arrow;
+        const float cx = r.getRight() - 16.0f, cy = r.getCentreY();
+        arrow.addTriangle (cx - 5.0f, cy - 2.5f, cx + 5.0f, cy - 2.5f, cx, cy + 3.5f);
+        g.setColour (p.gold);
+        g.fillPath (arrow);
+    }
+
+    void SavantLookAndFeel::fillTextEditorBackground (juce::Graphics& g, int w, int h, juce::TextEditor&)
+    {
+        g.setColour (pal().panelHi.withAlpha (0.85f));
+        g.fillRoundedRectangle (juce::Rectangle<float> ((float) w, (float) h).reduced (1.0f), 10.0f);
+    }
+
+    void SavantLookAndFeel::drawTextEditorOutline (juce::Graphics& g, int w, int h, juce::TextEditor& ed)
+    {
+        const auto& p = pal();
+        g.setColour (ed.hasKeyboardFocus (true) ? p.gold : p.dim);
+        g.drawRoundedRectangle (juce::Rectangle<float> ((float) w, (float) h).reduced (1.0f), 10.0f, ed.hasKeyboardFocus (true) ? 1.4f : 1.0f);
+    }
+
+    void SavantLookAndFeel::drawScrollbar (juce::Graphics& g, juce::ScrollBar&, int x, int y, int w, int h, bool vertical,
+                                           int thumbStart, int thumbSize, bool over, bool down)
+    {
+        const auto& p = pal();
+        auto track = juce::Rectangle<int> (x, y, w, h).toFloat().reduced (2.0f);
+        auto thumb = vertical ? juce::Rectangle<float> (track.getX(), (float) thumbStart, track.getWidth(), (float) thumbSize)
+                              : juce::Rectangle<float> ((float) thumbStart, track.getY(), (float) thumbSize, track.getHeight());
+        g.setColour ((down ? p.gold : over ? p.purple.brighter (0.2f) : p.purple).withAlpha (0.75f));
+        g.fillRoundedRectangle (thumb.reduced (1.0f), juce::jmin (thumb.getWidth(), thumb.getHeight()) * 0.5f);
+    }
 }

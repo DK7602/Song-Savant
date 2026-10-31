@@ -133,8 +133,11 @@ namespace sstest
             "INSERT INTO Preset_Id VALUES (1, 'Classic Jun Keys', 1, 3, 7, 60, 1, 0, 1, 'Warm 80s keys', 'C:/ProgramData/Arturia/Presets/x.labx', 0, 0, 1, x'00112233')",
             "INSERT INTO Preset_Id VALUES (2, 'Warm Analog Bass', 2, 1, 2, 60, 2, 0, 1, 'Round low end', 'C:/ProgramData/Arturia/Presets/y.labx', 1, 0, 1, NULL)",
             "INSERT INTO Preset_Id VALUES (3, 'Heaven Pad', 3, 4, 9, 60, 1, 0, 1, 'Wide worship pad', 'C:/ProgramData/Arturia/Presets/z.labx', 0, 0, 1, NULL)",
+            "INSERT INTO Preset_Id VALUES (4, 'Jupiter Brass', 3, 1, 2, 61, 1, 0, 1, 'For sale', 'C:/x', 0, 0, 0, NULL)",
+            "INSERT INTO Preset_Id VALUES (5, 'My Analog Lab Bass', 2, 1, 2, 60, 1, 0, 2, '', 'C:/y', 0, 0, 0, NULL)",
+            "INSERT INTO Preset_Id VALUES (6, 'Hidden One', 2, 1, 2, 60, 1, 0, 1, '', 'C:/y', 0, 1, 1, NULL)",
             "CREATE TABLE Instruments (key_id INTEGER, name TEXT, display_name TEXT, version INTEGER, category_id INTEGER)",
-            "INSERT INTO Instruments VALUES (60, 'Analog Lab V', 'Analog Lab', 5, 8)",
+            "INSERT INTO Instruments VALUES (60, 'Analog Lab V', 'Analog Lab', 5, 8), (61, 'Jup-8 V4', 'Jup-8', 4, 1)",
             "CREATE TABLE Types_V2 (key_id INTEGER, name TEXT)",
             "INSERT INTO Types_V2 VALUES (1, 'Bass'), (3, 'Keys'), (4, 'Pad')",
             "CREATE TABLE Subtypes_V2 (key_id INTEGER, name TEXT, type_key INTEGER)",
@@ -148,7 +151,7 @@ namespace sstest
             "CREATE TABLE Genres (key_id INTEGER, name TEXT)",
             "INSERT INTO Genres VALUES (1, 'Pop'), (2, 'Worship')",
             "CREATE TABLE Packs (key_id INTEGER, name TEXT, factory INTEGER)",
-            "INSERT INTO Packs VALUES (1, 'Analog Lab Factory', 1)",
+            "INSERT INTO Packs VALUES (1, 'Analog Lab Factory', 1), (2, 'User', 0)",
             "CREATE TABLE Purchasable_Packs (product_id INTEGER, instrument_id INTEGER, name TEXT, owned INTEGER)",
             "INSERT INTO Purchasable_Packs VALUES (10, 60, 'Worship Keys', 1), (11, 60, 'Trap Leads', 0)",
             "CREATE TABLE Preset_Metadata (key_id INTEGER, preset_key INTEGER, name TEXT, value TEXT)",
@@ -166,9 +169,10 @@ namespace sstest
                                     "INSERT INTO volumes VALUES (1, 0, 'vstsound://F6ADB7B8D7C04F50A3968D24D463240F', 'HALion Sonic Library', 0)",
                                     "INSERT INTO media (url, MediaType, FileName) VALUES ('vstsound://F6AD/Audio Files/01 bass.wav', 'Audio', '01 bass.wav')" };
             for (int i = 0; i < 50; ++i)
-                sql.add ("INSERT INTO media (url, MediaType, FileName, PlugInName, MusicalCategory, MusicalInstrument, MusicalStyle, MusicalCharacter, MediaLibraryName) "
+                sql.add ("INSERT INTO media (url, MediaType, FileName, PlugInName, MusicalCategory, MusicalInstrument, MusicalStyle, MusicalSubStyle, MusicalCharacter, MediaLibraryName) "
                          "VALUES ('vstsound://F6AD/Presets/Keys " + juce::String (i) + ".vstpreset', 'VstPreset', 'Keys " + juce::String (i)
-                         + "', 'HALion Sonic', 'Keyboard', 'Keyboard|E-Piano', 'Pop/Rock', 'Warm|Clean', 'HALion Sonic Library')");
+                         + ".vstpreset', 'HALion Sonic SE', 'Keyboard', 'Keyboard|E. Piano', 'Pop', 'Pop|Pop/Rock', 'Warm|Clean', 'HALion Sonic Library')");
+            sql.add ("INSERT INTO media (url, MediaType, FileName, PlugInName, MusicalCategory) VALUES ('vstsound://F6AD/FX/Room.vstpreset', 'VstPreset', 'Big Room.vstpreset', 'REVelation', 'Musical FX')");
             sql.add ("INSERT INTO media (url, MediaType, FileName, PlugInName) VALUES ('file:///C:/Users/me/Documents/VST3 Presets/x.vstpreset', 'VstPreset', 'My Keys', 'HALion Sonic')");
             makeDb (fc.mediaBayDb, sql);
         }
@@ -185,6 +189,11 @@ namespace sstest
         write (docs.getChildFile ("Cymatics/Plinko/Presets/Glass Keys.cyp"), "preset");
         write (docs.getChildFile ("Cymatics/Plinko/Samples/bell.wav"), "RIFF");
         write (docs.getChildFile ("Cymatics/Hub/license.dat"), "never listed");
+        write (programData.getChildFile ("Cymatics/Cymatics Plinko/Presets/Factory/Glass Bell.cymatics"), "{}");
+        write (programData.getChildFile ("Cymatics/Cymatics Plinko/Presets/Init.cymatics"), "{}");
+        write (programData.getChildFile ("Cymatics/Daydream/Resources/Presets/01 Pack/Warm Tape Keys.json"), "{}");
+        write (programData.getChildFile ("Cymatics/Space/Presets/Factory/Hall.cym"), "an effect, not an instrument");
+        write (roaming.getChildFile ("Cymatics/Cymatics Pandora/Expansions/01 Essentials/UserPresets/BASS Apocalypse.preset"), "x");
 
         // the top of another drive: an exact maker folder, a near miss, and a private folder that must never be touched
         fc.driveD = root.getChildFile ("Drive D");

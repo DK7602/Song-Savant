@@ -15,6 +15,11 @@ void SongSavantProcessor::startScan()
     scan.start (loc);
 }
 
+void SongSavantProcessor::startCatalog()
+{
+    catalog.start (locationProvider());
+}
+
 juce::String SongSavantProcessor::reportText() const
 {
     auto r = scan.result();
@@ -48,6 +53,7 @@ void SongSavantProcessor::getStateInformation (juce::MemoryBlock& dest)
 {
     juce::XmlElement x ("SongSavant");
     x.setAttribute ("version", SS_VERSION);
+    x.setAttribute ("page", page);
     auto* d = x.createNewChildElement ("DragTests");
     d->setAttribute ("preset", dragTests.userPreset);
     d->setAttribute ("factory", dragTests.factoryPreset);
@@ -63,6 +69,7 @@ void SongSavantProcessor::setStateInformation (const void* data, int size)
 {
     auto x = getXmlFromBinary (data, size);
     if (x == nullptr || ! x->hasTagName ("SongSavant")) return;
+    page = juce::jlimit (0, 1, x->getIntAttribute ("page", 0));
     if (auto* d = x->getChildByName ("DragTests"))
     {
         dragTests.userPreset    = juce::jlimit (-1, 1, d->getIntAttribute ("preset"));

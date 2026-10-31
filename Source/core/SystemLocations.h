@@ -22,6 +22,11 @@ namespace ss
         juce::File grooveGrabberKits;             // Documents/Groove Grabber/Kits (*.ggkit)
         juce::File sampleSnaggerLibrary;          // Documents/Sample Snagger/Samples
 
+        // Where the sound libraries Song Savant reads keep their catalogs
+        juce::File mediaBayDb;                    // Steinberg MediaBay's database (every Steinberg preset, with tags)
+        juce::File arturiaDb;                     // Arturia's preset database (Analog Lab)
+        juce::Array<juce::File> cymaticsRoots;    // Cymatics plug-ins' preset folders
+
         static SystemLocations forThisComputer();
 
         // The Windows layout under a fake root: <root>/Program Files, <root>/ProgramData,

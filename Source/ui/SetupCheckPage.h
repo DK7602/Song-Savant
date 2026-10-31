@@ -42,7 +42,6 @@ namespace ss::ui
         void noteDrop (const juce::String& line);
 
         SongSavantProcessor& proc;
-        juce::Image owl, wordmark;
 
         PillButton scanBtn { "SCAN MY SETUP", PillButton::Style::gold },
                    stopBtn { "STOP", PillButton::Style::outline },
@@ -67,7 +66,7 @@ namespace ss::ui
         std::unique_ptr<juce::FileChooser> chooser;
 
         // layout, kept for paint()
-        juce::Rectangle<float> headerArea, scanPanel, dragPanel, reportPanel;
+        juce::Rectangle<float> scanPanel, dragPanel, reportPanel;
         juce::Rectangle<float> scanIntro, dragIntro, reportIntro, extraLine, reportLine, dropArea;
 
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SetupCheckPage)

@@ -39,8 +39,10 @@ https://github.com/DK7602/Groove-Grabber), **Key Compass** (songs with key, temp
 - **Loading a sound** (confirmed by the Phase 0 drag tests, Cubase 14 Artist): dragging a `.vstpreset` file from
   outside Cubase into the project **does not work**, so Song Savant doesn't rely on it. The flow is: Song Savant
   shows the exact preset (name, instrument, library) with a **"copy name" button**, and you paste the name into
-  Cubase's preset search (MediaBay, the Add Track dialog's preset browser, or the instrument's own browser). The
-  same works in every DAW. **MIDI drag works both ways**: Song Savant's MIDI clips drop into Cubase, and MIDI
+  Cubase's preset search. **Confirmed working:** in MediaBay (F5), select **All Media** at the top of the File
+  Browser (MediaBay only searches the selected folder), paste the name, then drag the result into the project:
+  Cubase creates the instrument track with the sound loaded. The instrument's own preset browser works too. The
+  same idea works in every DAW. **MIDI drag works both ways**: Song Savant's MIDI clips drop into Cubase, and MIDI
   parts dragged from Cubase onto Song Savant arrive as `.mid` files (so Song Savant can read a song's chords and
   parts later).
 
@@ -94,8 +96,9 @@ No program can write a custom reader for every plugin, so:
   Presets made for "HALion Sonic SE" (5,807) load in HALion Sonic. Also in MediaBay: Groove Agent kits
   (`GAInstrument`), MIDI loops, track presets, chord pads.
 - Arturia: 12,166 presets in the database, of which 2,914 are flagged as Analog Lab factory presets.
-  **Open question:** which presets can the owner actually play? (Analog Lab Pro may lock presets of instruments
-  that aren't owned.) Until that's settled, only suggest Analog Lab factory presets plus the owner's own.
+  **Settled:** some presets show "buy" in the owner's Analog Lab, so Song Savant only suggests presets flagged
+  `analoglab_factory = 1` plus the owner's own (presets in non-factory packs). The others stay visible in the
+  browser, marked "not owned". (Later: a setting to say which extra Arturia instruments you own.)
 - Privacy: the scan never lists or opens files or folders named like keys, passwords, licences or credentials,
   and replaces the user's home folder with `~` in every form (including `file://` links).
 
@@ -183,9 +186,18 @@ Windows, **Cubase Artist 14** (also has Artist 12/13, Elements 12/13 licences).
 - [x] Owner ran 0.2.0: MediaBay and Arturia fully readable; MIDI drag works both ways; preset files don't drop
   into Cubase (so "copy name" it is); Cubase's plug-in list has no categories.
 - [x] 0.3.0: privacy fixes (user name in `file://` links; private-looking names skipped), Arturia ownership counts.
-- [ ] Settle which Arturia presets are playable (see decision 4).
+- [x] Settled which Arturia presets are playable, and confirmed the MediaBay search-and-drag flow. **Phase 0 done.**
 
-### Phase 1: Sounds
+### Phase 1: Sounds *(current)*
+Built in steps, each one a build the owner can try:
+- **1a Library:** the catalog (below) and a sound browser: search, filter by kind of sound and instrument,
+  details, copy name, how to load it. *(Built in 0.4.0: owner to try it on the real libraries.)*
+- **1b Music knowledge:** genres, styles, decades and reference artists (same list and IDs as Groove Grabber),
+  plus which parts each style uses and what they should sound like.
+- **1c Palettes:** the song form and palette suggestions (every part, drums included), alternatives, lock and
+  regenerate, "why it works", save and recall.
+- **1d Polish:** plug-in scan in a helper process, light theme, the mockup's look throughout.
+
 - Library catalog from what Phase 0 proved: **MediaBay's database** (Steinberg), **Arturia's database**, Cymatics
   preset files (names and folders), the owner's own `.vstpreset` files. Cached; rebuilt when those change.
 - Plug-in scan in a helper process (instrument or effect, maker, categories), cached, plus built-in profiles

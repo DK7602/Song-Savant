@@ -6,9 +6,10 @@
 through the instruments and presets you already own, then suggests a complete sound palette: rhythm, bass,
 leads, pads and drums, each with alternatives, plus starter MIDI parts to get the song moving.
 
-> **Status: Phase 0 (setup check).** This build doesn't suggest sounds yet. It scans your computer to find out
-> which of your instruments' presets can be read, and runs a drag-and-drop test with Cubase. The plan and
-> every decision so far are in [docs/ROADMAP.md](docs/ROADMAP.md).
+> **Status: Phase 1a (Library).** Song Savant reads every sound you own (Steinberg via MediaBay, Analog Lab,
+> Cymatics, your own presets) into one searchable Library: filter by kind of sound and instrument, see where a
+> sound lives, and copy its name to paste into MediaBay. Palettes come next. The Setup Check from Phase 0 is still
+> there as a page. The plan and every decision so far are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 | Format | Where it works |
 |---|---|

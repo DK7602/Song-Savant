@@ -4,6 +4,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "core/ScanJob.h"
+#include "core/CatalogJob.h"
 #include "core/Report.h"
 
 class SongSavantProcessor : public juce::AudioProcessor
@@ -19,6 +20,11 @@ public:
     std::function<ss::SystemLocations()> locationProvider;   // the real computer, or a fake one in the tests
 
     void startScan();
+
+    // the catalog of every sound you own (built in the background when the window first opens)
+    ss::CatalogJob catalog;
+    void startCatalog();
+    int page = 0;                                          // the page that was showing (0 Library, 1 Setup Check)
     juce::File saveReport();                 // writes Documents/Song Savant/Setup Report.txt (if there's a result)
     juce::String reportText() const;
 
