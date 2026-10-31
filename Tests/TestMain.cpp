@@ -12,6 +12,8 @@
 #include "core/Paths.h"
 #include "core/DropInfo.h"
 #include "core/Catalog.h"
+#include "core/Music.h"
+#include "core/Parts.h"
 #include <map>
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
@@ -340,6 +342,67 @@ namespace
                && ss::guessKind ("Kick 808") == ss::Kind::drums && ss::guessKind ("Warm Rhodes") == ss::Kind::keys, "guessing a kind from words");
     }
 
+    void testMusic()
+    {
+        section ("Music knowledge");
+        check (ss::allStyles().size() == 50, "50 styles from Groove Grabber, got " + juce::String ((int) ss::allStyles().size()));
+        check (ss::stylesFor (ss::Genre::country).front()->isGeneral() && ss::stylesFor (ss::Genre::country).size() == 5, "country: General + 4 styles");
+        check (ss::styleById ("country.modern") != nullptr && ss::styleById ("country.modern")->name == "Modern Nashville", "style by id");
+        check (ss::genreId (ss::Genre::hiphop) == "boombap" && ss::genreFromId ("worship") == ss::Genre::worship, "genre ids match Groove Grabber");
+        check (ss::allReferences().size() > 350, "artists and songs, got " + juce::String ((int) ss::allReferences().size()));
+
+        check (ss::parseKey ("Am") == 21 && ss::parseKey ("F# major") == 6 && ss::parseKey ("in Bb") == 10 && ss::parseKey ("key of A") == 9
+               && ss::parseKey ("C minor") == 12 && ss::parseKey ("in a hurry") == -1 && ss::parseKey ("Db major") == 1, "reading keys");
+        check (ss::keyName (21) == "A Minor" && ss::keyName (-1) == "no key", "key names");
+
+        auto b = ss::readBrief ("Modern country like Morgan Wallen, warm, 120 BPM in A minor");
+        bool wallen = false;
+        for (int r : b.references) if (ss::allReferences()[(size_t) r].name == "Morgan Wallen") wallen = true;
+        check (b.genre == ss::Genre::country && b.styleId == "country.modern" && std::abs (b.bpm - 120.0) < 0.01 && b.key == 21 && wallen && b.sound.contains ("warm"),
+               "a full description: genre, style, artist, BPM, key, sound (" + b.understood.joinIntoString (", ") + ")");
+
+        b = ss::readBrief ("Elevation Worship");
+        check (b.genre == ss::Genre::worship && b.styleId.startsWith ("worship") && b.bpm > 0, "an artist alone sets the genre and style: " + b.styleId);
+        b = ss::readBrief ("dark trap 140bpm");
+        check (b.genre == ss::Genre::trap && std::abs (b.bpm - 140.0) < 0.01 && b.sound.contains ("dark"), "genre word, BPM written together, sound word");
+        b = ss::readBrief ("80s pop");
+        check (b.genre == ss::Genre::pop && b.era == 2, "decade");
+        b = ss::readBrief ("future bass drop");
+        bool future = false;
+        for (int r : b.references) if (ss::allReferences()[(size_t) r].name == "Future") future = true;
+        check (! future, "an artist named like an ordinary word needs a cue");
+        b = ss::readBrief ("like Morgan Wallen", ss::Genre::rock);
+        check (b.genre == ss::Genre::rock, "the genre you pick wins over the artist's");
+        b = ss::readBrief ("", ss::Genre::worship, "worship.gospel");
+        check (b.styleId == "worship.gospel" && b.bpm > 0, "a picked style, with its tempo");
+
+        auto parts = ss::partsFor (ss::readBrief ("warm modern country"));
+        juce::StringArray roles;
+        for (auto& p : parts) roles.add (p.role);
+        check (roles.contains ("Drums") && roles.contains ("Bass") && roles.contains ("Rhythm 1") && roles.contains ("Lead"), "country band: " + roles.joinIntoString (", "));
+        bool warmFirst = true, coldAvoided = true, fiddleOptional = false;
+        for (auto& p : parts)
+        {
+            if (p.want[0] != "warm") warmFirst = false;
+            if (! p.avoid.contains ("cold")) coldAvoided = false;
+            if (p.role == "Fiddle") fiddleOptional = p.optional;
+        }
+        check (warmFirst && coldAvoided && fiddleOptional, "your words shape every part; extras are optional");
+        auto gospel = ss::partsFor (ss::readBrief ("", ss::Genre::worship, "worship.gospel"));
+        for (auto& p : gospel) if (p.role == "Keys") check (p.kinds.front() == ss::Kind::organ, "gospel keys lean on organ");
+        auto countryRap = ss::partsFor (ss::readBrief ("country rap"));
+        for (auto& p : countryRap) if (p.role == "Bass") check (p.want.contains ("808"), "country rap bass is an 808");
+        for (int g = 0; g < ss::numGenres; ++g)
+        {
+            ss::SongBrief gb;
+            gb.genre = (ss::Genre) g;
+            auto ps = ss::partsFor (gb);
+            int core = 0;
+            for (auto& p : ps) if (! p.optional) ++core;
+            check (core >= 5, ss::genreName ((ss::Genre) g) + " has a full band (" + juce::String (core) + " core parts)");
+        }
+    }
+
     void testCancelAndJob (const sstest::FakeComputer& fc)
     {
         section ("Cancelling and the background job");
@@ -420,6 +483,7 @@ int main (int argc, char** argv)
     auto r = testScan (fc);
     testReport (r, fc);
     testCatalog (fc);
+    testMusic();
     testCancelAndJob (fc);
 
     if (const int i = args.indexOf ("--shots"); i >= 0)

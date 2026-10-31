@@ -3,14 +3,13 @@
 #pragma once
 
 #include "SystemLocations.h"
+#include "Music.h"
 #include <map>
 #include <optional>
 #include <vector>
 
 namespace ss
 {
-    // 0..11 = C..B major, 12..23 = C..B minor (the same numbering as Key Compass and Groove Grabber)
-    juce::String keyName (int key);
 
     struct KeyCompassSong
     {

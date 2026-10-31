@@ -101,6 +101,8 @@ set(SS_CORE_SOURCES
     Source/core/SoundKinds.cpp
     Source/core/Database.cpp
     Source/core/Catalog.cpp
+    Source/core/Music.cpp
+    Source/core/Parts.cpp
     Source/core/ScanJob.cpp)
 
 set(SS_UI_SOURCES

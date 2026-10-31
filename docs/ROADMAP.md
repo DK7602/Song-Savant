@@ -195,7 +195,11 @@ Built in steps, each one a build the owner can try:
 - **1a Library:** the catalog (below) and a sound browser: search, filter by kind of sound and instrument,
   details, copy name, how to load it. *(Built in 0.4.0: owner to try it on the real libraries.)*
 - **1b Music knowledge:** genres, styles, decades and reference artists (same list and IDs as Groove Grabber),
-  plus which parts each style uses and what they should sound like.
+  plus which parts each style uses and what they should sound like. *(Done: `Source/core/Music.*` reads
+  descriptions like "modern country like Morgan Wallen, warm, 120 BPM in A minor"; the styles and the 400+ artists
+  and songs are copied from Groove Grabber by `tools/sync_from_groove_grabber.py` into `MusicData.inc` (re-run it
+  when Groove Grabber's tables change); `Source/core/Parts.*` has each genre's band, style tweaks (country rap 808,
+  Americana banjo, gospel organ, ambient worship pads...), decade words, and your words first.)*
 - **1c Palettes:** the song form and palette suggestions (every part, drums included), alternatives, lock and
   regenerate, "why it works", save and recall.
 - **1d Polish:** plug-in scan in a helper process, light theme, the mockup's look throughout.

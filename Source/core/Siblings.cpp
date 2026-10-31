@@ -4,13 +4,6 @@
 
 namespace ss
 {
-    juce::String keyName (int key)
-    {
-        static const char* names[] = { "C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B" };
-        if (key < 0 || key > 23) return "no key";
-        return juce::String (names[key % 12]) + (key < 12 ? " Major" : " Minor");
-    }
-
     std::optional<KeyCompassSong> readKeyCompassSong (const juce::File& f)
     {
         auto xml = juce::XmlDocument::parse (f);
