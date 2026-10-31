@@ -334,6 +334,8 @@ namespace
 
         check (ss::howToLoad (*keys0).contains ("All Media") && ss::howToLoad (*pad).contains ("Analog Lab V")
                && ss::howToLoad (*byName["Jupiter Brass"]).startsWith ("Not owned"), "how to load");
+        check (ss::whereToPaste (*keys0).contains ("MediaBay") && ss::whereToPaste (*pad).contains ("Analog Lab's search")
+               && ss::whereToPaste (*cyByName["Glass Bell"]).contains ("Cymatics Plinko's preset list"), "where to paste depends on the library");
         check (ss::guessKind ("Bassoon Solo") == ss::Kind::woodwinds && ss::guessKind ("Deep Sub 808 Bass") == ss::Kind::bass
                && ss::guessKind ("Kick 808") == ss::Kind::drums && ss::guessKind ("Warm Rhodes") == ss::Kind::keys, "guessing a kind from words");
     }

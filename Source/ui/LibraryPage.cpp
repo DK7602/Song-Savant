@@ -210,7 +210,7 @@ namespace ss::ui
         if (auto* s = selectedSound())
         {
             juce::SystemClipboard::copyTextToClipboard (s->name);
-            copiedNote = "Copied \"" + s->name + "\". Paste it into MediaBay's search.";
+            copiedNote = "Copied \"" + s->name + "\". " + whereToPaste (*s);
             repaint();
         }
     }

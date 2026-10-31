@@ -41,7 +41,9 @@ https://github.com/DK7602/Groove-Grabber), **Key Compass** (songs with key, temp
   shows the exact preset (name, instrument, library) with a **"copy name" button**, and you paste the name into
   Cubase's preset search. **Confirmed working:** in MediaBay (F5), select **All Media** at the top of the File
   Browser (MediaBay only searches the selected folder), paste the name, then drag the result into the project:
-  Cubase creates the instrument track with the sound loaded. The instrument's own preset browser works too. The
+  Cubase creates the instrument track with the sound loaded. The instrument's own preset browser works too.
+  **MediaBay only lists Steinberg presets**: Analog Lab sounds are found in Analog Lab's own search, Cymatics sounds
+  in each plug-in's preset list, so Song Savant says where to paste for each source. The
   same idea works in every DAW. **MIDI drag works both ways**: Song Savant's MIDI clips drop into Cubase, and MIDI
   parts dragged from Cubase onto Song Savant arrive as `.mid` files (so Song Savant can read a song's chords and
   parts later).

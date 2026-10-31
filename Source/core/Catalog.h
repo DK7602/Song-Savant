@@ -73,4 +73,7 @@ namespace ss
 
     // What to do in Cubase (or another DAW) to load it, in plain words
     juce::String howToLoad (const Sound&);
+
+    // Where to paste a copied name: "MediaBay's search (All Media)", "Analog Lab's search", "Cymatics Plinko's preset list"
+    juce::String whereToPaste (const Sound&);
 }

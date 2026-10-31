@@ -8,7 +8,8 @@ leads, pads and drums, each with alternatives, plus starter MIDI parts to get th
 
 > **Status: Phase 1a (Library).** Song Savant reads every sound you own (Steinberg via MediaBay, Analog Lab,
 > Cymatics, your own presets) into one searchable Library: filter by kind of sound and instrument, see where a
-> sound lives, and copy its name to paste into MediaBay. Palettes come next. The Setup Check from Phase 0 is still
+> sound lives, and copy its name (Steinberg sounds: paste into MediaBay; Analog Lab and Cymatics: into the
+> instrument's own browser). Palettes come next. The Setup Check from Phase 0 is still
 > there as a page. The plan and every decision so far are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 | Format | Where it works |

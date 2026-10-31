@@ -386,17 +386,26 @@ namespace ss
         const auto q = "\"" + s.name + "\"";
         juce::String text;
         if (s.source == "MediaBay")
-            text = "In Cubase: open MediaBay (F5), click All Media at the top of the list on the left, search for " + q
+            text = "In Cubase: open MediaBay (F5), click All Media at the top of the File Browser on the left, search for " + q
                  + " and drag it into your project. Or load " + (s.instrument.isNotEmpty() ? s.instrument : juce::String ("the instrument"))
                  + " and type the name in its preset browser.";
         else if (s.source == "Arturia")
-            text = "Load Analog Lab V on an instrument track and search for " + q + " in its sound browser"
+            text = "MediaBay doesn't list Analog Lab sounds. Load Analog Lab V on an instrument track and search for " + q + " in its own sound browser"
                  + (s.origin.isNotEmpty() ? " (from " + s.origin + ")." : juce::String ("."));
         else if (s.source == "Cymatics")
-            text = "Load " + s.instrument + " and choose " + q + " from its presets" + (s.library.isNotEmpty() ? " (" + s.library + ")." : juce::String ("."));
+            text = "MediaBay doesn't list Cymatics sounds. Load " + s.instrument + " on an instrument track and choose " + q + " from its preset list"
+                 + (s.library.isNotEmpty() ? " (" + s.library + ")." : juce::String ("."));
         else
             text = "Load " + s.instrument + " and open its preset " + q + " (in your VST3 Presets folder).";
         if (! s.owned) text = "Not owned: Analog Lab shows a buy button for this one. " + text;
         return text;
+    }
+
+    juce::String whereToPaste (const Sound& s)
+    {
+        if (s.source == "MediaBay") return "Paste it into MediaBay's search (with All Media selected).";
+        if (s.source == "Arturia")  return "Paste it into Analog Lab's search box. (MediaBay doesn't list Analog Lab sounds.)";
+        if (s.source == "Cymatics") return "Find it in " + s.instrument + "'s preset list. (MediaBay doesn't list Cymatics sounds.)";
+        return "Find it in " + s.instrument + "'s preset browser.";
     }
 }
