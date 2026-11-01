@@ -13,12 +13,21 @@ namespace ss::ui
     class PadList : public juce::Component
     {
     public:
+        PadList()                                        { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
         void setMap (std::shared_ptr<const KitMap> m)   { map = std::move (m); repaint(); }
         int heightNeeded() const;
         void paint (juce::Graphics&) override;
+        void mouseMove (const juce::MouseEvent& e) override  { setHover (rowAt (e.position.y)); }
+        void mouseExit (const juce::MouseEvent&) override    { setHover (-1); }
+        void mouseUp (const juce::MouseEvent&) override;
+
+        std::function<void (int pad, juce::Rectangle<int> screenArea)> onPadClicked;   // to rename it
 
     private:
+        int rowAt (float y) const;
+        void setHover (int r)                            { if (r != hover) { hover = r; repaint(); } }
         std::shared_ptr<const KitMap> map;
+        int hover = -1;
         static constexpr float rowHeight = 30.0f;
     };
 
@@ -46,6 +55,8 @@ namespace ss::ui
     private:
         void timerCallback() override;
         void choosePreset();
+        void renamePad (int pad, juce::Rectangle<int> screenArea);
+        void changePad (int pad, const std::function<void (KitMap&, KitPad&)>&);
 
         SongSavantProcessor& proc;
         PillButton chooseBtn { "CHOOSE A PRESET...", PillButton::Style::outline },
@@ -54,6 +65,7 @@ namespace ss::ui
         PadList pads;
         juce::Viewport padsView;
         std::unique_ptr<juce::FileChooser> chooser;
+        std::unique_ptr<juce::AlertWindow> nameWindow;
 
         juce::Rectangle<float> leftPanel, rightPanel, stepsArea, dropArea, statusArea, titleArea, resultTextArea, howArea;
         int seenGeneration = -1;

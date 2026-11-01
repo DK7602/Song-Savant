@@ -20,6 +20,20 @@ namespace ss::ui
         return map == nullptr ? 0 : (int) (rowHeight * (float) map->pads.size()) + 4;
     }
 
+    int PadList::rowAt (float y) const
+    {
+        if (map == nullptr || y < 0) return -1;
+        const int r = (int) (y / rowHeight);
+        return r < (int) map->pads.size() ? r : -1;
+    }
+
+    void PadList::mouseUp (const juce::MouseEvent& e)
+    {
+        const int r = rowAt (e.position.y);
+        if (r >= 0 && onPadClicked)
+            onPadClicked (r, localAreaToGlobal (juce::Rectangle<int> (0, (int) ((float) r * rowHeight), getWidth(), (int) rowHeight)));
+    }
+
     void PadList::paint (juce::Graphics& g)
     {
         if (map == nullptr) return;
@@ -29,10 +43,18 @@ namespace ss::ui
         for (auto& pad : map->pads)
         {
             auto row = r.removeFromTop (rowHeight);
-            if (i++ % 2 == 0)
+            const bool over = i == hover;
+            if (over || i % 2 == 0)
             {
-                g.setColour (p.panelHi.withAlpha (0.45f));
+                g.setColour (over ? p.purple.withAlpha (0.35f) : p.panelHi.withAlpha (0.45f));
                 g.fillRoundedRectangle (row.reduced (0.0f, 1.0f), 6.0f);
+            }
+            ++i;
+            if (over)
+            {
+                g.setColour (p.muted);
+                g.setFont (sans (11.5f));
+                g.drawText ("rename", row.withTrimmedRight (12.0f), juce::Justification::centredRight);
             }
             row.removeFromLeft (10.0f);
             g.setColour (p.text);
@@ -60,6 +82,7 @@ namespace ss::ui
         showBtn.onClick = [this] { if (savedFile.existsAsFile()) savedFile.revealToUser(); };
         addChildComponent (againBtn);
         againBtn.onClick = [this] { if (proc.kitMap.preset().existsAsFile()) mapPreset (proc.kitMap.preset()); };
+        pads.onPadClicked = [this] (int pad, juce::Rectangle<int> area) { renamePad (pad, area); };
         padsView.setViewedComponent (&pads, false);
         padsView.setScrollBarsShown (true, false);
         addAndMakeVisible (padsView);
@@ -91,6 +114,64 @@ namespace ss::ui
         chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [this] (const juce::FileChooser& fc)
         {
             if (fc.getResult().existsAsFile()) mapPreset (fc.getResult());
+        });
+    }
+
+    void DrumMapsPage::changePad (int index, const std::function<void (KitMap&, KitPad&)>& change)
+    {
+        auto current = proc.kitMap.result();
+        if (current == nullptr || index < 0 || index >= (int) current->pads.size()) return;
+        KitMap k = *current;
+        change (k, k.pads[(size_t) index]);
+        nameKitPads (k);
+        proc.kitMap.setResult (proc.kitMap.preset(), k);   // the timer saves the drum map again
+        timerCallback();
+    }
+
+    void DrumMapsPage::renamePad (int index, juce::Rectangle<int> area)
+    {
+        auto current = proc.kitMap.result();
+        if (current == nullptr || index < 0 || index >= (int) current->pads.size()) return;
+        const auto pad = current->pads[(size_t) index];
+
+        juce::PopupMenu m;
+        m.addSectionHeader (noteName (pad.note) + "  (key " + juce::String (pad.note) + ")  is a...");
+        int id = 1;
+        for (auto& kind : padKinds()) m.addItem (id++, kind, true, ! pad.custom && kind == pad.kind);
+        m.addSeparator();
+        m.addItem (1000, "Type a name...");
+        m.addItem (1001, "Leave this key out of the map");
+        juce::Component::SafePointer<DrumMapsPage> safe (this);
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (area).withMinimumWidth (220), [safe, index, pad] (int r)
+        {
+            if (safe == nullptr || r == 0) return;
+            if (r >= 1 && r <= padKinds().size())
+            {
+                const auto kind = padKinds()[r - 1];
+                safe->changePad (index, [kind] (KitMap&, KitPad& p) { p.kind = kind; p.custom = false; });
+            }
+            else if (r == 1001)
+                safe->changePad (index, [note = pad.note] (KitMap& k, KitPad&)
+                {
+                    k.pads.erase (std::remove_if (k.pads.begin(), k.pads.end(), [note] (const KitPad& p) { return p.note == note; }), k.pads.end());
+                });
+            else if (r == 1000)
+            {
+                safe->nameWindow = std::make_unique<juce::AlertWindow> ("Name " + noteName (pad.note), "What should this pad be called?",
+                                                                        juce::MessageBoxIconType::NoIcon);
+                safe->nameWindow->addTextEditor ("name", pad.name);
+                safe->nameWindow->addButton ("OK", 1, juce::KeyPress (juce::KeyPress::returnKey));
+                safe->nameWindow->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+                safe->nameWindow->enterModalState (true, juce::ModalCallbackFunction::create ([safe, index] (int result)
+                {
+                    if (safe == nullptr || safe->nameWindow == nullptr) return;
+                    const auto typed = safe->nameWindow->getTextEditorContents ("name").trim();
+                    safe->nameWindow->setVisible (false);
+                    if (result == 1 && typed.isNotEmpty())
+                        safe->changePad (index, [typed] (KitMap&, KitPad& p) { p.name = typed; p.custom = true; });
+                    juce::MessageManager::callAsync ([safe] { if (safe != nullptr) safe->nameWindow.reset(); });
+                }), false);
+            }
         });
     }
 
@@ -199,7 +280,8 @@ namespace ss::ui
         g.setColour (p.text);
         g.setFont (serif (26.0f));
         g.drawText (m->name, titleArea, juce::Justification::centredLeft, true);
-        juce::String sub = m->plugin + "  |  " + juce::String ((int) m->pads.size()) + (m->pads.size() == 1 ? " sound" : " sounds");
+        juce::String sub = m->plugin + "  |  " + juce::String ((int) m->pads.size()) + (m->pads.size() == 1 ? " sound" : " sounds")
+                           + "  |  click a pad to rename it";
         g.setColour (p.gold);
         g.setFont (sans (14.5f, true));
         g.drawText (sub, resultTextArea.withHeight (20.0f), juce::Justification::centredLeft, true);

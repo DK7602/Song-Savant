@@ -486,14 +486,25 @@ namespace
             }
             else if (what == "808")  x[i] = (float) (std::sin (juce::MathConstants<double>::twoPi * 45.0 * t) * std::exp (-t / 0.35));
             else if (what == "tom")  x[i] = (float) (std::sin (juce::MathConstants<double>::twoPi * 120.0 * t) * std::exp (-t / 0.1));
+            else if (what == "high tom") x[i] = (float) (std::sin (juce::MathConstants<double>::twoPi * 600.0 * t) * std::exp (-t / 0.1));
+            else if (what == "kick up")
+            {
+                phase += juce::MathConstants<double>::twoPi * (200.0 + 400.0 * std::exp (-t / 0.015)) / sr;
+                x[i] = (float) (std::sin (phase) * std::exp (-t / 0.03));
+            }
+            else if (what == "cowbell")
+                x[i] = (float) ((0.6 * std::sin (juce::MathConstants<double>::twoPi * 800.0 * t) + 0.4 * std::sin (juce::MathConstants<double>::twoPi * 540.0 * t))
+                                * std::exp (-t / 0.06));
         }
-        if (what == "snare")
+        if (what == "snare" || what == "snare up")
         {
-            const auto n = filtered (white, juce::IIRCoefficients::makeLowPass (sr, 5000.0), 2);
+            const bool up = what == "snare up";      // the same snare played an octave higher
+            const auto n = filtered (white, juce::IIRCoefficients::makeLowPass (sr, up ? 10000.0 : 5000.0), 2);
             for (size_t i = 0; i < x.size(); ++i)
             {
                 const double t = (double) i / sr;
-                x[i] = (float) (n[i] * std::exp (-t / 0.05) + 0.6 * std::sin (juce::MathConstants<double>::twoPi * 190.0 * t) * std::exp (-t / 0.04));
+                x[i] = (float) (n[i] * std::exp (-t / (up ? 0.025 : 0.05))
+                                + 0.6 * std::sin (juce::MathConstants<double>::twoPi * (up ? 380.0 : 190.0) * t) * std::exp (-t / (up ? 0.02 : 0.04)));
             }
         }
         else if (what == "clap")
@@ -531,6 +542,17 @@ namespace
             check (got == expected, juce::String (what) + " heard as " + got + "  (low " + juce::String (f.lowRatio, 2) + ", high " + juce::String (f.highRatio, 2)
                                     + ", zcr " + juce::String ((int) f.zcr) + ", decay " + juce::String (f.decay, 2) + " s, pitch " + juce::String ((int) f.pitchHz)
                                     + " Hz, bursts " + juce::String (f.bursts) + ")");
+        }
+        // played higher up the keyboard: pitched sounds mustn't pass for snares (the owner's Beat Box, C3 to C6)
+        const std::pair<const char*, juce::StringArray> pitched[] = { { "high tom", { "Tom", "Perc" } }, { "kick up", { "Kick", "Tom", "Perc" } },
+                                                                      { "cowbell", { "Perc" } }, { "snare up", { "Snare" } } };
+        for (auto& [what, allowed] : pitched)
+        {
+            const auto x = synthHit (what);
+            const auto f = ss::analyseHit (x.data(), (int) x.size(), 44100.0);
+            const auto got = ss::classifyHit (f);
+            check (allowed.contains (got), juce::String (what) + " heard as " + got + "  (tonal " + juce::String (f.tonal, 2) + " at " + juce::String ((int) f.toneHz)
+                                           + " Hz, zcr " + juce::String ((int) f.zcr) + ", decay " + juce::String (f.decay, 2) + " s)");
         }
         std::vector<float> quiet (44100, 0.0f);
         check (ss::classifyHit (ss::analyseHit (quiet.data(), (int) quiet.size(), 44100.0)).isEmpty(), "a silent key is left out");
@@ -584,6 +606,25 @@ namespace
         const auto file = ss::saveCubaseDrumMap (k);
         check (file.getFileName() == "Beat Box.drm" && file.getParentDirectory() == ss::drumMapsFolder() && file.loadFileAsString().contains ("Closed Hat"),
                "saved in Documents/Song Savant/Drum Maps");
+
+        // renaming by hand: picking another kind renumbers; a typed name is kept as it is
+        {
+            auto edited = k;
+            for (auto& p : edited.pads)
+            {
+                if (p.note == 38) p.kind = "Rim";                       // was Snare
+                if (p.note == 47) { p.name = "Big Floor Tom"; p.custom = true; }
+            }
+            ss::nameKitPads (edited);
+            juce::StringArray after;
+            for (auto& p : edited.pads) after.add (p.name);
+            check (after.joinIntoString (", ") == "Kick, Kick 2, Rim, Closed Hat, Low Tom, Open Hat, Big Floor Tom, High Tom",
+                   "renamed pads: " + after.joinIntoString (", "));
+            const auto again = ss::kitMapFromJson (juce::JSON::parse (juce::JSON::toString (ss::kitMapToJson (edited))));
+            check (again.pads[6].custom && again.pads[6].name == "Big Floor Tom" && ss::makeCubaseDrumMap (again).contains ("Big Floor Tom"),
+                   "a typed name is kept, and goes in the drum map");
+            check (ss::padKinds().contains ("Rim") && ss::padKinds().contains ("Cowbell"), "names to choose from");
+        }
 
         ss::KitMap chromatic;                      // one 808 played up and down the keyboard
         for (int n = 24; n < 60; ++n) { ss::KitPad p; p.note = n; p.kind = "808"; chromatic.pads.push_back (p); }

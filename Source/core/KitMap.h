@@ -14,9 +14,12 @@ namespace ss
         float peak = 0;          // loudest sample
         float lowRatio = 0;      // share of the energy below ~150 Hz (kicks, 808s)
         float highRatio = 0;     // share of the energy above ~5 kHz (hats, cymbals)
+        float bodyRatio = 0;     // share of the energy below ~400 Hz (the body of a tom or a kick; a cowbell has none)
         float zcr = 0;           // zero crossings per second at the start: high = noisy or bright
         float decay = 0;         // seconds until it has died away (30 dB below its peak)
         float pitchHz = 0;       // rough pitch of the low part (kick ~50 Hz, toms 80-300 Hz)
+        float tonal = 0;         // 0..1: how clearly it has a pitch (toms, kicks, cowbells) rather than noise (snares, hats)
+        float toneHz = 0;        // that pitch, when it has one
         int bursts = 1;          // separate hits in the first 60 ms (a clap has several)
         bool silent() const      { return peak < 0.001f; }
     };
@@ -31,6 +34,7 @@ namespace ss
         int note = 0;            // MIDI note (36 = C1 in Cubase)
         juce::String kind;       // what it sounds like: "Kick", "Tom"...
         juce::String name;       // what the drum map calls it: "Kick 2", "Low Tom"...
+        bool custom = false;     // you typed the name yourself: it's kept as it is
         HitFeatures features;
     };
 
@@ -44,8 +48,12 @@ namespace ss
         bool ok() const          { return error.isEmpty() && ! pads.empty(); }
     };
 
-    // Names the pads from their kinds: "Kick", "Kick 2"...; toms low to high; spots one sound played across the keys
+    // Names the pads from their kinds: "Kick", "Kick 2"...; toms low to high; spots one sound played across the keys.
+    // Names you typed yourself are left alone.
     void nameKitPads (KitMap&);
+
+    // What you can call a pad when you rename it
+    const juce::StringArray& padKinds();
 
     juce::var kitMapToJson (const KitMap&);
     KitMap kitMapFromJson (const juce::var&);

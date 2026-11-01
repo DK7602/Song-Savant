@@ -65,6 +65,7 @@ namespace ss
         {
             f.lowRatio = (float) (filteredEnergy (x, body, juce::IIRCoefficients::makeLowPass (sr, 150.0), 2) / total);
             f.highRatio = (float) (filteredEnergy (x, body, juce::IIRCoefficients::makeHighPass (sr, 5000.0), 2) / total);
+            f.bodyRatio = (float) (filteredEnergy (x, body, juce::IIRCoefficients::makeLowPass (sr, 400.0), 2) / total);
         }
 
         // how noisy at the start
@@ -85,6 +86,41 @@ namespace ss
                     lp.processSamples (low.data(), len);
                 }
                 f.pitchHz = (float) (zeroCrossings (low.data(), len) / 2.0 / ((double) len / sr));
+            }
+        }
+
+        // how clearly pitched: how well the sound matches itself one period later (a tom, a kick or a cowbell does;
+        // the noise of a snare or a hat doesn't). Searched from 40 Hz to 1 kHz, over 60 ms after the attack.
+        {
+            const int from = std::min (n, (int) (sr * 0.005));
+            const int len = std::min (n - from, (int) (sr * 0.06));
+            const int minLag = std::max (2, (int) (sr / 1000.0));
+            const int maxLag = std::min (len / 2, (int) (sr / 40.0));
+            if (len > 64 && maxLag > minLag)
+            {
+                const float* w = x + from;
+                std::vector<float> r ((size_t) (maxLag + 1), 0.0f);
+                float best = 0;
+                for (int lag = minLag; lag <= maxLag; ++lag)
+                {
+                    double xy = 0, xx = 0, yy = 0;
+                    for (int i = 0; i + lag < len; ++i)
+                    {
+                        xy += (double) w[i] * w[i + lag];
+                        xx += (double) w[i] * w[i];
+                        yy += (double) w[i + lag] * w[i + lag];
+                    }
+                    r[(size_t) lag] = xx > 0 && yy > 0 ? (float) (xy / std::sqrt (xx * yy)) : 0.0f;
+                    best = std::max (best, r[(size_t) lag]);
+                }
+                f.tonal = std::max (0.0f, best);
+                // the period is the first strong match (not twice or three times it)
+                for (int lag = minLag + 1; lag < maxLag; ++lag)
+                    if (r[(size_t) lag] >= best * 0.9f && r[(size_t) lag] >= r[(size_t) lag - 1] && r[(size_t) lag] >= r[(size_t) lag + 1])
+                    {
+                        f.toneHz = (float) (sr / lag);
+                        break;
+                    }
             }
         }
 
@@ -115,14 +151,25 @@ namespace ss
     juce::String classifyHit (const HitFeatures& f)
     {
         if (f.silent()) return {};
-        if (f.highRatio > 0.5f)
+        // noisy: lots of zero crossings, more than its pitch explains (a high tom or a cowbell crosses zero often too)
+        const bool pitched = f.tonal > 0.6f;
+        const bool noisy = f.zcr > 1500.0f && (! pitched || f.zcr > 6.0f * f.toneHz);
+        if (f.highRatio > 0.5f && (noisy || ! pitched))
             return f.decay < 0.15f ? "Closed Hat" : f.decay < 0.7f ? "Open Hat" : "Cymbal";
         if (f.lowRatio > 0.45f && f.pitchHz < 90.0f)
             return f.decay > 0.6f ? "808" : "Kick";
-        if (f.bursts >= 3 && f.zcr > 1500.0f) return "Clap";
-        if (f.zcr > 1500.0f) return "Snare";
-        if (f.pitchHz >= 60.0f && f.pitchHz < 400.0f && f.decay > 0.12f) return "Tom";   // tonal, low to mid, rings a while
+        if (noisy)
+            return f.bursts >= 3 ? "Clap" : "Snare";
+        const float hz = pitched && f.toneHz > 0 ? f.toneHz : f.pitchHz;
+        if (hz >= 60.0f && hz < 400.0f && f.decay > 0.12f && f.bodyRatio > 0.35f) return "Tom";   // pitched, low to mid body, rings a while
         return "Perc";
+    }
+
+    const juce::StringArray& padKinds()
+    {
+        static const juce::StringArray kinds { "Kick", "808", "Snare", "Rim", "Clap", "Snap", "Closed Hat", "Open Hat", "Pedal Hat", "Cymbal",
+                                               "Crash", "Ride", "Tom", "Perc", "Shaker", "Tambourine", "Cowbell", "Conga", "Bongo", "Vocal", "FX" };
+        return kinds;
     }
 
     void nameKitPads (KitMap& k)
@@ -136,7 +183,7 @@ namespace ss
         k.oneSound = k.pads.size() >= 18 && most * 4 >= (int) k.pads.size() * 3;
 
         std::vector<KitPad*> toms;
-        for (auto& p : k.pads) if (p.kind == "Tom") toms.push_back (&p);
+        for (auto& p : k.pads) if (p.kind == "Tom" && ! p.custom) toms.push_back (&p);
         const char* three[] = { "Low Tom", "Mid Tom", "High Tom" };
         const char* two[] = { "Low Tom", "High Tom" };
         for (size_t i = 0; i < toms.size(); ++i)
@@ -148,7 +195,7 @@ namespace ss
         std::map<juce::String, int> seen;
         for (auto& p : k.pads)
         {
-            if (p.kind == "Tom") continue;
+            if (p.kind == "Tom" || p.custom) continue;
             const int n = ++seen[p.kind];
             p.name = n == 1 ? p.kind : p.kind + " " + juce::String (n);
         }
@@ -176,6 +223,10 @@ namespace ss
             d->setProperty ("decay", p.features.decay);
             d->setProperty ("pitch", p.features.pitchHz);
             d->setProperty ("bursts", p.features.bursts);
+            d->setProperty ("tonal", p.features.tonal);
+            d->setProperty ("body", p.features.bodyRatio);
+            d->setProperty ("tone", p.features.toneHz);
+            d->setProperty ("custom", p.custom);
             pads.add (juce::var (d));
         }
         o->setProperty ("pads", pads);
@@ -203,6 +254,10 @@ namespace ss
                 p.features.decay = (float) d["decay"];
                 p.features.pitchHz = (float) d["pitch"];
                 p.features.bursts = (int) d["bursts"];
+                p.features.tonal = (float) d["tonal"];
+                p.features.bodyRatio = (float) d["body"];
+                p.features.toneHz = (float) d["tone"];
+                p.custom = (bool) d["custom"];
                 k.pads.push_back (p);
             }
         if (! v.isObject() && k.error.isEmpty()) k.error = "No answer from Song Savant Scanner";

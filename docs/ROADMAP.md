@@ -269,8 +269,15 @@ Built in steps, each one a build the owner can try:
   Documents/Song Savant/Drum Maps. The owner loads it once in Cubase (MIDI > Drum Map Setup > Load). A preset that
   plays one sound across the keys is spotted ("no drum map needed"). The tests map a tiny test kit plug-in
   (`Tests/TestKit`, tests only) end to end. To check on the owner's PC: that the helper can open Analog Lab and
-  HALion with a saved preset, that the names are right, and that Cubase loads the `.drm`. Next: rename pads by
-  hand, and use these maps for the starter drum parts.
+  HALion with a saved preset, that the names are right, and that Cubase loads the `.drm`.
+  - **0.7.1, from the owner's first try** (Analog Lab "Beat Box": it mapped; C0-B2 right, 19 kicks, 11 snares and
+    6 toms; C3-C6 wrong, nearly all called Snare, though they're a mix of toms, kicks and percussion played higher
+    up). Higher-pitched sounds cross zero often, which the old "noisy" test took for a snare. Now each hit is also
+    checked for **how clearly it has a pitch** (how well it matches itself one period later, 40 Hz-1 kHz): only
+    noisy sounds can be snares, claps or hats; a tom also needs a low body (energy below ~400 Hz), so a cowbell is
+    Perc. **Rename by hand:** click a pad to pick another name (Kick, Rim, Shaker, Cowbell...), type one, or leave the
+    key out; typed names are kept and the drum map is saved again straight away.
+  - Next: use these maps for the starter drum parts.
 - **Starter MIDI parts** (chords, bass, rhythm parts, hook idea) in key and tempo; follow Key Compass chords.
   Drag to DAW.
 - **Arrangement map** (which parts play in each section).
