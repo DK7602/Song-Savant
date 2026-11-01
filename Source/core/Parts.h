@@ -15,6 +15,9 @@ namespace ss
         juce::StringArray want;       // words that make a sound fit better ("acoustic", "warm", "e. bass")
         juce::StringArray avoid;      // words that make it fit worse ("distorted", "808")
         bool optional = false;        // an extra, not part of the core band
+        juce::String note;            // why this kind of sound, for "why it works" ("Leaves the low end to the 808...")
+        juce::StringArray alsoOffer;  // another kind of sound to keep among the alternatives (up to 2), e.g. deep subs
+        juce::String alsoOfferNote;   // ...and why you might pick one of those instead
     };
 
     std::vector<PartSpec> partsFor (const SongBrief&);

@@ -18,6 +18,19 @@ namespace ss
             return p;
         }
 
+        // With an 808 in the drum kit, the bass sits above it: plucked, synth or punchy basses that leave the deep sub to
+        // the 808 (two deep sounds playing different notes turn the low end to mud). Deep subs stay among the choices.
+        PartSpec bassAbove808 (PartSpec p)
+        {
+            p.hint = "A bass that sits above the kit's 808";
+            p.want = { "plucked bass", "pluck", "synth bass", "bass line", "punchy", "short", "dark", "mid" };
+            p.avoid = { "sub", "808", "e. bass", "acoustic", "upright" };
+            p.note = "Sits above the 808 in your drums, leaving it the deep low end";
+            p.alsoOffer = { "sub", "808" };
+            p.alsoOfferNote = "A deep sub like an 808: play the same notes as your 808, or use it instead of the 808";
+            return p;
+        }
+
         PartSpec* find (std::vector<PartSpec>& parts, const juce::String& role)
         {
             for (auto& p : parts) if (p.role == role) return &p;
@@ -80,8 +93,8 @@ namespace ss
                     part ("Sample", "Soulful strings, horns or a loop", { K::strings, K::brass, K::pluck, K::lead }, "soul,vintage,warm,jazzy,stab", "edm"),
                     part ("Pad", "Warm background pad", { K::pad }, "warm,dark,soft,vintage", "bright,harsh") };
                 case Genre::trap: return {
-                    part ("Drums", "Hard trap drums with rolling hats", { K::drums }, "trap,hip hop,808,hard,modern,urban", "rock,jazz,brush,acoustic"),
-                    part ("808", "A long 808 bass", { K::bass }, "808,sub,deep,hard,trap", "e. bass,acoustic,upright,pick"),
+                    part ("Drums", "Hard trap drums, rolling hats, 808 in the kit", { K::drums }, "trap,hip hop,808,hard,modern,urban", "rock,jazz,brush,acoustic"),
+                    bassAbove808 (part ("Bass", "", { K::bass }, "")),
                     part ("Melody", "Dark bells, keys or a pluck", { K::pluck, K::keys, K::piano }, "dark,bell,piano,pluck,melodic", "bright,happy"),
                     part ("Lead", "A dark lead or vocal chop", { K::lead, K::vocal, K::synth }, "dark,ambient,modern", "happy,bright"),
                     part ("Pad", "Dark atmosphere", { K::pad }, "dark,atmospheric,ambient,evolving", "bright,happy"),
@@ -129,7 +142,8 @@ namespace ss
                 wantMore (parts, "Drums", "trap,808,hip hop,hard");
                 avoidMore (parts, "Drums", "brush,jazz");
                 if (auto* d = find (parts, "Drums")) d->avoid.removeString ("trap"), d->avoid.removeString ("808"), d->avoid.removeString ("electronic");
-                if (auto* b = find (parts, "Bass")) { b->want = { "808", "sub", "deep", "hard" }; b->avoid = { "upright", "acoustic" }; }
+                if (auto* d = find (parts, "Drums")) d->hint = "Hard drums with an 808 in the kit";
+                if (auto* b = find (parts, "Bass")) *b = bassAbove808 (*b);
             }
             else if (id == "country.americana")
             {

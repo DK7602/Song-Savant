@@ -117,6 +117,12 @@ Tags guessed from a preset's name or category are shown as guesses.
 
 ### 5. Drums and the sibling apps
 - **Drums are a part in every palette.**
+- **The 808 goes with the drums** (the owner's way of working, settled November 2026). In trap and country rap the
+  drum card says "808 in the kit", and the **Bass** card suggests a bass from Analog Lab or HALion that **sits above
+  the 808** (plucked, synth or punchy basses; deep subs and 808-style basses count against it) so the two don't turn
+  the low end to mud. Two deep subs always stay among the alternatives, with a note to play the same notes as the
+  808 or use one instead of it. (`PartSpec::note`, `alsoOffer`, `alsoOfferNote`.) Phase 2's starter parts should
+  write the 808 and bass lines on the same notes, and Groove Grabber's kit should get the song's key to tune the 808.
 - The drum slot hands the song (genre, style, key, BPM, reference artist) to **Groove Grabber**, which builds the
   kits. Saved Groove Grabber kits (`Documents/Groove Grabber/Kits/<genre>/*.ggkit`, JSON) show up in Song Savant.
   Groove Agent kits, SSD Sampler 5, MT-PowerDrumKit and other drum instruments appear as alternatives.

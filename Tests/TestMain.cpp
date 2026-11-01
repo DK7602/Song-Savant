@@ -508,7 +508,14 @@ namespace
         auto gospel = ss::partsFor (ss::readBrief ("", ss::Genre::worship, "worship.gospel"));
         for (auto& p : gospel) if (p.role == "Keys") check (p.kinds.front() == ss::Kind::organ, "gospel keys lean on organ");
         auto countryRap = ss::partsFor (ss::readBrief ("country rap"));
-        for (auto& p : countryRap) if (p.role == "Bass") check (p.want.contains ("808"), "country rap bass is an 808");
+        for (auto& p : countryRap)
+        {
+            if (p.role == "Drums") check (p.want.contains ("808") && ! p.avoid.contains ("808"), "country rap: the 808 is in the drums");
+            if (p.role == "Bass") check (p.avoid.contains ("808") && p.alsoOffer.contains ("sub"), "country rap: the bass sits above the 808");
+        }
+        juce::StringArray trapRoles;
+        for (auto& p : ss::partsFor (ss::readBrief ("modern trap"))) trapRoles.add (p.role);
+        check (trapRoles.contains ("Bass") && ! trapRoles.contains ("808"), "trap has a Bass card (the 808 goes with the drums): " + trapRoles.joinIntoString (", "));
         for (int g = 0; g < ss::numGenres; ++g)
         {
             ss::SongBrief gb;
@@ -520,11 +527,54 @@ namespace
         }
     }
 
+    void testBassAbove808 (const ss::Catalog& base)
+    {
+        // a trap bass sits above the kit's 808; deep subs are still offered
+        auto cat = base;
+        auto bass = [&cat] (const juce::String& name, const juce::String& detail, const juce::String& words)
+        {
+            ss::Sound s;
+            s.name = name;
+            s.instrument = "Analog Lab V";
+            s.source = "Arturia";
+            s.kind = ss::Kind::bass;
+            s.detail = detail;
+            s.searchText = " " + (name + " " + detail + " " + words).toLowerCase() + " ";
+            cat.sounds.push_back (s);
+        };
+        bass ("Italian 808", "Sub Bass", "808 deep hard");
+        bass ("Floor Sub", "Sub Bass", "deep dark");
+        bass ("Night Pluck Bass", "Plucked Bass", "punchy short dark");
+        bass ("Rubber Line", "Bass Line", "punchy");
+        const auto brief = ss::readBrief ("modern trap");
+        auto pals = ss::makePalettes (cat, brief);
+        const ss::PaletteSlot* b = nullptr;
+        for (auto& sl : pals[0].slots) if (sl.part.role == "Bass") b = &sl;
+        check (b != nullptr && b->pick.isValid(), "trap palette has a bass");
+        if (b == nullptr || ! b->pick.isValid()) return;
+        auto isSub = [&cat] (const ss::Pick& x) { return cat.sounds[(size_t) x.sound].detail == "Sub Bass"; };
+        int subs = 0;
+        for (auto& a : b->alternatives) if (isSub (a)) ++subs;
+        check (! isSub (b->pick), "the first choice sits above the 808: " + cat.sounds[(size_t) b->pick.sound].name);
+        check (subs == 2, "both deep subs are still among the choices (" + juce::String (subs) + ")");
+        check (ss::whyItWorksPoints (cat, *b).contains ("Sits above the 808 in your drums, leaving it the deep low end"), "why it works says why");
+        for (auto& a : b->alternatives)
+            if (isSub (a))
+            {
+                ss::PaletteSlot alt = *b;
+                alt.pick = a;
+                alt.alternatives.clear();
+                check (ss::whyItWorksPoints (cat, alt).joinIntoString (" ").contains ("play the same notes as your 808"), "a deep sub says how to use it with the 808");
+                break;
+            }
+    }
+
     void testPalettes (const sstest::FakeComputer& fc)
     {
         section ("Palettes");
         std::atomic<bool> cancel { false };
         const auto cat = ss::buildCatalog (fc.loc, cancel);
+        testBassAbove808 (cat);
         const auto brief = ss::readBrief ("warm worship");
         const auto parts = ss::partsFor (brief);
         auto pals = ss::makePalettes (cat, brief);

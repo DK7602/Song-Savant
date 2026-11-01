@@ -153,6 +153,28 @@ namespace ss
                     if ((int) slot.alternatives.size() >= opt.alternatives) break;
                     if (cand.sound != slot.pick.sound) slot.alternatives.push_back (cand);
                 }
+                // keep up to two of the part's other kind of sound among the choices (deep subs for a bass above the 808)
+                if (! slot.part.alsoOffer.isEmpty())
+                {
+                    auto isOther = [&] (const Pick& x)
+                    {
+                        if (! x.isValid()) return false;
+                        for (auto& w : slot.part.alsoOffer) if (has (c.sounds[(size_t) x.sound], w)) return true;
+                        return false;
+                    };
+                    int others = isOther (slot.pick) ? 1 : 0;
+                    for (auto& a : slot.alternatives) if (isOther (a)) ++others;
+                    for (auto& cand : cands)
+                    {
+                        if (others >= 2) break;
+                        if (! isOther (cand) || cand.sound == slot.pick.sound) continue;
+                        bool there = false;
+                        for (auto& a : slot.alternatives) there = there || a.sound == cand.sound;
+                        if (there) continue;
+                        slot.alternatives.push_back (cand);
+                        ++others;
+                    }
+                }
                 // always offer up to two instruments whose presets Song Savant can't list (SSD Sampler for the drums,
                 // even when there are dozens of Groove Agent kits ahead of it)
                 {
@@ -204,6 +226,12 @@ namespace ss
             (r.startsWith ("tagged ") ? tags : words).add (r.startsWith ("tagged ") ? r.substring (7) : r);
         const auto what = s.detail.isNotEmpty() && s.source != "Plug-in" ? s.detail : kindName (s.kind);
         out.add (what + " for the " + slot.part.role + " part");
+        {
+            bool other = false;
+            for (auto& w : slot.part.alsoOffer) other = other || has (s, w);
+            const auto& note = other ? slot.part.alsoOfferNote : slot.part.note;
+            if (note.isNotEmpty()) out.add (note);
+        }
         if (! words.isEmpty()) out.add ("Matches what the part needs: " + words.joinIntoString (", "));
         if (! tags.isEmpty()) out.add ("Tagged " + tags.joinIntoString (", ") + " in your library");
         if (s.source == "Plug-in")
