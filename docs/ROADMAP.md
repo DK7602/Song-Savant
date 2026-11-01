@@ -290,6 +290,10 @@ Built in steps, each one a build the owner can try:
     track's Drum Map in the Inspector; other DAWs: Cubase maps only for now); and "<kit> - what Song Savant heard.txt"
     is saved next to each map (per key: the zone match, pitch, noise, decay...), for the owner to send back if
     names are still wrong.
+  - **0.7.3, from the owner's video:** shift-click didn't work, because a click opens the rename menu and closing
+    the menu also forgot the first pad. Now the first pad is remembered (`RangePicker`), and you can **drag across
+    pads** to pick a run of them. The zone fix helped (C3-F3 now toms, C6 now Perc) but F#3-D#4 are still called
+    Snare: waiting for the owner's "what Song Savant heard" file to tune that on real numbers.
   - **Settled:** with drum maps fixed, Analog Lab and HALion kits may be suggested as freely as Groove Agent kits
     (the owner, November 2026): any drum preset that isn't a loop or a single drum counts as a kit (+4), and their
     "How to load it" points to the DRUM MAPS page.

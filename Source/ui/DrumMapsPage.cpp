@@ -27,15 +27,36 @@ namespace ss::ui
         return r < (int) map->pads.size() ? r : -1;
     }
 
+    int PadList::rowNear (float y) const
+    {
+        if (map == nullptr || map->pads.empty()) return -1;
+        return juce::jlimit (0, (int) map->pads.size() - 1, (int) (y / rowHeight));
+    }
+
+    void PadList::mouseDown (const juce::MouseEvent& e)
+    {
+        picker.press (rowAt (e.position.y), e.mods.isShiftDown());
+        beginDragAutoRepeat (40);          // keeps the list scrolling while you drag past its edge
+        repaint();
+    }
+
+    void PadList::mouseDrag (const juce::MouseEvent& e)
+    {
+        picker.drag (rowNear (e.position.y));
+        if (auto* view = findParentComponentOfClass<juce::Viewport>())
+        {
+            const auto p = view->getLocalPoint (this, e.position).toInt();
+            view->autoScroll (p.x, p.y, 24, 12);
+        }
+        repaint();
+    }
+
     void PadList::mouseUp (const juce::MouseEvent& e)
     {
-        const int r = rowAt (e.position.y);
-        if (r < 0) return;
-        if (e.mods.isShiftDown() && anchor >= 0) { first = std::min (anchor, r); last = std::max (anchor, r); }
-        else { anchor = first = last = r; }
-        repaint();
-        if (onPadsClicked)
-            onPadsClicked (first, last, localAreaToGlobal (juce::Rectangle<int> (0, (int) ((float) r * rowHeight), getWidth(), (int) rowHeight)));
+        if (picker.first < 0 || ! onPadsClicked) return;
+        const int r = rowNear (e.position.y);
+        onPadsClicked (picker.first, picker.last,
+                       localAreaToGlobal (juce::Rectangle<int> (0, (int) ((float) r * rowHeight), getWidth(), (int) rowHeight)));
     }
 
     void PadList::paint (juce::Graphics& g)
@@ -47,7 +68,7 @@ namespace ss::ui
         for (auto& pad : map->pads)
         {
             auto row = r.removeFromTop (rowHeight);
-            const bool over = i == hover, picked = i >= first && i <= last;
+            const bool over = i == hover, picked = picker.picked (i);
             if (over || picked || i % 2 == 0)
             {
                 g.setColour (picked ? p.gold.withAlpha (0.22f) : over ? p.purple.withAlpha (0.35f) : p.panelHi.withAlpha (0.45f));
@@ -129,7 +150,7 @@ namespace ss::ui
         KitMap k = *current;
         change (k);
         proc.kitMap.setResult (proc.kitMap.preset(), k);   // saved again straight away
-        pads.clearSelection();
+        pads.resetPicks();
         timerCallback();
     }
 
@@ -153,13 +174,13 @@ namespace ss::ui
         if (! range)
         {
             m.addSeparator();
-            m.addItem (-1, "Tip: shift-click another pad to rename a whole range", false);
+            m.addItem (-1, "Tip: drag across pads (or shift-click another pad) to rename a whole range", false);
         }
         juce::Component::SafePointer<DrumMapsPage> safe (this);
         m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (area).withMinimumWidth (240), [safe, first, last, range, pad] (int r)
         {
             if (safe == nullptr) return;
-            if (r <= 0) { safe->pads.clearSelection(); return; }
+            if (r <= 0) { safe->pads.menuClosed(); return; }
             if (r <= padKinds().size())
             {
                 const auto kind = padKinds()[r - 1];
@@ -184,7 +205,7 @@ namespace ss::ui
                     if (result == 1 && typed.isNotEmpty())
                         safe->changeMap ([=] (KitMap& k) { if (range) setPadKind (k, first, last, typed); else setPadName (k, first, typed); });
                     else
-                        safe->pads.clearSelection();
+                        safe->pads.menuClosed();
                     juce::MessageManager::callAsync ([safe] { if (safe != nullptr) safe->nameWindow.reset(); });
                 }), false);
             }
@@ -319,7 +340,7 @@ namespace ss::ui
         g.setFont (serif (26.0f));
         g.drawText (m->name, titleArea, juce::Justification::centredLeft, true);
         juce::String sub = m->plugin + "  |  " + juce::String ((int) m->pads.size()) + (m->pads.size() == 1 ? " sound" : " sounds")
-                           + "  |  click a pad to rename it, shift-click for a range";
+                           + "  |  click a pad to rename it, drag across pads for a range";
         g.setColour (p.gold);
         g.setFont (sans (14.5f, true));
         g.drawText (sub, resultTextArea.withHeight (20.0f), juce::Justification::centredLeft, true);
@@ -329,7 +350,7 @@ namespace ss::ui
             how = "This preset plays one sound up and down the keyboard (like an 808 or a single drum), so it doesn't need a drum map.";
         else if (savedFile.existsAsFile())
             how = "Saved as " + savedFile.getFileName() + " in Documents" + arrow + "Song Savant" + arrow + "Drum Maps: load it as in step 4. "
-                  "A name wrong? Click the pad (shift-click a second pad for a whole range). What Song Savant heard on each key is saved next to "
+                  "A name wrong? Click the pad, or drag across pads (or shift-click) for a whole range. What Song Savant heard on each key is saved next to "
                   "it (" + detailsFile.getFileName() + ") if you want to send it in.";
         else
             how = "Couldn't save the drum map in Documents" + arrow + "Song Savant" + arrow + "Drum Maps.";

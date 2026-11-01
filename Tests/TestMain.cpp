@@ -23,6 +23,7 @@
 #include <algorithm>
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "ui/DrumMapsPage.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -668,6 +669,19 @@ namespace
             juce::StringArray after;
             for (auto& pad : zoned.pads) after.add (pad.kind);
             check (after.joinIntoString (",") == "Tom,Tom,Tom,Tom,Tom,Tom,Tom,Tom,Perc", "a zone is called what its lowest keys sound like: " + after.joinIntoString (","));
+        }
+
+        // picking pads to rename (the owner's video: closing the menu forgot the first pad, so shift-click did nothing)
+        {
+            ss::ui::RangePicker pick;
+            pick.press (5, false);
+            pick.menuClosed();                     // the menu for pad 5 was closed without choosing
+            pick.press (12, true);                 // then shift-click on pad 12
+            const bool shiftOk = pick.first == 5 && pick.last == 12;
+            pick.press (20, false);                // a plain click starts again
+            pick.drag (16);                        // dragging up to pad 16
+            check (shiftOk && pick.first == 16 && pick.last == 20 && pick.picked (18) && ! pick.picked (21),
+                   "a range: shift-click after closing the menu, or drag across pads");
         }
 
         ss::KitMap chromatic;                      // one 808 played up and down the keyboard
