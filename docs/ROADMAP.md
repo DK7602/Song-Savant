@@ -270,6 +270,8 @@ Built in steps, each one a build the owner can try:
   plays one sound across the keys is spotted ("no drum map needed"). The tests map a tiny test kit plug-in
   (`Tests/TestKit`, tests only) end to end. To check on the owner's PC: that the helper can open Analog Lab and
   HALion with a saved preset, that the names are right, and that Cubase loads the `.drm`.
+  - **Confirmed on the owner's PC (0.7.0):** the helper opens Analog Lab with a saved preset and plays it, and
+    **Cubase loads Song Savant's `.drm` in Drum Map Setup** (the file layout is right).
   - **0.7.1, from the owner's first try** (Analog Lab "Beat Box": it mapped; C0-B2 right, 19 kicks, 11 snares and
     6 toms; C3-C6 wrong, nearly all called Snare, though they're a mix of toms, kicks and percussion played higher
     up). Higher-pitched sounds cross zero often, which the old "noisy" test took for a snare. Now each hit is also
