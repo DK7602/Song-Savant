@@ -30,6 +30,7 @@ public:
 
     // mapping a drum kit (the Drum Maps page)
     ss::KitMapJob kitMap;
+    juce::String dawName() const;     // the DAW Song Savant runs in, or (as an app) the one on this computer; empty if unknown
 
     // the song you're working on and its palettes
     ss::SongSession song;

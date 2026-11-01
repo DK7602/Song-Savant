@@ -35,6 +35,7 @@ namespace ss
         juce::String kind;       // what it sounds like: "Kick", "Tom"...
         juce::String name;       // what the drum map calls it: "Kick 2", "Low Tom"...
         bool custom = false;     // you typed the name yourself: it's kept as it is
+        float matchBelow = 0;    // 0..1: how much it is the key below played a semitone higher (the same recording)
         HitFeatures features;
     };
 
@@ -48,12 +49,29 @@ namespace ss
         bool ok() const          { return error.isEmpty() && ! pads.empty(); }
     };
 
+    // How much `upper` is `lower` played one semitone higher (the same recording, sped up): the upper one slowed down
+    // by a semitone is compared with the lower one, wave for wave, over the first 80 ms. 0..1.
+    float pitchedCopyMatch (const std::vector<float>& lower, const std::vector<float>& upper, double sampleRate);
+
+    // Sampled kits often stretch one recording over several keys, higher on each key (an old drum machine's zones).
+    // Played high, a tom can sound like a snare or a click. Keys that are the key below played higher form a zone,
+    // and the whole zone is called what its lowest, most natural keys sound like.
+    void groupPitchedZones (KitMap&);
+
     // Names the pads from their kinds: "Kick", "Kick 2"...; toms low to high; spots one sound played across the keys.
     // Names you typed yourself are left alone.
     void nameKitPads (KitMap&);
 
     // What you can call a pad when you rename it
     const juce::StringArray& padKinds();
+
+    // Renaming by hand. Pads are counted in the order they're listed (low to high).
+    void setPadKind (KitMap&, int first, int last, const juce::String& kind);   // numbered: "Tom", "Tom 2"... (toms low to high)
+    void setPadName (KitMap&, int index, const juce::String& name);             // kept exactly as typed
+    void removePads (KitMap&, int first, int last);
+
+    // What Song Savant heard on each key, as text: sent back by the owner to tune the listening
+    juce::String describeHits (const KitMap&);
 
     juce::var kitMapToJson (const KitMap&);
     KitMap kitMapFromJson (const juce::var&);
@@ -64,4 +82,5 @@ namespace ss
     juce::String makeCubaseDrumMap (const KitMap&);
     juce::File drumMapsFolder();                    // Documents/Song Savant/Drum Maps
     juce::File saveCubaseDrumMap (const KitMap&);   // writes <name>.drm there; returns the file (or nothing)
+    juce::File saveHitDetails (const KitMap&);      // "<name> - what Song Savant heard.txt", next to the drum map
 }

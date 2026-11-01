@@ -5,6 +5,12 @@
 #include <cmath>
 #include <map>
 
+#ifdef SS_VERSION
+ #define SS_VERSION_TEXT SS_VERSION
+#else
+ #define SS_VERSION_TEXT ""
+#endif
+
 namespace ss
 {
     namespace
@@ -172,14 +178,91 @@ namespace ss
         return kinds;
     }
 
+    float pitchedCopyMatch (const std::vector<float>& lower, const std::vector<float>& upper, double sr)
+    {
+        const double r = std::pow (2.0, 1.0 / 12.0);
+        const int len = (int) std::min ({ (double) lower.size(), sr * 0.08, (double) upper.size() * r - 2.0 });
+        if (len < 64) return 0.0f;
+
+        // the upper key slowed down by a semitone: upper (t / r) lines up with lower (t) when it's the same recording
+        std::vector<float> slowed ((size_t) len);
+        for (int i = 0; i < len; ++i)
+        {
+            const double pos = i / r;
+            const int j = (int) pos;
+            const double frac = pos - j;
+            const float a = upper[(size_t) j], b = (size_t) j + 1 < upper.size() ? upper[(size_t) j + 1] : a;
+            slowed[(size_t) i] = (float) (a + (b - a) * frac);
+        }
+
+        // best match within +-2 ms (some plug-ins start a little late)
+        const int maxLag = (int) (sr * 0.002);
+        float best = 0;
+        for (int lag = -maxLag; lag <= maxLag; ++lag)
+        {
+            double ab = 0, aa = 0, bb = 0;
+            for (int i = std::max (0, -lag); i < len && i + lag < len; ++i)
+            {
+                const double a = lower[(size_t) i], b = slowed[(size_t) (i + lag)];
+                ab += a * b;
+                aa += a * a;
+                bb += b * b;
+            }
+            if (aa > 0 && bb > 0) best = std::max (best, (float) (ab / std::sqrt (aa * bb)));
+        }
+        return best;
+    }
+
+    void groupPitchedZones (KitMap& k)
+    {
+        std::sort (k.pads.begin(), k.pads.end(), [] (const KitPad& a, const KitPad& b) { return a.note < b.note; });
+        size_t start = 0;
+        while (start < k.pads.size())
+        {
+            size_t end = start + 1;          // the zone: each key is the key below, played higher
+            while (end < k.pads.size() && k.pads[end].note == k.pads[end - 1].note + 1 && k.pads[end].matchBelow >= 0.75f) ++end;
+            const size_t size = end - start;
+            if (size >= 3)
+            {
+                // what the lowest third of the zone sounds like (the recording closest to how it was made)
+                std::map<juce::String, int> votes;
+                const size_t low = std::max<size_t> (2, (size + 2) / 3);
+                for (size_t i = start; i < start + low; ++i) votes[k.pads[i].kind]++;
+                juce::String kind = k.pads[start].kind;
+                int most = 0;
+                for (size_t i = start; i < start + low; ++i)
+                    if (votes[k.pads[i].kind] > most) { most = votes[k.pads[i].kind]; kind = k.pads[i].kind; }
+                for (size_t i = start; i < end; ++i)
+                    if (! k.pads[i].custom) k.pads[i].kind = kind;
+            }
+            start = end;
+        }
+    }
+
     void nameKitPads (KitMap& k)
     {
         std::sort (k.pads.begin(), k.pads.end(), [] (const KitPad& a, const KitPad& b) { return a.note < b.note; });
 
-        std::map<juce::String, int> counts;
-        for (auto& p : k.pads) counts[p.kind]++;
+        // one sound across the keyboard: one recording stretched over most of the keys (or, without that information,
+        // most keys sounding the same kind)
         int most = 0;
-        for (auto& [kind, n] : counts) most = std::max (most, n);
+        bool heardZones = false;
+        for (auto& p : k.pads) heardZones = heardZones || p.matchBelow > 0.0f;
+        if (heardZones)
+        {
+            int run = 0;
+            for (size_t i = 0; i < k.pads.size(); ++i)
+            {
+                run = i > 0 && k.pads[i].note == k.pads[i - 1].note + 1 && k.pads[i].matchBelow >= 0.75f ? run + 1 : 1;
+                most = std::max (most, run);
+            }
+        }
+        else
+        {
+            std::map<juce::String, int> counts;
+            for (auto& p : k.pads) counts[p.kind]++;
+            for (auto& [kind, n] : counts) most = std::max (most, n);
+        }
         k.oneSound = k.pads.size() >= 18 && most * 4 >= (int) k.pads.size() * 3;
 
         std::vector<KitPad*> toms;
@@ -199,6 +282,53 @@ namespace ss
             const int n = ++seen[p.kind];
             p.name = n == 1 ? p.kind : p.kind + " " + juce::String (n);
         }
+    }
+
+    void setPadKind (KitMap& k, int first, int last, const juce::String& kind)
+    {
+        if (first > last) std::swap (first, last);
+        for (int i = std::max (0, first); i <= last && i < (int) k.pads.size(); ++i)
+        {
+            k.pads[(size_t) i].kind = kind;
+            k.pads[(size_t) i].custom = false;
+        }
+        nameKitPads (k);
+    }
+
+    void setPadName (KitMap& k, int index, const juce::String& name)
+    {
+        if (index < 0 || index >= (int) k.pads.size() || name.trim().isEmpty()) return;
+        k.pads[(size_t) index].name = name.trim();
+        k.pads[(size_t) index].custom = true;
+        nameKitPads (k);
+    }
+
+    void removePads (KitMap& k, int first, int last)
+    {
+        if (first > last) std::swap (first, last);
+        first = std::max (0, first);
+        last = std::min (last, (int) k.pads.size() - 1);
+        if (first <= last) k.pads.erase (k.pads.begin() + first, k.pads.begin() + last + 1);
+        nameKitPads (k);
+    }
+
+    juce::String describeHits (const KitMap& k)
+    {
+        juce::String s;
+        s << "Song Savant " << SS_VERSION_TEXT << " - what it heard on each key\n"
+          << "Kit: " << k.name << "  |  " << k.plugin << "\n\n"
+          << "key   note  name             heard as    same as key below  pitch-clear  tone Hz  low Hz  noise/s  decay s  low  body  high  bursts  level\n";
+        for (auto& p : k.pads)
+        {
+            const auto& f = p.features;
+            auto col = [] (const juce::String& t, int w) { return t.paddedRight (' ', w); };
+            s << col (juce::String (p.note), 6) << col (noteName (p.note), 6) << col (p.name, 17) << col (p.kind, 12)
+              << col (juce::String (p.matchBelow, 2), 19) << col (juce::String (f.tonal, 2), 13) << col (juce::String (juce::roundToInt (f.toneHz)), 9)
+              << col (juce::String (juce::roundToInt (f.pitchHz)), 8) << col (juce::String (juce::roundToInt (f.zcr)), 9)
+              << col (juce::String (f.decay, 2), 9) << col (juce::String (f.lowRatio, 2), 5) << col (juce::String (f.bodyRatio, 2), 6)
+              << col (juce::String (f.highRatio, 2), 6) << col (juce::String (f.bursts), 8) << juce::String (f.peak, 3) << "\n";
+        }
+        return s;
     }
 
     juce::var kitMapToJson (const KitMap& k)
@@ -227,6 +357,7 @@ namespace ss
             d->setProperty ("body", p.features.bodyRatio);
             d->setProperty ("tone", p.features.toneHz);
             d->setProperty ("custom", p.custom);
+            d->setProperty ("match", p.matchBelow);
             pads.add (juce::var (d));
         }
         o->setProperty ("pads", pads);
@@ -258,6 +389,7 @@ namespace ss
                 p.features.bodyRatio = (float) d["body"];
                 p.features.toneHz = (float) d["tone"];
                 p.custom = (bool) d["custom"];
+                p.matchBelow = (float) d["match"];
                 k.pads.push_back (p);
             }
         if (! v.isObject() && k.error.isEmpty()) k.error = "No answer from Song Savant Scanner";
@@ -348,6 +480,16 @@ namespace ss
     }
 
     juce::File drumMapsFolder()   { return paths::documentsDir().getChildFile ("Drum Maps"); }
+
+    juce::File saveHitDetails (const KitMap& k)
+    {
+        const auto folder = drumMapsFolder();
+        if (! folder.createDirectory()) return {};
+        auto name = juce::File::createLegalFileName (k.name.isNotEmpty() ? k.name : juce::String ("Song Savant kit")).trim();
+        if (name.isEmpty()) name = "Song Savant kit";
+        const auto f = folder.getChildFile (name + " - what Song Savant heard.txt");
+        return f.replaceWithText (describeHits (k)) ? f : juce::File();
+    }
 
     juce::File saveCubaseDrumMap (const KitMap& k)
     {

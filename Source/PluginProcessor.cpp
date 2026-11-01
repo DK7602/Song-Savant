@@ -15,6 +15,27 @@ void SongSavantProcessor::startScan()
     scan.start (loc);
 }
 
+juce::String SongSavantProcessor::dawName() const
+{
+    if (wrapperType != wrapperType_Standalone && wrapperType != wrapperType_Undefined)
+    {
+        const juce::PluginHostType host;
+        if (host.isCubase())        return "Cubase";
+        if (host.isNuendo())        return "Nuendo";
+        if (host.isStudioOne())     return "Studio One";
+        if (host.isReaper())        return "REAPER";
+        if (host.isFruityLoops())   return "FL Studio";
+        if (host.isAbletonLive())   return "Ableton Live";
+        if (host.isBitwigStudio())  return "Bitwig Studio";
+        if (host.isSonar())         return "Cakewalk";
+        if (host.isLogic())         return "Logic Pro";
+        return host.getHostDescription();
+    }
+    // the app on its own: the DAW installed on this computer
+    if (locationProvider && ! locationProvider().cubaseInstalls.isEmpty()) return "Cubase";
+    return {};
+}
+
 void SongSavantProcessor::startCatalog()
 {
     catalog.start (locationProvider());

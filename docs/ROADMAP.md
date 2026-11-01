@@ -279,6 +279,20 @@ Built in steps, each one a build the owner can try:
     noisy sounds can be snares, claps or hats; a tom also needs a low body (energy below ~400 Hz), so a cowbell is
     Perc. **Rename by hand:** click a pad to pick another name (Kick, Rim, Shaker, Cowbell...), type one, or leave the
     key out; typed names are kept and the drum map is saved again straight away.
+  - **0.7.2, from the owner's second try:** still wrong at C3-F4 (toms called Perc and Snare) and C6 (perc called
+    Snare). Beat Box is laid out in **zones**: kicks C0-F#1, snares G1-F2, toms F#2-F4, perc F#4-C6, each zone one
+    recording stretched over several keys, higher on each key (how the old samplers Analog Lab copies work). Played
+    two octaves up, a tom is short and bright. Now the helper checks each key against the key below (slowed down by
+    a semitone, are they the same wave? `pitchedCopyMatch`), keys that match form a zone, and the whole zone is called
+    what its **lowest third** sounds like (`groupPitchedZones`). "One sound across the keyboard" now means one
+    recording over most of the keys. Also: shift-click a second pad to rename a whole range; step 4 on the page gives
+    the load steps for the DAW in use (Cubase/Nuendo: MIDI > Drum Map Setup..., Remove the old map, Load..., set the
+    track's Drum Map in the Inspector; other DAWs: Cubase maps only for now); and "<kit> - what Song Savant heard.txt"
+    is saved next to each map (per key: the zone match, pitch, noise, decay...), for the owner to send back if
+    names are still wrong.
+  - **Settled:** with drum maps fixed, Analog Lab and HALion kits may be suggested as freely as Groove Agent kits
+    (the owner, November 2026): any drum preset that isn't a loop or a single drum counts as a kit (+4), and their
+    "How to load it" points to the DRUM MAPS page.
   - Next: use these maps for the starter drum parts.
 - **Starter MIDI parts** (chords, bass, rhythm parts, hook idea) in key and tempo; follow Key Compass chords.
   Drag to DAW.

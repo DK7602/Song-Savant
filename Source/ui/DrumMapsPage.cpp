@@ -30,8 +30,12 @@ namespace ss::ui
     void PadList::mouseUp (const juce::MouseEvent& e)
     {
         const int r = rowAt (e.position.y);
-        if (r >= 0 && onPadClicked)
-            onPadClicked (r, localAreaToGlobal (juce::Rectangle<int> (0, (int) ((float) r * rowHeight), getWidth(), (int) rowHeight)));
+        if (r < 0) return;
+        if (e.mods.isShiftDown() && anchor >= 0) { first = std::min (anchor, r); last = std::max (anchor, r); }
+        else { anchor = first = last = r; }
+        repaint();
+        if (onPadsClicked)
+            onPadsClicked (first, last, localAreaToGlobal (juce::Rectangle<int> (0, (int) ((float) r * rowHeight), getWidth(), (int) rowHeight)));
     }
 
     void PadList::paint (juce::Graphics& g)
@@ -43,10 +47,10 @@ namespace ss::ui
         for (auto& pad : map->pads)
         {
             auto row = r.removeFromTop (rowHeight);
-            const bool over = i == hover;
-            if (over || i % 2 == 0)
+            const bool over = i == hover, picked = i >= first && i <= last;
+            if (over || picked || i % 2 == 0)
             {
-                g.setColour (over ? p.purple.withAlpha (0.35f) : p.panelHi.withAlpha (0.45f));
+                g.setColour (picked ? p.gold.withAlpha (0.22f) : over ? p.purple.withAlpha (0.35f) : p.panelHi.withAlpha (0.45f));
                 g.fillRoundedRectangle (row.reduced (0.0f, 1.0f), 6.0f);
             }
             ++i;
@@ -82,7 +86,8 @@ namespace ss::ui
         showBtn.onClick = [this] { if (savedFile.existsAsFile()) savedFile.revealToUser(); };
         addChildComponent (againBtn);
         againBtn.onClick = [this] { if (proc.kitMap.preset().existsAsFile()) mapPreset (proc.kitMap.preset()); };
-        pads.onPadClicked = [this] (int pad, juce::Rectangle<int> area) { renamePad (pad, area); };
+        pads.onPadsClicked = [this] (int first, int last, juce::Rectangle<int> area) { renamePads (first, last, area); };
+        daw = proc.dawName();
         padsView.setViewedComponent (&pads, false);
         padsView.setScrollBarsShown (true, false);
         addAndMakeVisible (padsView);
@@ -117,62 +122,85 @@ namespace ss::ui
         });
     }
 
-    void DrumMapsPage::changePad (int index, const std::function<void (KitMap&, KitPad&)>& change)
+    void DrumMapsPage::changeMap (const std::function<void (KitMap&)>& change)
     {
         auto current = proc.kitMap.result();
-        if (current == nullptr || index < 0 || index >= (int) current->pads.size()) return;
+        if (current == nullptr) return;
         KitMap k = *current;
-        change (k, k.pads[(size_t) index]);
-        nameKitPads (k);
-        proc.kitMap.setResult (proc.kitMap.preset(), k);   // the timer saves the drum map again
+        change (k);
+        proc.kitMap.setResult (proc.kitMap.preset(), k);   // saved again straight away
+        pads.clearSelection();
         timerCallback();
     }
 
-    void DrumMapsPage::renamePad (int index, juce::Rectangle<int> area)
+    void DrumMapsPage::renamePads (int first, int last, juce::Rectangle<int> area)
     {
         auto current = proc.kitMap.result();
-        if (current == nullptr || index < 0 || index >= (int) current->pads.size()) return;
-        const auto pad = current->pads[(size_t) index];
+        if (current == nullptr || first < 0 || last >= (int) current->pads.size()) return;
+        const auto pad = current->pads[(size_t) first];
+        const auto lastPad = current->pads[(size_t) last];
+        const bool range = last > first;
+        const int count = last - first + 1;
 
         juce::PopupMenu m;
-        m.addSectionHeader (noteName (pad.note) + "  (key " + juce::String (pad.note) + ")  is a...");
+        m.addSectionHeader (range ? noteName (pad.note) + " to " + noteName (lastPad.note) + "  (" + juce::String (count) + " keys)  are..."
+                                  : noteName (pad.note) + "  (key " + juce::String (pad.note) + ")  is a...");
         int id = 1;
-        for (auto& kind : padKinds()) m.addItem (id++, kind, true, ! pad.custom && kind == pad.kind);
+        for (auto& kind : padKinds()) m.addItem (id++, kind, true, ! range && ! pad.custom && kind == pad.kind);
         m.addSeparator();
         m.addItem (1000, "Type a name...");
-        m.addItem (1001, "Leave this key out of the map");
-        juce::Component::SafePointer<DrumMapsPage> safe (this);
-        m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (area).withMinimumWidth (220), [safe, index, pad] (int r)
+        m.addItem (1001, range ? "Leave these keys out of the map" : "Leave this key out of the map");
+        if (! range)
         {
-            if (safe == nullptr || r == 0) return;
-            if (r >= 1 && r <= padKinds().size())
+            m.addSeparator();
+            m.addItem (-1, "Tip: shift-click another pad to rename a whole range", false);
+        }
+        juce::Component::SafePointer<DrumMapsPage> safe (this);
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (area).withMinimumWidth (240), [safe, first, last, range, pad] (int r)
+        {
+            if (safe == nullptr) return;
+            if (r <= 0) { safe->pads.clearSelection(); return; }
+            if (r <= padKinds().size())
             {
                 const auto kind = padKinds()[r - 1];
-                safe->changePad (index, [kind] (KitMap&, KitPad& p) { p.kind = kind; p.custom = false; });
+                safe->changeMap ([=] (KitMap& k) { setPadKind (k, first, last, kind); });
             }
             else if (r == 1001)
-                safe->changePad (index, [note = pad.note] (KitMap& k, KitPad&)
-                {
-                    k.pads.erase (std::remove_if (k.pads.begin(), k.pads.end(), [note] (const KitPad& p) { return p.note == note; }), k.pads.end());
-                });
+                safe->changeMap ([=] (KitMap& k) { removePads (k, first, last); });
             else if (r == 1000)
             {
-                safe->nameWindow = std::make_unique<juce::AlertWindow> ("Name " + noteName (pad.note), "What should this pad be called?",
+                safe->nameWindow = std::make_unique<juce::AlertWindow> (range ? juce::String ("Name these keys") : "Name " + noteName (pad.note),
+                                                                        range ? "What are these pads? (they'll be numbered: Conga, Conga 2...)"
+                                                                              : "What should this pad be called?",
                                                                         juce::MessageBoxIconType::NoIcon);
-                safe->nameWindow->addTextEditor ("name", pad.name);
+                safe->nameWindow->addTextEditor ("name", range ? juce::String() : pad.name);
                 safe->nameWindow->addButton ("OK", 1, juce::KeyPress (juce::KeyPress::returnKey));
                 safe->nameWindow->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
-                safe->nameWindow->enterModalState (true, juce::ModalCallbackFunction::create ([safe, index] (int result)
+                safe->nameWindow->enterModalState (true, juce::ModalCallbackFunction::create ([safe, first, last, range] (int result)
                 {
                     if (safe == nullptr || safe->nameWindow == nullptr) return;
                     const auto typed = safe->nameWindow->getTextEditorContents ("name").trim();
                     safe->nameWindow->setVisible (false);
                     if (result == 1 && typed.isNotEmpty())
-                        safe->changePad (index, [typed] (KitMap&, KitPad& p) { p.name = typed; p.custom = true; });
+                        safe->changeMap ([=] (KitMap& k) { if (range) setPadKind (k, first, last, typed); else setPadName (k, first, typed); });
+                    else
+                        safe->pads.clearSelection();
                     juce::MessageManager::callAsync ([safe] { if (safe != nullptr) safe->nameWindow.reset(); });
                 }), false);
             }
         });
+    }
+
+    juce::String DrumMapsPage::loadSteps (const juce::String& mapName) const
+    {
+        const auto arrow = juce::String::fromUTF8 (" \xe2\x80\xba ");
+        const auto name = mapName.isNotEmpty() ? mapName : juce::String ("your kit");
+        if (daw.isEmpty() || daw == "Cubase" || daw == "Nuendo")
+            return "When the map is ready, in " + (daw.isNotEmpty() ? daw : juce::String ("Cubase")) + ": open the MIDI menu" + arrow + "Drum Map Setup... "
+                   "(or click the Drum Map field in the instrument track's Inspector" + arrow + "Drum Map Setup...). If an older " + name
+                   + " is in the list, select it and click Remove. Click Load..., pick " + name + ".drm in Documents" + arrow + "Song Savant"
+                   + arrow + "Drum Maps, then OK. Last, set the track's Drum Map field (in the Inspector) to " + name + ".";
+        return "Song Savant makes Cubase drum maps (.drm) for now, so this step needs Cubase. Pad names for " + daw + " are planned.";
     }
 
     void DrumMapsPage::mapPreset (const juce::File& preset)
@@ -190,7 +218,10 @@ namespace ss::ui
             seenGeneration = proc.kitMap.generation();
             savedFile = juce::File();
             if (auto m = proc.kitMap.result(); m != nullptr && m->ok() && ! m->oneSound)
+            {
                 savedFile = saveCubaseDrumMap (*m);       // saved straight away: one less thing to click
+                detailsFile = saveHitDetails (*m);        // what it heard, key by key (to send back if names are wrong)
+            }
             refresh();
         }
         if (proc.kitMap.isMapping()) repaint (statusArea.toNearestInt().expanded (4));
@@ -227,15 +258,22 @@ namespace ss::ui
             "In Cubase, load the kit on an instrument track and pick the sound you want.",
             "In the plug-in window's top bar, click the small \xe2\x96\xbe next to the \xe2\x96\xb2 \xe2\x96\xbc arrows, choose Save Preset... and give it a name.",
             "Drag that preset onto this page (from MediaBay, or Documents \xe2\x80\xba VST3 Presets), or click CHOOSE A PRESET." };
-        for (int i = 0; i < 3; ++i)
+        auto step = [&] (juce::Rectangle<float>& area, int number, const juce::String& text, float size)
         {
-            auto row = steps.removeFromTop (58.0f);
+            auto row = area;
             auto num = row.removeFromLeft (30.0f).removeFromTop (24.0f);
             g.setColour (p.gold);
             g.drawEllipse (num.withSizeKeepingCentre (22.0f, 22.0f), 1.4f);
             g.setFont (sans (12.5f, true));
-            g.drawText (juce::String (i + 1), num, juce::Justification::centred);
-            drawParagraph (g, juce::String::fromUTF8 (lines[i]), row.withTrimmedLeft (6.0f), sans (14.0f), p.text);
+            g.drawText (juce::String (number), num, juce::Justification::centred);
+            const float h = drawParagraph (g, text, row.withTrimmedLeft (6.0f), sans (size), p.text);
+            area.removeFromTop (juce::jmax (26.0f, h) + 12.0f);
+        };
+        for (int i = 0; i < 3; ++i) step (steps, i + 1, juce::String::fromUTF8 (lines[i]), 14.0f);
+        {
+            auto m4 = proc.kitMap.result();
+            auto s4 = step4Area;
+            step (s4, 4, loadSteps (m4 != nullptr ? m4->name : juce::String()), 13.0f);
         }
 
         // the drop zone
@@ -281,7 +319,7 @@ namespace ss::ui
         g.setFont (serif (26.0f));
         g.drawText (m->name, titleArea, juce::Justification::centredLeft, true);
         juce::String sub = m->plugin + "  |  " + juce::String ((int) m->pads.size()) + (m->pads.size() == 1 ? " sound" : " sounds")
-                           + "  |  click a pad to rename it";
+                           + "  |  click a pad to rename it, shift-click for a range";
         g.setColour (p.gold);
         g.setFont (sans (14.5f, true));
         g.drawText (sub, resultTextArea.withHeight (20.0f), juce::Justification::centredLeft, true);
@@ -290,9 +328,9 @@ namespace ss::ui
         if (m->oneSound)
             how = "This preset plays one sound up and down the keyboard (like an 808 or a single drum), so it doesn't need a drum map.";
         else if (savedFile.existsAsFile())
-            how = "Saved as " + savedFile.getFileName() + " in Documents" + arrow + "Song Savant" + arrow + "Drum Maps.\n"
-                  "In Cubase: MIDI menu" + arrow + "Drum Map Setup..." + arrow + "Load, pick " + savedFile.getFileName()
-                  + ". Then choose " + m->name + " in the instrument track's Drum Map menu (in the Inspector). Cubase keeps it in the project.";
+            how = "Saved as " + savedFile.getFileName() + " in Documents" + arrow + "Song Savant" + arrow + "Drum Maps: load it as in step 4. "
+                  "A name wrong? Click the pad (shift-click a second pad for a whole range). What Song Savant heard on each key is saved next to "
+                  "it (" + detailsFile.getFileName() + ") if you want to send it in.";
         else
             how = "Couldn't save the drum map in Documents" + arrow + "Song Savant" + arrow + "Drum Maps.";
         drawParagraph (g, how, howArea, sans (13.0f), p.text);
@@ -315,12 +353,13 @@ namespace ss::ui
 
         {
             auto in = leftPanel.reduced (22.0f, 20.0f);
-            stepsArea = in.removeFromTop (in.getHeight() * 0.56f);
+            stepsArea = in.removeFromTop (in.getHeight() * 0.42f);
+            dropArea = in.removeFromTop (juce::jlimit (90.0f, 120.0f, in.getHeight() * 0.3f));
+            chooseBtn.setBounds (dropArea.withTrimmedTop (dropArea.getHeight() * 0.55f).withSizeKeepingCentre (220.0f, 36.0f).toNearestInt());
+            in.removeFromTop (10.0f);
+            statusArea = in.removeFromTop (44.0f);
             in.removeFromTop (8.0f);
-            dropArea = in.removeFromTop (juce::jmax (96.0f, in.getHeight() * 0.48f));
-            chooseBtn.setBounds (dropArea.withTrimmedTop (dropArea.getHeight() * 0.58f).withSizeKeepingCentre (220.0f, 36.0f).toNearestInt());
-            in.removeFromTop (12.0f);
-            statusArea = in;
+            step4Area = in;
         }
         {
             auto in = rightPanel.reduced (22.0f, 20.0f);

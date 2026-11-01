@@ -58,7 +58,9 @@ namespace ss
                                          "cymbal", "cymbals", "clap", "claps", "rim", "crash", "ride", "one shot" };
         for (auto* w : singles)
             if (d.contains (w) || has (s, w)) return DrumForm::single;
-        return DrumForm::unknown;
+        // anything else that's a drum sound is played as a kit (Analog Lab and HALion kits too: if Cubase shows no pad
+        // names, the Drum Maps page makes them)
+        return DrumForm::kit;
     }
 
     float scoreSound (const Sound& s, const PartSpec& part, const SongBrief& brief, juce::StringArray* reasons)

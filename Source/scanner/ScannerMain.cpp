@@ -135,6 +135,7 @@ namespace
         // play every key, one at a time, and listen
         const int first = 24, last = 96;   // C0 to C6
         const int hold = (int) (sr * 0.25), listen = (int) (sr * 1.2), gap = (int) (sr * 0.4);
+        std::vector<float> below;          // the key below, to spot one recording stretched over several keys
         for (int note = first; note <= last; ++note)
         {
             say ("Playing key " + ss::noteName (note) + " (" + juce::String (note - first + 1) + " of " + juce::String (last - first + 1) + ")");
@@ -157,13 +158,16 @@ namespace
 
             const auto f = ss::analyseHit (hit.data(), (int) hit.size(), sr);
             const auto kind = ss::classifyHit (f);
-            if (kind.isEmpty()) continue;
+            if (kind.isEmpty()) { below.clear(); continue; }
             ss::KitPad pad;
             pad.note = note;
             pad.kind = kind;
             pad.features = f;
+            if (! below.empty()) pad.matchBelow = ss::pitchedCopyMatch (below, hit, sr);   // the key below, played higher?
             k.pads.push_back (pad);
+            below = std::move (hit);
         }
+        ss::groupPitchedZones (k);
         plugin->releaseResources();
         plugin.reset();
         say ("Done");

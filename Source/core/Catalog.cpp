@@ -504,6 +504,8 @@ namespace ss
         else
             text = "Load " + s.instrument + " and open its preset " + q + " (in your VST3 Presets folder).";
         if (! s.owned) text = "Not owned: Analog Lab shows a buy button for this one. " + text;
+        if (s.kind == Kind::drums && s.source != "Plug-in" && ! s.instrument.containsIgnoreCase ("Groove Agent"))
+            text << " No pad names in Cubase's drum editor? Save the kit as a preset and map it on the DRUM MAPS page.";
         return text;
     }
 

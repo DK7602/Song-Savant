@@ -626,6 +626,50 @@ namespace
             check (ss::padKinds().contains ("Rim") && ss::padKinds().contains ("Cowbell"), "names to choose from");
         }
 
+        // one recording stretched over several keys
+        {
+            const double sr = 44100.0;
+            juce::Random rng (7);
+            std::vector<float> rec ((size_t) sr);
+            for (size_t i = 0; i < rec.size(); ++i)
+            {
+                const double t = (double) i / sr;
+                rec[i] = (float) (std::sin (juce::MathConstants<double>::twoPi * 120.0 * t) * std::exp (-t / 0.12)
+                                  + (rng.nextFloat() * 2.0f - 1.0f) * 0.5 * std::exp (-t / 0.006));
+            }
+            auto played = [&rec] (int semitones)       // the recording on a key `semitones` up
+            {
+                const double rate = std::pow (2.0, semitones / 12.0);
+                std::vector<float> out;
+                for (double pos = 0; pos + 1 < (double) rec.size(); pos += rate)
+                {
+                    const auto j = (size_t) pos;
+                    out.push_back ((float) (rec[j] + (rec[j + 1] - rec[j]) * (pos - (double) j)));
+                }
+                return out;
+            };
+            const float same = ss::pitchedCopyMatch (played (11), played (12), sr);
+            const float other = ss::pitchedCopyMatch (synthHit ("tom"), synthHit ("snare"), sr);
+            check (same > 0.85f && other < 0.5f, "the same recording a semitone higher is spotted (" + juce::String (same, 2) + "), a different sound isn't ("
+                                                 + juce::String (other, 2) + ")");
+
+            ss::KitMap zoned;
+            const char* kinds[] = { "Tom", "Tom", "Tom", "Perc", "Perc", "Snare", "Snare", "Snare", "Perc" };
+            const float matches[] = { 0.0f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f, 0.2f };
+            for (int i = 0; i < 9; ++i)
+            {
+                ss::KitPad pad;
+                pad.note = 60 + i;
+                pad.kind = kinds[i];
+                pad.matchBelow = matches[i];
+                zoned.pads.push_back (pad);
+            }
+            ss::groupPitchedZones (zoned);
+            juce::StringArray after;
+            for (auto& pad : zoned.pads) after.add (pad.kind);
+            check (after.joinIntoString (",") == "Tom,Tom,Tom,Tom,Tom,Tom,Tom,Tom,Perc", "a zone is called what its lowest keys sound like: " + after.joinIntoString (","));
+        }
+
         ss::KitMap chromatic;                      // one 808 played up and down the keyboard
         for (int n = 24; n < 60; ++n) { ss::KitPad p; p.note = n; p.kind = "808"; chromatic.pads.push_back (p); }
         ss::nameKitPads (chromatic);
@@ -691,14 +735,20 @@ namespace
         };
 
         const auto [k, statuses] = map (good);
-        juce::StringArray got;
-        for (auto& p : k.pads) got.add (ss::noteName (p.note) + " " + p.name);
-        check (k.ok() && got.joinIntoString (", ") == "B0 808, C1 Kick, D1 Snare, D#1 Clap, F#1 Closed Hat, A1 Low Tom, A#1 Open Hat, C2 High Tom, C#2 Cymbal",
-               "every pad found and named: " + got.joinIntoString (", ") + k.error);
-        check (k.name == "Beat Box" && k.plugin == "SS Test Kit" && ! k.oneSound, "the map is named after the preset");
+        juce::StringArray got, zone;
+        int zoneToms = 0;
+        for (auto& p : k.pads)
+        {
+            if (p.note < 60) got.add (ss::noteName (p.note) + " " + p.kind);
+            else { zone.add (ss::noteName (p.note) + " " + p.kind + " " + juce::String (p.matchBelow, 2)); if (p.kind == "Tom") ++zoneToms; }
+        }
+        check (k.ok() && got.joinIntoString (", ") == "B0 808, C1 Kick, D1 Snare, D#1 Clap, F#1 Closed Hat, A1 Tom, A#1 Open Hat, C2 Tom, C#2 Cymbal",
+               "every pad found and heard right: " + got.joinIntoString (", ") + k.error);
+        check (zone.size() == 24 && zoneToms == 24, "one tom stretched over C3 to B4 is toms all the way up: " + zone.joinIntoString (", "));
+        check (k.name == "Beat Box" && k.plugin == "SS Test Kit" && ! k.oneSound, "the map is named after the preset, and it's a kit (not one sound)");
         check (statuses.joinIntoString ("|").contains ("Playing key"), "progress is shown while it plays: " + statuses.joinIntoString (" | "));
         const auto drm = ss::saveCubaseDrumMap (k);
-        check (drm.existsAsFile() && drm.loadFileAsString().contains ("High Tom"), "saved as a Cubase drum map");
+        check (drm.existsAsFile() && drm.loadFileAsString().contains ("Tom 24"), "saved as a Cubase drum map");
 
         const auto off = map (silent).first;
         check (! off.ok() && off.error.contains ("No key made a sound"), "the preset is really loaded (switched off, it stays silent): " + off.error);
@@ -849,6 +899,9 @@ namespace
         const int mine = drum ("DK Casette808", "Groove Agent SE", "MediaBay", "", "", "", true, true);
         const int kit = drum ("Trap Room Kit", "HALion Sonic", "MediaBay", "Drumset", "Urban (Hip-Hop / R&B)", "Modern,Processed", false, false);
 
+        const int analogKit = drum ("Beat Box", "Analog Lab V", "Arturia", "", "Hip Hop/Trap", "Punchy", false, false);
+        check (ss::drumForm (cat.sounds[(size_t) analogKit]) == ss::DrumForm::kit && ss::howToLoad (cat.sounds[(size_t) analogKit]).contains ("DRUM MAPS"),
+               "an Analog Lab kit counts as a kit too (the Drum Maps page names its pads)");
         check (ss::drumForm (cat.sounds[(size_t) loop]) == ss::DrumForm::loop && ss::drumForm (cat.sounds[(size_t) kick]) == ss::DrumForm::single
                && ss::drumForm (cat.sounds[(size_t) mine]) == ss::DrumForm::kit && ss::drumForm (cat.sounds[(size_t) kit]) == ss::DrumForm::kit,
                "loops, single drums and kits are told apart");

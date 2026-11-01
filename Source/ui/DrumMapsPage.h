@@ -21,13 +21,15 @@ namespace ss::ui
         void mouseExit (const juce::MouseEvent&) override    { setHover (-1); }
         void mouseUp (const juce::MouseEvent&) override;
 
-        std::function<void (int pad, juce::Rectangle<int> screenArea)> onPadClicked;   // to rename it
+        // to rename them: a click picks one pad, a shift-click picks every pad from the last one clicked
+        std::function<void (int first, int last, juce::Rectangle<int> screenArea)> onPadsClicked;
+        void clearSelection()                            { anchor = first = last = -1; repaint(); }
 
     private:
         int rowAt (float y) const;
         void setHover (int r)                            { if (r != hover) { hover = r; repaint(); } }
         std::shared_ptr<const KitMap> map;
-        int hover = -1;
+        int hover = -1, anchor = -1, first = -1, last = -1;
         static constexpr float rowHeight = 30.0f;
     };
 
@@ -55,8 +57,9 @@ namespace ss::ui
     private:
         void timerCallback() override;
         void choosePreset();
-        void renamePad (int pad, juce::Rectangle<int> screenArea);
-        void changePad (int pad, const std::function<void (KitMap&, KitPad&)>&);
+        void renamePads (int first, int last, juce::Rectangle<int> screenArea);
+        void changeMap (const std::function<void (KitMap&)>&);
+        juce::String loadSteps (const juce::String& mapName) const;   // step 4, for the DAW in use
 
         SongSavantProcessor& proc;
         PillButton chooseBtn { "CHOOSE A PRESET...", PillButton::Style::outline },
@@ -67,9 +70,10 @@ namespace ss::ui
         std::unique_ptr<juce::FileChooser> chooser;
         std::unique_ptr<juce::AlertWindow> nameWindow;
 
-        juce::Rectangle<float> leftPanel, rightPanel, stepsArea, dropArea, statusArea, titleArea, resultTextArea, howArea;
+        juce::Rectangle<float> leftPanel, rightPanel, stepsArea, dropArea, statusArea, step4Area, titleArea, resultTextArea, howArea;
         int seenGeneration = -1;
-        juce::File savedFile;
+        juce::File savedFile, detailsFile;
+        juce::String daw;
         juce::String dropProblem;
         bool dropHover = false;
     };

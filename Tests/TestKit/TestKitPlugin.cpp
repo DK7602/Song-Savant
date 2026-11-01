@@ -1,6 +1,7 @@
 // SS Test Kit - a tiny drum kit plug-in, built only for the tests. It stays silent until a preset switches it on
 // (so a test can tell the preset really got loaded), then plays made-up drums on the General MIDI keys:
-//   B0 808, C1 kick, D1 snare, D#1 clap, F#1 closed hat, A1 low tom, A#1 open hat, C2 high tom, C#2 crash.
+//   B0 808, C1 kick, D1 snare, D#1 clap, F#1 closed hat, A1 low tom, A#1 open hat, C2 high tom, C#2 crash,
+//   and C3 to B4: one tom recording stretched over two octaves, higher on each key (like an old sampler's zone).
 #include <juce_audio_processors/juce_audio_processors.h>
 
 namespace
@@ -41,7 +42,20 @@ namespace
             on = juce::String::fromUTF8 (static_cast<const char*> (data), size).trim() == "SSTESTKIT on";
         }
 
-        void prepareToPlay (double rate, int) override           { sr = rate; for (auto& v : voices) v.note = -1; }
+        void prepareToPlay (double rate, int) override
+        {
+            sr = rate;
+            for (auto& v : voices) v.note = -1;
+            // the "recording": a tom with a stick click
+            recording.assign ((size_t) sr, 0.0f);
+            juce::Random rng (7);
+            for (size_t i = 0; i < recording.size(); ++i)
+            {
+                const double t = (double) i / sr;
+                recording[i] = (float) (std::sin (juce::MathConstants<double>::twoPi * 120.0 * t) * std::exp (-t / 0.12)
+                                        + (rng.nextFloat() * 2.0f - 1.0f) * 0.5 * std::exp (-t / 0.006));
+            }
+        }
         void releaseResources() override                         {}
 
         void processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) override
@@ -83,6 +97,14 @@ namespace
             float noise = v.rng.nextFloat() * 2.0f - 1.0f;
             noise = v.filter1.processSingleSampleRaw (noise);
             if (v.note != 39) noise = v.filter2.processSingleSampleRaw (noise);
+            if (v.note >= 60 && v.note <= 83)
+            {
+                const double pos = t * sr * std::pow (2.0, (v.note - 60) / 12.0);   // the recording, sped up
+                const auto j = (size_t) pos;
+                if (j + 1 >= recording.size()) { v.note = -1; return 0.0f; }
+                const double frac = pos - (double) j;
+                return (float) (recording[j] + (recording[j + 1] - recording[j]) * frac);
+            }
             switch (v.note)
             {
                 case 35: return (float) (std::sin (twoPi * 45.0 * t) * std::exp (-t / 0.35));
@@ -118,6 +140,7 @@ namespace
 
         bool on = false;
         double sr = 44100.0;
+        std::vector<float> recording;
         std::array<Voice, 8> voices;
         size_t next = 0;
     };
