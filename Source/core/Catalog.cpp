@@ -7,6 +7,7 @@
 #include <sqlite3.h>
 #include <algorithm>
 #include <map>
+#include <set>
 
 namespace ss
 {
@@ -115,9 +116,18 @@ namespace ss
     }
 
     //==============================================================================
-    std::vector<Sound> readArturia (const juce::File& file, juce::String& problem)
+    const juce::StringArray& retiredArturiaInstruments()
+    {
+        // Prophet V3 became Prophet-5 V and Prophet-VS V; Analog Lab Pro no longer lists it (seen on the owner's PC)
+        static const juce::StringArray list { "Prophet V3" };
+        return list;
+    }
+
+    std::vector<Sound> readArturia (const juce::File& file, juce::String& problem, int* leftOut)
     {
         std::vector<Sound> out;
+        int left = 0;
+        if (leftOut != nullptr) *leftOut = 0;
         ReadOnlyDatabase db (file);
         if (! db.isOpen()) { problem = db.error(); return out; }
         const auto cols = db.columns ("Preset_Id");
@@ -139,6 +149,27 @@ namespace ss
             });
         }
 
+        // instruments Analog Lab no longer has, and layered presets that use one of them
+        std::set<juce::int64> retiredIds, retiredLayers;
+        juce::StringArray retiredKeys;
+        db.query ("SELECT key_id, name FROM Instruments", [&] (sqlite3_stmt* st)
+        {
+            if (retiredArturiaInstruments().contains (ReadOnlyDatabase::text (st, 1).trim(), true))
+            {
+                retiredIds.insert (ReadOnlyDatabase::integer (st, 0));
+                retiredKeys.add (juce::String (ReadOnlyDatabase::integer (st, 0)));
+            }
+            return true;
+        });
+        if (! retiredIds.empty() && db.hasTable ("Preset_Metadata"))
+            db.query ("SELECT preset_key, value FROM Preset_Metadata WHERE name IN ('InstrumentPart1', 'InstrumentPart2', 'InstrumentPart3')",
+                      [&] (sqlite3_stmt* st)
+            {
+                const auto v = ReadOnlyDatabase::text (st, 1).trim();
+                if (retiredArturiaInstruments().contains (v, true) || retiredKeys.contains (v)) retiredLayers.insert (ReadOnlyDatabase::integer (st, 0));
+                return true;
+            });
+
         const bool types = db.hasTable ("Types_V2") && cols.contains ("type_v2", true);
         const bool subtypes = db.hasTable ("Subtypes_V2") && cols.contains ("subtype_v2", true);
         const bool packs = db.hasTable ("Packs") && cols.contains ("pack", true);
@@ -146,7 +177,7 @@ namespace ss
                            + juce::String (types ? "t.name" : "NULL") + ", " + (subtypes ? "s.name" : "NULL") + ", "
                            + colOrNull (cols, "comment", "p.") + ", " + colOrNull (cols, "file_path", "p.") + ", " + colOrNull (cols, "rating", "p.") + ", "
                            + colOrNull (cols, "analoglab_factory", "p.") + ", " + (packs ? "k.name, k.factory" : "NULL, NULL") + ", "
-                           + colOrNull (cols, "hide_in_browser", "p.")
+                           + colOrNull (cols, "hide_in_browser", "p.") + ", p.instrument_key"
                            + " FROM Preset_Id p LEFT JOIN Instruments i ON p.instrument_key = i.key_id"
                            + (types ? " LEFT JOIN Types_V2 t ON p.type_v2 = t.key_id" : "")
                            + (subtypes ? " LEFT JOIN Subtypes_V2 s ON p.subtype_v2 = s.key_id" : "")
@@ -158,6 +189,11 @@ namespace ss
             if (ReadOnlyDatabase::integer (st, 11) == 1) return true;          // hidden in Analog Lab's own browser
             const auto type = t (3);
             if (type == "Template") return true;
+            if (retiredIds.count (ReadOnlyDatabase::integer (st, 12)) > 0 || retiredLayers.count (ReadOnlyDatabase::integer (st, 0)) > 0)
+            {
+                ++left;                                                         // e.g. "75 Lead Soft" from the old Prophet V3
+                return true;
+            }
 
             Sound s;
             s.name = t (1);
@@ -185,6 +221,27 @@ namespace ss
             return true;
         });
         if (! ok) problem = db.error();
+
+        // A preset whose file is gone can't be loaded. Only trusted when most of the files can be found (if the paths
+        // mean nothing on this computer, nothing is left out).
+        {
+            std::vector<int> missing;
+            int checked = 0;
+            for (size_t i = 0; i < out.size(); ++i)
+            {
+                if (! out[i].owned) continue;
+                const auto path = out[i].location.replaceCharacter ('/', juce::File::getSeparatorChar());
+                if (! juce::File::isAbsolutePath (path)) continue;
+                ++checked;
+                if (! juce::File (path).existsAsFile()) missing.push_back ((int) i);
+            }
+            if (checked > 0 && (int) missing.size() * 2 < checked)
+            {
+                for (auto it = missing.rbegin(); it != missing.rend(); ++it) out.erase (out.begin() + *it);
+                left += (int) missing.size();
+            }
+        }
+        if (leftOut != nullptr) *leftOut = left;
         return out;
     }
 
@@ -310,9 +367,9 @@ namespace ss
         c.built = juce::Time::getCurrentTime();
         const auto t0 = juce::Time::getMillisecondCounterHiRes();
 
-        auto add = [&] (const juce::String& name, const juce::File& file, std::vector<Sound> sounds, const juce::String& problem)
+        auto add = [&] (const juce::String& name, const juce::File& file, std::vector<Sound> sounds, const juce::String& problem, int leftOut = 0)
         {
-            CatalogSource src { name, file, (int) sounds.size(), 0, problem };
+            CatalogSource src { name, file, (int) sounds.size(), 0, leftOut, problem };
             for (auto& s : sounds) if (! s.owned) ++src.notOwned;
             c.sources.push_back (src);
             for (auto& s : sounds) c.sounds.push_back (std::move (s));
@@ -331,8 +388,9 @@ namespace ss
         if (loc.arturiaDb.existsAsFile())
         {
             juce::String problem;
-            auto s = readArturia (loc.arturiaDb, problem);
-            add ("Arturia (Analog Lab)", loc.arturiaDb, std::move (s), problem);
+            int leftOut = 0;
+            auto s = readArturia (loc.arturiaDb, problem, &leftOut);
+            add ("Arturia (Analog Lab)", loc.arturiaDb, std::move (s), problem, leftOut);
         }
         if (cancel.load()) return c;
 

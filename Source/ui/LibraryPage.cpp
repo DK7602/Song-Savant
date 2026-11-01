@@ -282,6 +282,7 @@ namespace ss::ui
                     {
                         s << withCommas (src.sounds - src.notOwned) << " sounds";
                         if (src.notOwned > 0) s << " (+" << withCommas (src.notOwned) << " not owned)";
+                        if (src.leftOut > 0) s << " (" << withCommas (src.leftOut) << " old ones left out)";
                     }
                     s << "\n";
                 }

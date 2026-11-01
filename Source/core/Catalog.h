@@ -39,6 +39,7 @@ namespace ss
         juce::String name;            // "Steinberg (MediaBay)"
         juce::File file;
         int sounds = 0, notOwned = 0;
+        int leftOut = 0;              // listed by the maker but not playable here (old instruments, missing files)
         juce::String problem;         // why it couldn't be read, if it couldn't
     };
 
@@ -55,7 +56,13 @@ namespace ss
 
     // The libraries one at a time (also used by the tests)
     std::vector<Sound> readMediaBay (const juce::File& db, juce::String& problem);
-    std::vector<Sound> readArturia (const juce::File& db, juce::String& problem);
+    // Analog Lab's presets. Leaves out ones your Analog Lab can't play: presets for instruments Analog Lab no longer has
+    // (the old Prophet V3, also inside layered presets) and, when the preset files can be found at all, ones whose file
+    // is missing. leftOut says how many.
+    std::vector<Sound> readArturia (const juce::File& db, juce::String& problem, int* leftOut = nullptr);
+
+    // Arturia instruments still in the database but gone from Analog Lab (replaced by newer ones)
+    const juce::StringArray& retiredArturiaInstruments();
     std::vector<Sound> readCymatics (const juce::Array<juce::File>& roots);
     std::vector<Sound> readPresetFiles (const SystemLocations&);
 

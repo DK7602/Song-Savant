@@ -101,6 +101,14 @@ No program can write a custom reader for every plugin, so:
   **Settled:** some presets show "buy" in the owner's Analog Lab, so Song Savant only suggests presets flagged
   `analoglab_factory = 1` plus the owner's own (presets in non-factory packs). The others stay visible in the
   browser, marked "not owned". (Later: a setting to say which extra Arturia instruments you own.)
+- **Settled (0.6.1):** Arturia's database also keeps factory presets for instruments that Analog Lab Pro no longer
+  has. The owner tried "75 Lead Soft" (Prophet V3): not in Analog Lab, and Analog Lab's instrument list has
+  Prophet-5 and Prophet-VS but no Prophet. So presets for **retired instruments** (`retiredArturiaInstruments()`:
+  Prophet V3 so far) are left out, including layered presets that use one (`Preset_Metadata` InstrumentPart1/2),
+  and so are presets whose file is missing (only when most files can be found, so odd paths never empty the list).
+  The Library shows how many were left out. The setup report now lists, per instrument, how many Analog Lab preset
+  files are on disk or missing, the `ALVersionFirst` / `ALVersionLast` tags and the instruments inside layered
+  presets, to find any other retired instruments.
 - Privacy: the scan never lists or opens files or folders named like keys, passwords, licences or credentials,
   and replaces the user's home folder with `~` in every form (including `file://` links).
 

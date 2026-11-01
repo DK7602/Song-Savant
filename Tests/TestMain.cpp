@@ -171,15 +171,20 @@ namespace
         {
             const ss::SqliteTable* presetTable = nullptr;
             for (auto& tb : arturia->tables) if (tb.name == "Preset_Id") presetTable = &tb;
-            check (presetTable != nullptr && presetTable->rows == 6 && presetTable->sampleRows.size() == 3, "Preset_Id: row count and sample rows");
+            check (presetTable != nullptr && presetTable->rows == 9 && presetTable->sampleRows.size() == 3, "Preset_Id: row count and sample rows");
             if (presetTable != nullptr && ! presetTable->sampleRows.isEmpty())
                 check (presetTable->sampleRows[0].contains ("name=Classic Jun Keys") && presetTable->sampleRows[0].contains ("..."), "sample row text (cut at 14 columns)");
-            check (insight (arturia, "Presets by instrument").contains ("Analog Lab | 5"), "Arturia: presets by instrument");
+            check (insight (arturia, "Presets by instrument").contains ("Analog Lab | 7") && insight (arturia, "Presets by instrument").contains ("Prophet | 1"), "Arturia: presets by instrument");
             check (insight (arturia, "Presets by type").contains ("Keys | 1"), "Arturia: presets by type");
             check (insight (arturia, "Characteristics, genres and styles").contains ("Characteristics | Warm | 3"), "Arturia: characteristics");
             check (insight (arturia, "Genres").contains ("2 | Worship"), "Arturia: genres");
-            check (insight (arturia, "Analog Lab factory presets by instrument").contains ("Analog Lab | Analog Lab V | 4"), "Arturia: factory presets by instrument");
-            check (insight (arturia, "Packs (name | factory | presets)").contains ("Analog Lab Factory | 1 | 5"), "Arturia: packs");
+            check (insight (arturia, "Analog Lab factory presets by instrument").contains ("Analog Lab | Analog Lab V | 6"), "Arturia: factory presets by instrument");
+            check (insight (arturia, "Analog Lab preset files by instrument (instrument | on disk | missing)").contains ("Analog Lab V | 4 | 2")
+                   && insight (arturia, "Analog Lab preset files by instrument (instrument | on disk | missing)").contains ("Prophet V3 | 1 | 0"),
+                   "Arturia: preset files on disk, per instrument");
+            check (insight (arturia, "Instruments inside layered presets").contains ("Prophet V3 | 1")
+                   && insight (arturia, "Analog Lab version tags (tag | value | presets)").contains ("ALVersionFirst | 5.0.0 | 1"), "Arturia: layers and version tags");
+            check (insight (arturia, "Packs (name | factory | presets)").contains ("Analog Lab Factory | 1 | 8"), "Arturia: packs");
             check (insight (arturia, "Packs for sale marked as owned").contains ("Worship Keys | 60"), "Arturia: owned packs");
         }
         check (mediabay != nullptr && mediabay->opened && mediabay->kind == "Steinberg MediaBay", "MediaBay database found and recognised");
@@ -244,7 +249,7 @@ namespace
         check (text.contains ("[OK]  Plug-ins: 11 VST3 plug-ins, 6 of them instruments"), "plug-in summary line");
         check (text.contains ("Preset file -> Cubase:           WORKED"), "drag test answers");
         check (text.contains ("MIDI clip -> Cubase:             DIDN'T WORK"), "drag test answers (2)");
-        check (text.contains ("table Preset_Id (6 rows)"), "database tables listed");
+        check (text.contains ("table Preset_Id (9 rows)"), "database tables listed");
         check (text.contains ("~"), "paths shortened with ~");
         check (! text.contains (fc.loc.home.getFullPathName()), "the user's home folder is never written out");
         check (! text.containsIgnoreCase ("Secret"), "nothing private-looking in the report");
@@ -259,7 +264,7 @@ namespace
         for (auto& it : items)
         {
             if (it.title == "Steinberg MediaBay") mediaBayRow = it.status == 1 && it.detail.contains ("52 presets (51 with a category)");
-            if (it.title == "Arturia (Analog Lab)") arturiaRow = it.status == 1 && it.detail.contains ("6 presets, 2 instruments");
+            if (it.title == "Arturia (Analog Lab)") arturiaRow = it.status == 1 && it.detail.contains ("9 presets, 3 instruments");
         }
         check (mediaBayRow, "summary: MediaBay (not the decoy database)");
         check (arturiaRow, "summary: Arturia");
@@ -287,8 +292,13 @@ namespace
             check (keys0->styles.contains ("Pop") && keys0->styles.contains ("Pop/Rock") && keys0->character.contains ("Warm"), "MediaBay preset: styles and character");
         check (mine != nullptr && mine->yours && mine->library == "Your presets" && mine->kind == ss::Kind::keys && mine->guessed, "your own preset, kind guessed");
 
-        auto ar = ss::readArturia (fc.arturiaDb, problem);
+        int arLeftOut = -1;
+        auto ar = ss::readArturia (fc.arturiaDb, problem, &arLeftOut);
         check (ar.size() == 5, "Arturia: 5 presets (hidden one left out), got " + juce::String ((int) ar.size()));
+        check (arLeftOut == 3, "Arturia: 3 left out (old Prophet V3, a layered preset using it, a missing file), got " + juce::String (arLeftOut));
+        bool oldOnes = false;
+        for (auto& snd : ar) oldOnes = oldOnes || snd.name == "75 Lead Soft" || snd.name == "Prophet Stack" || snd.name == "Lost File Pad";
+        check (! oldOnes, "presets today's Analog Lab can't play are never suggested");
         std::map<juce::String, const ss::Sound*> byName;
         for (auto& snd : ar) byName[snd.name] = &snd;
         auto* pad = byName["Heaven Pad"];

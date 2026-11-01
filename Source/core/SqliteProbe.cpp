@@ -1,4 +1,5 @@
 #include "SqliteProbe.h"
+#include <map>
 #include "Paths.h"
 #include <sqlite3.h>
 #include <algorithm>
@@ -161,6 +162,28 @@ namespace ss
                              "p.comment, p.file_path FROM Preset_Id p LEFT JOIN Instruments i ON p.instrument_key = i.key_id "
                              "LEFT JOIN Types_V2 t ON p.type_v2 = t.key_id LEFT JOIN Subtypes_V2 s ON p.subtype_v2 = s.key_id "
                              "ORDER BY p.key_id LIMIT 8 OFFSET 1500", 8);
+
+            add ("Analog Lab version tags (tag | value | presets)", "SELECT name, value, COUNT(*) FROM Preset_Metadata WHERE name LIKE 'ALVersion%' "
+                                                                 "GROUP BY name, value ORDER BY 3 DESC", 30);
+            add ("Instruments inside layered presets", "SELECT value, COUNT(*) FROM Preset_Metadata WHERE name IN ('InstrumentPart1', 'InstrumentPart2') "
+                                                       "GROUP BY value ORDER BY 2 DESC", 50);
+
+            // Analog Lab's own presets: is each one's file there? (per instrument: on disk | missing)
+            {
+                std::map<juce::String, std::pair<int, int>> files;
+                query (db, "SELECT i.name, p.file_path FROM Preset_Id p LEFT JOIN Instruments i ON p.instrument_key = i.key_id "
+                           "WHERE p.analoglab_factory = 1", [&] (sqlite3_stmt* st)
+                {
+                    const auto inst = juce::String::fromUTF8 (reinterpret_cast<const char*> (sqlite3_column_text (st, 0)));
+                    const auto path = juce::String::fromUTF8 (reinterpret_cast<const char*> (sqlite3_column_text (st, 1))).replaceCharacter ('/', juce::File::getSeparatorChar());
+                    auto& [found, gone] = files[inst];
+                    (juce::File::isAbsolutePath (path) && juce::File (path).existsAsFile() ? found : gone)++;
+                    return true;
+                });
+                juce::StringArray lines;
+                for (auto& [inst, n] : files) lines.add (inst + " | " + juce::String (n.first) + " | " + juce::String (n.second));
+                r.insights.push_back ({ "Analog Lab preset files by instrument (instrument | on disk | missing)", lines });
+            }
 
             // are the preset files themselves on disk?
             juce::StringArray fileCheck;

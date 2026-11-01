@@ -130,22 +130,33 @@ namespace sstest
             writeData (fc.vstSound, c.getMemoryBlock());
         }
 
-        // Arturia-style preset database
+        // Arturia-style preset database. Preset files are on disk, except one (it can't be loaded, so it's left out)
         fc.arturiaDb = programData.getChildFile ("Arturia/Presets/db.db3");
+        auto arturiaFile = [&] (const juce::String& rel, bool exists)
+        {
+            const auto f = programData.getChildFile ("Arturia/Presets/" + rel);
+            if (exists) write (f, "Arturia preset");
+            return "'" + f.getFullPathName().replaceCharacter ('\\', '/') + "'";
+        };
+        const auto userPresetPath = arturiaFile ("Analog Lab/User/my sound.labx", true);
         makeDb (fc.arturiaDb, {
             "CREATE TABLE Preset_Id (key_id INTEGER PRIMARY KEY, name TEXT, type INTEGER, type_v2 INTEGER, subtype_v2 INTEGER, instrument_key INTEGER, "
                 "sound_designer INTEGER, rating REAL, pack INTEGER, comment TEXT, file_path TEXT, favorite INTEGER, hide_in_browser INTEGER, "
                 "analoglab_factory INTEGER, data BLOB)",
-            "INSERT INTO Preset_Id VALUES (1, 'Classic Jun Keys', 1, 3, 7, 60, 1, 0, 1, 'Warm 80s keys', 'C:/ProgramData/Arturia/Presets/x.labx', 0, 0, 1, x'00112233')",
-            "INSERT INTO Preset_Id VALUES (2, 'Warm Analog Bass', 2, 1, 2, 60, 2, 0, 1, 'Round low end', 'C:/ProgramData/Arturia/Presets/y.labx', 1, 0, 1, NULL)",
-            "INSERT INTO Preset_Id VALUES (3, 'Heaven Pad', 3, 4, 9, 60, 1, 0, 1, 'Wide worship pad', 'C:/ProgramData/Arturia/Presets/z.labx', 0, 0, 1, NULL)",
+            "INSERT INTO Preset_Id VALUES (1, 'Classic Jun Keys', 1, 3, 7, 60, 1, 0, 1, 'Warm 80s keys', " + arturiaFile ("Analog Lab V/Factory/Classic Jun Keys", true) + ", 0, 0, 1, x'00112233')",
+            "INSERT INTO Preset_Id VALUES (2, 'Warm Analog Bass', 2, 1, 2, 60, 2, 0, 1, 'Round low end', " + arturiaFile ("Analog Lab V/Factory/Warm Analog Bass", true) + ", 1, 0, 1, NULL)",
+            "INSERT INTO Preset_Id VALUES (3, 'Heaven Pad', 3, 4, 9, 60, 1, 0, 1, 'Wide worship pad', " + arturiaFile ("Analog Lab V/Factory/Heaven Pad", true) + ", 0, 0, 1, NULL)",
             "INSERT INTO Preset_Id VALUES (4, 'Jupiter Brass', 3, 1, 2, 61, 1, 0, 1, 'For sale', 'C:/x', 0, 0, 0, NULL)",
-            "INSERT INTO Preset_Id VALUES (5, 'My Analog Lab Bass', 2, 1, 2, 60, 1, 0, 2, '', 'C:/y', 0, 0, 0, NULL)",
+            "INSERT INTO Preset_Id VALUES (5, 'My Analog Lab Bass', 2, 1, 2, 60, 1, 0, 2, '', " + userPresetPath + ", 0, 0, 0, NULL)",
             "INSERT INTO Preset_Id VALUES (6, 'Hidden One', 2, 1, 2, 60, 1, 0, 1, '', 'C:/y', 0, 1, 1, NULL)",
+            // not playable in today's Analog Lab: the old Prophet V3, a layered preset using it, and a preset whose file is gone
+            "INSERT INTO Preset_Id VALUES (7, '75 Lead Soft', 2, 2, 2, 6, 1, 0, 1, '', " + arturiaFile ("Prophet V3/Factory/75 Lead Soft", true) + ", 0, 0, 1, NULL)",
+            "INSERT INTO Preset_Id VALUES (8, 'Lost File Pad', 3, 4, 9, 60, 1, 0, 1, '', " + arturiaFile ("Analog Lab V/Factory/Lost File Pad", false) + ", 0, 0, 1, NULL)",
+            "INSERT INTO Preset_Id VALUES (9, 'Prophet Stack', 3, 4, 9, 60, 1, 0, 1, '', " + arturiaFile ("Analog Lab V/Factory/Prophet Stack", true) + ", 0, 0, 1, NULL)",
             "CREATE TABLE Instruments (key_id INTEGER, name TEXT, display_name TEXT, version INTEGER, category_id INTEGER)",
-            "INSERT INTO Instruments VALUES (60, 'Analog Lab V', 'Analog Lab', 5, 8), (61, 'Jup-8 V4', 'Jup-8', 4, 1)",
+            "INSERT INTO Instruments VALUES (60, 'Analog Lab V', 'Analog Lab', 5, 8), (61, 'Jup-8 V4', 'Jup-8', 4, 1), (6, 'Prophet V3', 'Prophet', 3, 1)",
             "CREATE TABLE Types_V2 (key_id INTEGER, name TEXT)",
-            "INSERT INTO Types_V2 VALUES (1, 'Bass'), (3, 'Keys'), (4, 'Pad')",
+            "INSERT INTO Types_V2 VALUES (1, 'Bass'), (2, 'Lead'), (3, 'Keys'), (4, 'Pad')",
             "CREATE TABLE Subtypes_V2 (key_id INTEGER, name TEXT, type_key INTEGER)",
             "INSERT INTO Subtypes_V2 VALUES (2, 'Analog Bass', 1), (7, 'Electric Piano', 3), (9, 'Warm Pad', 4)",
             "CREATE TABLE Characteristics_Types (key_id INTEGER, name TEXT)",
@@ -161,8 +172,8 @@ namespace sstest
             "CREATE TABLE Purchasable_Packs (product_id INTEGER, instrument_id INTEGER, name TEXT, owned INTEGER)",
             "INSERT INTO Purchasable_Packs VALUES (10, 60, 'Worship Keys', 1), (11, 60, 'Trap Leads', 0)",
             "CREATE TABLE Preset_Metadata (key_id INTEGER, preset_key INTEGER, name TEXT, value TEXT)",
-            "INSERT INTO Preset_Metadata VALUES (1, 1, 'Characteristics', 'Characteristics,Warm;Genres,Pop')" });
-        write (programData.getChildFile ("Arturia/Presets/Analog Lab/User/my sound.labx"), "user preset");
+            "INSERT INTO Preset_Metadata VALUES (1, 1, 'Characteristics', 'Characteristics,Warm;Genres,Pop'), "
+                "(2, 9, 'InstrumentPart1', 'Prophet V3'), (3, 9, 'InstrumentPart2', 'Analog Lab V'), (4, 1, 'ALVersionFirst', '5.0.0')" });
 
         // MediaBay's database (the real place), a decoy database in the same maker's folder, and Cubase's plug-in list
         const auto localAppData = home.getChildFile ("AppData/Local");
