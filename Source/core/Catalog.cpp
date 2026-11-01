@@ -22,16 +22,36 @@ namespace ss
             for (auto& p : parts) list.addIfNotAlreadyThere (p, true);
         }
 
-        void prepare (Sound& s)
+        void prepare (Sound& s)   { prepareForSearch (s); }
+    }
+
+    void prepareForSearch (Sound& s)
+    {
         {
             auto t = " " + (s.name + " " + s.instrument + " " + s.library + " " + s.origin + " " + kindName (s.kind) + " " + s.detail + " "
                             + s.styles.joinIntoString (" ") + " " + s.character.joinIntoString (" ") + " " + s.description)
                               .toLowerCase().replaceCharacters ("_-/()[]|,:;\t\r\n", "              ") + " ";
             while (t.contains ("  ")) t = t.replace ("  ", " ");
+
+            // "Casette808", "808s": also as separate words, so "808" finds them
+            juce::String split;
+            for (int i = 0; i < t.length(); ++i)
+            {
+                const auto ch = t[i];
+                if (i > 0 && t[i - 1] != ' ' && ch != ' '
+                    && juce::CharacterFunctions::isDigit (ch) != juce::CharacterFunctions::isDigit (t[i - 1])
+                    && juce::CharacterFunctions::isLetterOrDigit (ch) && juce::CharacterFunctions::isLetterOrDigit (t[i - 1]))
+                    split << ' ';
+                split << ch;
+            }
+            if (split != t) t << split.substring (1);
             s.searchText = t;
             s.stylesText = s.styles.joinIntoString (" ").toLowerCase();
         }
+    }
 
+    namespace
+    {
         juce::String colOrNull (const juce::StringArray& cols, const char* name, const juce::String& prefix = {})
         {
             return cols.contains (name, true) ? prefix + name : juce::String ("NULL");

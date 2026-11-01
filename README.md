@@ -6,7 +6,7 @@
 through the instruments and presets you already own, then suggests a complete sound palette: rhythm, bass,
 leads, pads and drums, each with alternatives, plus starter MIDI parts to get the song moving.
 
-> **Status: Phase 1d (polish), version 0.6.2.** Describe your song ("modern country like Morgan Wallen, warm,
+> **Status: Phase 1d (polish), version 0.6.3.** Describe your song ("modern country like Morgan Wallen, warm,
 > 120 BPM in A minor") and Song Savant suggests a palette of sounds you already own, one card per part, with
 > alternatives, locks and new takes. Instruments whose presets it can't read (SSD Sampler, FM8...) are suggested as
 > the plug-in itself, and a small helper program (Song Savant Scanner) safely finds out what unlabelled plug-ins

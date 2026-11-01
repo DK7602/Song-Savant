@@ -117,6 +117,12 @@ Tags guessed from a preset's name or category are shown as guesses.
 
 ### 5. Drums and the sibling apps
 - **Drums are a part in every palette.**
+- **The drum card wants a full kit you play yourself** (settled November 2026, from the owner's 0.6.2 test: no
+  Groove Agent kits came up for trap; HALion Sonic "Beats" loops such as "Backstreet Girls" and Analog Lab's
+  "808 Kick" did, and a loop has no usable drum map in Cubase). `drumForm()`: Groove Agent and Drum Machine presets
+  and "Drumset" kits score +4; ready-made loops ("Beats") and single drums (kick, snare...) -8, so they only show up
+  further down the choices. Equal scores are now shuffled fairly (by song and seed) instead of alphabetically, and
+  names like "Casette808" also count as "808".
 - **The 808 goes with the drums** (the owner's way of working, settled November 2026). In trap and country rap the
   drum card says "808 in the kit", and the **Bass** card suggests a bass from Analog Lab or HALion that **sits above
   the 808** (plucked, synth or punchy basses; deep subs and 808-style basses count against it) so the two don't turn
@@ -267,6 +273,11 @@ Built in steps, each one a build the owner can try:
 - Sound analysis of the previews (brightness, low end, attack, width), using the same approach as Groove Grabber's
   analyzer, for real "these sounds fit together" scoring.
 - "Play the whole palette" loop.
+- **Automatic drum maps** (the owner's idea, November 2026, being discussed): for a drum preset with no usable map,
+  load it in the background helper, play every key, recognise each sound (kick, snare, hat... the same idea as
+  Groove Grabber's analyser) and write a Cubase drum map for it. Works only for presets the helper can load by
+  itself (your own preset files; HALion factory presets to be tested; not Analog Lab, which can't be told which
+  preset to load). How the map gets into Cubase needs a test like the Phase 0 drag tests.
 - Learns your taste (thumbs up and down, favourites, go-to sounds).
 
 ### Phase 4: Later

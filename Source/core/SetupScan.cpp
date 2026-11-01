@@ -1,5 +1,6 @@
 #include "SetupScan.h"
 #include "Paths.h"
+#include "PluginTypes.h"
 #include <algorithm>
 
 namespace ss
@@ -221,6 +222,7 @@ namespace ss
                 break;
             }
         }
+        applyKnownTypes (r.plugins);       // what Song Savant Scanner found out about the rest
         for (auto& d : loc.cubaseInstalls) r.cubase.push_back (listFolder (d, loc));
         r.siblings = checkSiblingApps (loc);
 

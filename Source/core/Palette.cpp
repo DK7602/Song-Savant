@@ -1,4 +1,5 @@
 #include "Palette.h"
+#include <cmath>
 #include <algorithm>
 #include <map>
 #include <random>
@@ -43,6 +44,23 @@ namespace ss
         }
     }
 
+    DrumForm drumForm (const Sound& s)
+    {
+        if (s.kind != Kind::drums) return DrumForm::unknown;
+        // Groove Agent and Drum Machine presets are always kits
+        if (s.instrument.containsIgnoreCase ("Groove Agent") || s.instrument.containsIgnoreCase ("Drum Machine")) return DrumForm::kit;
+        const auto d = s.detail.toLowerCase();
+        if (d.contains ("beats") || d.contains ("loop") || s.character.contains ("Loop", true) || has (s, "loop") || has (s, "loops"))
+            return DrumForm::loop;
+        if (d.contains ("drumset") || d.contains ("kit") || has (s, "kit") || has (s, "drumset") || has (s, "drum kit"))
+            return DrumForm::kit;
+        static const char* singles[] = { "kick", "kicks", "snare", "snares", "hihat", "hihats", "hi hat", "hats", "hat", "tom", "toms",
+                                         "cymbal", "cymbals", "clap", "claps", "rim", "crash", "ride", "one shot" };
+        for (auto* w : singles)
+            if (d.contains (w) || has (s, w)) return DrumForm::single;
+        return DrumForm::unknown;
+    }
+
     float scoreSound (const Sound& s, const PartSpec& part, const SongBrief& brief, juce::StringArray* reasons)
     {
         if (! s.owned) return -1.0f;
@@ -51,6 +69,14 @@ namespace ss
 
         float score = 10.0f - 3.0f * (float) std::distance (part.kinds.begin(), kindIt);
         if (s.guessed) score -= 1.5f;
+        if (part.kinds.front() == Kind::drums)
+            switch (drumForm (s))
+            {
+                case DrumForm::kit:     score += 4.0f; break;     // you play your own beat on it (808 included)
+                case DrumForm::loop:    score -= 8.0f; break;     // plays its own groove: hard to use as your drum track
+                case DrumForm::single:  score -= 8.0f; break;     // one drum, not a kit
+                case DrumForm::unknown: break;
+            }
 
         for (int i = 0; i < part.want.size(); ++i)
             if (has (s, part.want[i]))
@@ -89,7 +115,16 @@ namespace ss
                 const float sc = scoreSound (c.sounds[(size_t) i], parts[p], brief, &why);
                 if (sc > 0.0f) ranked[p].push_back ({ i, sc, why });
             }
-            std::stable_sort (ranked[p].begin(), ranked[p].end(), [] (const Pick& a, const Pick& b) { return a.score > b.score; });
+            // equal scores: a fair shuffle (the same for the same song and seed), not alphabetical order
+            auto tie = [&c, &parts, p, &opt] (int i)
+            {
+                return (juce::uint64) (c.sounds[(size_t) i].name + "|" + parts[p].role + "|" + juce::String ((int) opt.seed)).hashCode64();
+            };
+            std::stable_sort (ranked[p].begin(), ranked[p].end(), [&tie] (const Pick& a, const Pick& b)
+            {
+                if (std::abs (a.score - b.score) > 0.001f) return a.score > b.score;
+                return tie (a.sound) < tie (b.sound);
+            });
             if (ranked[p].size() > 60) ranked[p].resize (60);
         }
 
@@ -226,6 +261,14 @@ namespace ss
             (r.startsWith ("tagged ") ? tags : words).add (r.startsWith ("tagged ") ? r.substring (7) : r);
         const auto what = s.detail.isNotEmpty() && s.source != "Plug-in" ? s.detail : kindName (s.kind);
         out.add (what + " for the " + slot.part.role + " part");
+        if (slot.part.kinds.front() == Kind::drums)
+            switch (drumForm (s))
+            {
+                case DrumForm::kit:     out.add ("A full kit: you play your own beat on it"); break;
+                case DrumForm::loop:    out.add ("A ready-made loop: it plays its own beat"); break;
+                case DrumForm::single:  out.add ("One drum sound, not a whole kit"); break;
+                case DrumForm::unknown: break;
+            }
         {
             bool other = false;
             for (auto& w : slot.part.alsoOffer) other = other || has (s, w);

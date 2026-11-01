@@ -37,6 +37,11 @@ namespace ss
         std::vector<PaletteSlot> slots;
     };
 
+    // What a drum sound is: a whole kit you play yourself (Groove Agent, Drum Machine, "Drumset"), a ready-made loop
+    // that plays its own beat (HALion Sonic "Beats"), or one drum (a kick, a snare). A drum part wants a kit.
+    enum class DrumForm { kit, loop, single, unknown };
+    DrumForm drumForm (const Sound&);
+
     struct PaletteOptions
     {
         int palettes = 3;

@@ -55,6 +55,8 @@ namespace ss
     };
 
     // The libraries one at a time (also used by the tests)
+    void prepareForSearch (Sound&);    // fills searchText and stylesText (done by every reader)
+
     std::vector<Sound> readMediaBay (const juce::File& db, juce::String& problem);
     // Analog Lab's presets. Leaves out ones your Analog Lab can't play: presets for instruments Analog Lab no longer has
     // (the old Prophet V3, also inside layered presets) and, when the preset files can be found at all, ones whose file

@@ -569,12 +569,87 @@ namespace
             }
     }
 
+    void testDrumKits (const ss::Catalog& base)
+    {
+        // a drum part wants a whole kit you play yourself, not a loop or a single drum
+        auto cat = base;
+        auto drum = [&cat] (const juce::String& name, const juce::String& instrument, const juce::String& source, const juce::String& detail,
+                            const juce::String& styles, const juce::String& character, bool yours, bool guessed)
+        {
+            ss::Sound s;
+            s.name = name;
+            s.instrument = instrument;
+            s.source = source;
+            s.kind = ss::Kind::drums;
+            s.detail = detail;
+            s.styles = juce::StringArray::fromTokens (styles, ",", "");
+            s.character = juce::StringArray::fromTokens (character, ",", "");
+            s.yours = yours;
+            s.guessed = guessed;
+            ss::prepareForSearch (s);
+            cat.sounds.push_back (s);
+            return (int) cat.sounds.size() - 1;
+        };
+        const int loop = drum ("Backstreet Girls", "HALion Sonic", "MediaBay", "Beats", "Urban (Hip-Hop / R&B)", "Percussive,Loop,Modern", false, false);
+        const int kick = drum ("808 Kick", "Analog Lab V", "Arturia", "Kick", "Hip Hop/Trap", "Punchy", false, false);
+        const int mine = drum ("DK Casette808", "Groove Agent SE", "MediaBay", "", "", "", true, true);
+        const int kit = drum ("Trap Room Kit", "HALion Sonic", "MediaBay", "Drumset", "Urban (Hip-Hop / R&B)", "Modern,Processed", false, false);
+
+        check (ss::drumForm (cat.sounds[(size_t) loop]) == ss::DrumForm::loop && ss::drumForm (cat.sounds[(size_t) kick]) == ss::DrumForm::single
+               && ss::drumForm (cat.sounds[(size_t) mine]) == ss::DrumForm::kit && ss::drumForm (cat.sounds[(size_t) kit]) == ss::DrumForm::kit,
+               "loops, single drums and kits are told apart");
+        check (cat.sounds[(size_t) mine].searchText.contains (" 808 "), "\"Casette808\" also counts as \"808\"");
+
+        const auto brief = ss::readBrief ("modern trap");
+        auto pals = ss::makePalettes (cat, brief);
+        const ss::PaletteSlot* d = nullptr;
+        for (auto& sl : pals[0].slots) if (sl.part.role == "Drums") d = &sl;
+        check (d != nullptr && d->pick.isValid(), "trap palette has drums");
+        if (d == nullptr || ! d->pick.isValid()) return;
+        auto rank = [d] (int sound)
+        {
+            if (d->pick.sound == sound) return 0;
+            for (size_t i = 0; i < d->alternatives.size(); ++i) if (d->alternatives[i].sound == sound) return (int) i + 1;
+            return 99;
+        };
+        check (ss::drumForm (cat.sounds[(size_t) d->pick.sound]) == ss::DrumForm::kit, "the first choice is a kit: " + cat.sounds[(size_t) d->pick.sound].name);
+        juce::String scores;
+        for (int i : { mine, kit, loop, kick })
+            scores << cat.sounds[(size_t) i].name << " " << juce::String (ss::scoreSound (cat.sounds[(size_t) i], d->part, brief), 1) << " (#" << rank (i) << ")  ";
+        check (rank (mine) < rank (loop) && rank (kit) < rank (loop) && rank (mine) < rank (kick), "your Groove Agent kit comes before loops and single drums: " + scores);
+        check (ss::whyItWorksPoints (cat, *d).contains ("A full kit: you play your own beat on it"), "why it works says it's a kit");
+
+        // sounds that fit equally well aren't picked in alphabetical order
+        auto ties = base;
+        for (auto* n : { "Aaa Pad", "Bbb Pad", "Ccc Pad", "Ddd Pad", "Eee Pad", "Fff Pad" })
+        {
+            ss::Sound s;
+            s.name = n;
+            s.instrument = "Padshop";
+            s.source = "MediaBay";
+            s.kind = ss::Kind::pad;
+            s.detail = "Synth Pad";
+            s.character = { "Warm", "Ambient", "Wide" };
+            ss::prepareForSearch (s);
+            ties.sounds.push_back (s);
+        }
+        juce::StringArray firstPicks;
+        for (juce::uint32 seed = 1; seed <= 6; ++seed)
+        {
+            auto tp = ss::makePalettes (ties, ss::readBrief ("ambient worship"), { 1, 6, seed });
+            for (auto& sl : tp[0].slots)
+                if (sl.part.role == "Pad" && sl.pick.isValid()) firstPicks.addIfNotAlreadyThere (ties.sounds[(size_t) sl.pick.sound].name);
+        }
+        check (firstPicks.size() > 1, "equal sounds take turns: " + firstPicks.joinIntoString (", "));
+    }
+
     void testPalettes (const sstest::FakeComputer& fc)
     {
         section ("Palettes");
         std::atomic<bool> cancel { false };
         const auto cat = ss::buildCatalog (fc.loc, cancel);
         testBassAbove808 (cat);
+        testDrumKits (cat);
         const auto brief = ss::readBrief ("warm worship");
         const auto parts = ss::partsFor (brief);
         auto pals = ss::makePalettes (cat, brief);

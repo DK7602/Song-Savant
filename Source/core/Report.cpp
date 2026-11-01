@@ -237,6 +237,7 @@ namespace ss
                     if (! p.categories.isEmpty()) line << "  |  " << p.categories.joinIntoString ("/");
                     if (p.format == "VST3" && ! p.bundle) line << "  |  single file";
                     if (p.categorySource == "Cubase") line << "  |  type from Cubase's list";
+                    if (p.categorySource == "checked") line << "  |  type checked by Song Savant Scanner";
                     lines.add (line);
                 }
             o << title << " (" << lines.size() << "):\n" << (lines.isEmpty() ? juce::String ("  none\n") : lines.joinIntoString ("\n") + "\n");
