@@ -258,6 +258,19 @@ Built in steps, each one a build the owner can try:
 - Light and dark themes.
 
 ### Phase 2: Coach, then **version 1.0**
+- **Map a drum kit** *(built in 0.7.0, the owner's idea; owner to try it)*. Kits such as Analog Lab's "Beat Box"
+  have no drum map in Cubase: the GM Map is wrong and "create drum map from instrument" is greyed out. The owner
+  saves the kit as a preset from the plug-in window in Cubase (that file holds the plug-in's whole state, so it
+  works for Analog Lab too) and drops it on the **DRUM MAPS** page. Song Savant finds the plug-in (by the preset's
+  class ID in the plug-in's own info, then by name), runs **Song Savant Scanner --map**, which opens the plug-in in
+  its own process, loads the preset, plays every key from C0 to C6 offline and listens to each hit
+  (`Source/core/KitMap.*`: how low, bright, noisy and long it is, and how many bursts), names it (Kick, 808, Snare,
+  Clap, Closed/Open Hat, Cymbal, Low/Mid/High Tom, Perc) and saves a **Cubase drum map** (`.drm`) in
+  Documents/Song Savant/Drum Maps. The owner loads it once in Cubase (MIDI > Drum Map Setup > Load). A preset that
+  plays one sound across the keys is spotted ("no drum map needed"). The tests map a tiny test kit plug-in
+  (`Tests/TestKit`, tests only) end to end. To check on the owner's PC: that the helper can open Analog Lab and
+  HALion with a saved preset, that the names are right, and that Cubase loads the `.drm`. Next: rename pads by
+  hand, and use these maps for the starter drum parts.
 - **Starter MIDI parts** (chords, bass, rhythm parts, hook idea) in key and tempo; follow Key Compass chords.
   Drag to DAW.
 - **Arrangement map** (which parts play in each section).
@@ -273,11 +286,6 @@ Built in steps, each one a build the owner can try:
 - Sound analysis of the previews (brightness, low end, attack, width), using the same approach as Groove Grabber's
   analyzer, for real "these sounds fit together" scoring.
 - "Play the whole palette" loop.
-- **Automatic drum maps** (the owner's idea, November 2026, being discussed): for a drum preset with no usable map,
-  load it in the background helper, play every key, recognise each sound (kick, snare, hat... the same idea as
-  Groove Grabber's analyser) and write a Cubase drum map for it. Works only for presets the helper can load by
-  itself (your own preset files; HALion factory presets to be tested; not Analog Lab, which can't be told which
-  preset to load). How the map gets into Cubase needs a test like the Phase 0 drag tests.
 - Learns your taste (thumbs up and down, favourites, go-to sounds).
 
 ### Phase 4: Later

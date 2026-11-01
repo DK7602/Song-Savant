@@ -3,12 +3,12 @@
 
 namespace ss::ui
 {
-    MainView::MainView (SongSavantProcessor& p) : proc (p), songPage (p), libraryPage (p), setupPage (p)
+    MainView::MainView (SongSavantProcessor& p) : proc (p), songPage (p), libraryPage (p), setupPage (p), drumMapsPage (p)
     {
         setLookAndFeel (&lookAndFeel);
         owl = owlImage();
         wordmark = wordmarkImage();
-        for (auto* t : { &songTab, &libraryTab, &setupTab })
+        for (auto* t : { &songTab, &libraryTab, &drumMapsTab, &setupTab })
         {
             t->setRadioGroupId (1);
             t->setComponentID ("tab");
@@ -20,9 +20,11 @@ namespace ss::ui
         songTab.onClick = [this] { showPage (song); };
         libraryTab.onClick = [this] { showPage (library); };
         setupTab.onClick = [this] { showPage (setupCheck); };
+        drumMapsTab.onClick = [this] { showPage (drumMaps); };
         addChildComponent (songPage);
         addChildComponent (libraryPage);
         addChildComponent (setupPage);
+        addChildComponent (drumMapsPage);
         showPage (proc.page);
     }
 
@@ -36,19 +38,22 @@ namespace ss::ui
         sendLookAndFeelChange();
         songPage.themeChanged();
         libraryPage.themeChanged();
+        drumMapsPage.themeChanged();
         repaint();
     }
 
     void MainView::showPage (int which)
     {
-        page = juce::jlimit ((int) song, (int) setupCheck, which);
+        page = juce::jlimit ((int) song, (int) drumMaps, which);
         proc.page = page;
         songPage.setVisible (page == song);
         libraryPage.setVisible (page == library);
         setupPage.setVisible (page == setupCheck);
+        drumMapsPage.setVisible (page == drumMaps);
         songTab.setToggleState (page == song, juce::dontSendNotification);
         libraryTab.setToggleState (page == library, juce::dontSendNotification);
         setupTab.setToggleState (page == setupCheck, juce::dontSendNotification);
+        drumMapsTab.setToggleState (page == drumMaps, juce::dontSendNotification);
         repaint();
     }
 
@@ -80,17 +85,20 @@ namespace ss::ui
         auto r = getLocalBounds();
         auto header = r.removeFromTop (124).reduced (24, 16);
         headerArea = header.toFloat();
-        auto tabs = header.removeFromRight (540).withSizeKeepingCentre (540, 40).translated (0, -8);
-        setupTab.setBounds (tabs.removeFromRight (170));
-        tabs.removeFromRight (12);
-        libraryTab.setBounds (tabs.removeFromRight (140));
-        tabs.removeFromRight (12);
-        songTab.setBounds (tabs.removeFromRight (120));
-        tabs.removeFromRight (16);
+        auto tabs = header.removeFromRight (620).withSizeKeepingCentre (620, 40).translated (0, -8);
+        setupTab.setBounds (tabs.removeFromRight (156));
+        tabs.removeFromRight (10);
+        drumMapsTab.setBounds (tabs.removeFromRight (142));
+        tabs.removeFromRight (10);
+        libraryTab.setBounds (tabs.removeFromRight (122));
+        tabs.removeFromRight (10);
+        songTab.setBounds (tabs.removeFromRight (104));
+        tabs.removeFromRight (14);
         themeBtn.setBounds (tabs.removeFromRight (40));
         subtitleArea = juce::Rectangle<float> ((float) setupTab.getRight() - 300.0f, (float) setupTab.getBottom() + 4.0f, 300.0f, 18.0f);
         songPage.setBounds (r);
         libraryPage.setBounds (r);
         setupPage.setBounds (r);
+        drumMapsPage.setBounds (r);
     }
 }

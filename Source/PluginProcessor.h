@@ -6,6 +6,7 @@
 #include "core/ScanJob.h"
 #include "core/CatalogJob.h"
 #include "core/SongSession.h"
+#include "core/KitMapJob.h"
 #include "core/Report.h"
 
 class SongSavantProcessor : public juce::AudioProcessor
@@ -25,7 +26,10 @@ public:
     // the catalog of every sound you own (built in the background when the window first opens)
     ss::CatalogJob catalog;
     void startCatalog();
-    int page = 0;                                          // the page that was showing (0 Song, 1 Library, 2 Setup Check)
+    int page = 0;                                          // the page that was showing (0 Song, 1 Library, 2 Setup Check, 3 Drum Maps)
+
+    // mapping a drum kit (the Drum Maps page)
+    ss::KitMapJob kitMap;
 
     // the song you're working on and its palettes
     ss::SongSession song;

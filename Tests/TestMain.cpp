@@ -1004,11 +1004,25 @@ namespace
     {
         section ("Screenshots");
         dir.createDirectory();
+        ss::KitMap beatBox;          // what a mapped kit looks like
+        beatBox.name = "Beat Box";
+        beatBox.plugin = "Analog Lab V";
+        for (auto [note, kind] : std::initializer_list<std::pair<int, const char*>> { { 35, "808" }, { 36, "Kick" }, { 37, "Perc" }, { 38, "Snare" },
+                 { 39, "Clap" }, { 40, "Snare" }, { 41, "Tom" }, { 42, "Closed Hat" }, { 43, "Tom" }, { 44, "Closed Hat" }, { 45, "Tom" },
+                 { 46, "Open Hat" }, { 49, "Cymbal" }, { 51, "Cymbal" }, { 56, "Perc" } })
+        {
+            ss::KitPad pad;
+            pad.note = note;
+            pad.kind = kind;
+            beatBox.pads.push_back (pad);
+        }
+        ss::nameKitPads (beatBox);
         auto shoot = [&] (const juce::String& name, bool withResult, int w, int h, int page, const juce::String& search = {}, const juce::String& song = {})
         {
             SongSavantProcessor proc;
             proc.locationProvider = [loc = fc.loc] { return loc; };
             proc.page = page;
+            if (name.startsWith ("drum-maps-kit")) proc.kitMap.setResult (fc.loc.home.getChildFile ("Beat Box.vstpreset"), beatBox);
             std::atomic<bool> cancel { false };
             proc.catalog.setCatalog (ss::buildCatalog (fc.loc, cancel));
             if (withResult)
@@ -1043,6 +1057,9 @@ namespace
         shoot ("library", false, 1240, 820, 1);
         shoot ("library-search", false, 1240, 820, 1, "warm pad");
         shoot ("library-small", false, 1060, 780, 1);
+        shoot ("drum-maps-empty", false, 1240, 820, 3);
+        shoot ("drum-maps-kit", false, 1240, 820, 3);
+        shoot ("drum-maps-kit-small", false, 1060, 780, 3);
         shoot ("setup-check-empty", false, 1140, 800, 2);
         shoot ("setup-check-results", true, 1140, 800, 2);
         shoot ("setup-check-small", true, 1060, 780, 2);
@@ -1050,6 +1067,7 @@ namespace
         shoot ("song-light", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("library-light", false, 1240, 820, 1, "warm pad");
         shoot ("setup-check-light", true, 1140, 800, 2);
+        shoot ("drum-maps-kit-light", false, 1240, 820, 3);
         ss::ui::setLightTheme (false);
         check (! ss::ui::isLightTheme(), "back to dark");
         juce::ignoreUnused (r);
