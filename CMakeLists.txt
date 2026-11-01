@@ -109,6 +109,8 @@ set(SS_CORE_SOURCES
     Source/core/SongSession.cpp
     Source/core/PluginProfiles.cpp
     Source/core/PluginTypes.cpp
+    Source/core/KitMap.cpp
+    Source/core/KitMapJob.cpp
     Source/core/ScanJob.cpp)
 
 set(SS_UI_SOURCES
@@ -162,7 +164,8 @@ target_compile_definitions(SongSavant PUBLIC JUCE_MODAL_LOOPS_PERMITTED=0)
 # can't take the app or the DAW down). Installed next to the standalone app.
 # ------------------------------------------------------------------------------------------------
 juce_add_console_app(SongSavantScanner PRODUCT_NAME "Song Savant Scanner")
-target_sources(SongSavantScanner PRIVATE Source/scanner/ScannerMain.cpp)
+target_sources(SongSavantScanner PRIVATE Source/scanner/ScannerMain.cpp Source/core/KitMap.cpp Source/core/Paths.cpp)
+target_include_directories(SongSavantScanner PRIVATE Source)
 set_target_properties(SongSavantScanner PROPERTIES OUTPUT_NAME "Song Savant Scanner")
 target_compile_definitions(SongSavantScanner PRIVATE JUCE_PLUGINHOST_VST3=1 JUCE_PLUGINHOST_AU=0 JUCE_PLUGINHOST_LADSPA=0
     JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_DISPLAY_SPLASH_SCREEN=0 JUCE_REPORT_APP_USAGE=0 JUCE_MODAL_LOOPS_PERMITTED=1)
@@ -180,9 +183,31 @@ if(SS_BUILD_TESTS)
     target_sources(SSTests PRIVATE Tests/TestMain.cpp Tests/FakeComputer.cpp ${SS_CORE_SOURCES} ${SS_UI_SOURCES})
     target_compile_definitions(SSTests PRIVATE SS_TEST_RUNNER=1 JUCE_MODAL_LOOPS_PERMITTED=1)
     target_link_libraries(SSTests PRIVATE SSShared)
-    # the tests ask the real scanner about the real plug-in
-    add_dependencies(SSTests SongSavantScanner SongSavant_VST3)
+    # a tiny drum kit plug-in, only for the tests: the scanner maps it like one of your kits
+    juce_add_plugin(SSTestKit
+        COMPANY_NAME                 "Grabber Audio"
+        PRODUCT_NAME                 "SS Test Kit"
+        BUNDLE_ID                    com.grabberaudio.sstestkit
+        PLUGIN_MANUFACTURER_CODE     Grbr
+        PLUGIN_CODE                  SStk
+        FORMATS                      VST3
+        IS_SYNTH                     TRUE
+        NEEDS_MIDI_INPUT             TRUE
+        VST3_CATEGORIES              Instrument Drum
+        COPY_PLUGIN_AFTER_BUILD      FALSE)
+    target_sources(SSTestKit PRIVATE Tests/TestKit/TestKitPlugin.cpp)
+    target_compile_definitions(SSTestKit PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
+        JUCE_DISPLAY_SPLASH_SCREEN=0 JUCE_REPORT_APP_USAGE=0)
+    target_link_libraries(SSTestKit PRIVATE juce::juce_audio_processors juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags)
+    if(SS_LINUX_MINIMAL)
+        target_compile_definitions(SSTestKit PUBLIC JUCE_ALSA=0 JUCE_JACK=0)
+    endif()
+
+    # the tests ask the real scanner about the real plug-ins
+    add_dependencies(SSTests SongSavantScanner SongSavant_VST3 SSTestKit_VST3)
     target_compile_definitions(SSTests PRIVATE
         SS_TEST_SCANNER="$<TARGET_FILE:SongSavantScanner>"
-        SS_TEST_VST3="${CMAKE_BINARY_DIR}/SongSavant_artefacts/$<CONFIG>/VST3/Song Savant.vst3")
+        SS_TEST_VST3="${CMAKE_BINARY_DIR}/SongSavant_artefacts/$<CONFIG>/VST3/Song Savant.vst3"
+        SS_TEST_KIT_VST3="${CMAKE_BINARY_DIR}/SSTestKit_artefacts/$<CONFIG>/VST3/SS Test Kit.vst3")
 endif()

@@ -17,6 +17,8 @@
 #include "core/Palette.h"
 #include "core/PluginProfiles.h"
 #include "core/PluginTypes.h"
+#include "core/KitMap.h"
+#include "core/KitMapJob.h"
 #include <map>
 #include <algorithm>
 #include "PluginProcessor.h"
@@ -459,6 +461,217 @@ namespace
         copyDir.deleteRecursively();
     }
 
+    // made-up drum sounds, 1.2 seconds at 44.1 kHz
+    std::vector<float> synthHit (const juce::String& what)
+    {
+        const double sr = 44100.0;
+        std::vector<float> x ((size_t) (sr * 1.2), 0.0f);
+        juce::Random rng (42);
+        auto noise = [&rng] { return rng.nextFloat() * 2.0f - 1.0f; };
+        auto filtered = [&] (std::vector<float> v, juce::IIRCoefficients c, int passes)
+        {
+            for (int p = 0; p < passes; ++p) { juce::IIRFilter f; f.setCoefficients (c); f.processSamples (v.data(), (int) v.size()); }
+            return v;
+        };
+        std::vector<float> white (x.size());
+        for (auto& v : white) v = noise();
+        double phase = 0;
+        for (size_t i = 0; i < x.size(); ++i)
+        {
+            const double t = (double) i / sr;
+            if (what == "kick")
+            {
+                phase += juce::MathConstants<double>::twoPi * (50.0 + 100.0 * std::exp (-t / 0.03)) / sr;
+                x[i] = (float) (std::sin (phase) * std::exp (-t / 0.06));
+            }
+            else if (what == "808")  x[i] = (float) (std::sin (juce::MathConstants<double>::twoPi * 45.0 * t) * std::exp (-t / 0.35));
+            else if (what == "tom")  x[i] = (float) (std::sin (juce::MathConstants<double>::twoPi * 120.0 * t) * std::exp (-t / 0.1));
+        }
+        if (what == "snare")
+        {
+            const auto n = filtered (white, juce::IIRCoefficients::makeLowPass (sr, 5000.0), 2);
+            for (size_t i = 0; i < x.size(); ++i)
+            {
+                const double t = (double) i / sr;
+                x[i] = (float) (n[i] * std::exp (-t / 0.05) + 0.6 * std::sin (juce::MathConstants<double>::twoPi * 190.0 * t) * std::exp (-t / 0.04));
+            }
+        }
+        else if (what == "clap")
+        {
+            auto n = filtered (white, juce::IIRCoefficients::makeBandPass (sr, 1800.0, 1.0), 1);
+            for (size_t i = 0; i < x.size(); ++i)
+            {
+                const double t = (double) i / sr;
+                double a = 0;
+                for (double b : { 0.0, 0.011, 0.022, 0.033 }) if (t >= b) a = std::max (a, std::exp (-(t - b) / 0.002));
+                if (t >= 0.033) a = std::max (a, 0.5 * std::exp (-(t - 0.033) / 0.05));
+                x[i] = (float) (n[i] * 3.0 * a);
+            }
+        }
+        else if (what == "closed hat" || what == "open hat" || what == "cymbal")
+        {
+            const auto n = filtered (white, juce::IIRCoefficients::makeHighPass (sr, 7000.0), 2);
+            const double tau = what == "closed hat" ? 0.015 : what == "open hat" ? 0.12 : 0.5;
+            for (size_t i = 0; i < x.size(); ++i) x[i] = (float) (n[i] * std::exp (-((double) i / sr) / tau));
+        }
+        return x;
+    }
+
+    void testKitMap()
+    {
+        section ("Mapping a drum kit");
+        const std::pair<const char*, const char*> sounds[] = { { "kick", "Kick" }, { "808", "808" }, { "snare", "Snare" }, { "clap", "Clap" },
+                                                               { "closed hat", "Closed Hat" }, { "open hat", "Open Hat" }, { "cymbal", "Cymbal" },
+                                                               { "tom", "Tom" } };
+        for (auto& [what, expected] : sounds)
+        {
+            const auto x = synthHit (what);
+            const auto f = ss::analyseHit (x.data(), (int) x.size(), 44100.0);
+            const auto got = ss::classifyHit (f);
+            check (got == expected, juce::String (what) + " heard as " + got + "  (low " + juce::String (f.lowRatio, 2) + ", high " + juce::String (f.highRatio, 2)
+                                    + ", zcr " + juce::String ((int) f.zcr) + ", decay " + juce::String (f.decay, 2) + " s, pitch " + juce::String ((int) f.pitchHz)
+                                    + " Hz, bursts " + juce::String (f.bursts) + ")");
+        }
+        std::vector<float> quiet (44100, 0.0f);
+        check (ss::classifyHit (ss::analyseHit (quiet.data(), (int) quiet.size(), 44100.0)).isEmpty(), "a silent key is left out");
+
+        ss::KitMap k;
+        k.name = "Beat Box";
+        k.plugin = "Analog Lab V";
+        for (auto [note, kind] : std::initializer_list<std::pair<int, const char*>> { { 36, "Kick" }, { 38, "Snare" }, { 42, "Closed Hat" }, { 45, "Tom" },
+                                                                                       { 47, "Tom" }, { 48, "Tom" }, { 35, "Kick" }, { 46, "Open Hat" } })
+        {
+            ss::KitPad p;
+            p.note = note;
+            p.kind = kind;
+            k.pads.push_back (p);
+        }
+        ss::nameKitPads (k);
+        juce::StringArray names;
+        for (auto& p : k.pads) names.add (ss::noteName (p.note) + " " + p.name);
+        check (names.joinIntoString (", ") == "B0 Kick, C1 Kick 2, D1 Snare, F#1 Closed Hat, A1 Low Tom, A#1 Open Hat, B1 Mid Tom, C2 High Tom",
+               "pads named and in order: " + names.joinIntoString (", "));
+        check (! k.oneSound && k.ok(), "a real kit");
+        check (ss::noteName (60) == "C3" && ss::noteName (36) == "C1", "Cubase's note names");
+
+        const auto back = ss::kitMapFromJson (juce::JSON::parse (juce::JSON::toString (ss::kitMapToJson (k))));
+        check (back.name == "Beat Box" && back.pads.size() == k.pads.size() && back.pads[3].name == "Closed Hat", "a kit map survives the trip from the helper");
+
+        const auto xml = juce::parseXML (ss::makeCubaseDrumMap (k));
+        bool ok = xml != nullptr && xml->hasTagName ("DrumMap");
+        int items = 0;
+        juce::String at36, firstInOrder;
+        if (ok)
+            for (auto* list : xml->getChildWithTagNameIterator ("list"))
+            {
+                if (list->getStringAttribute ("name") == "Map")
+                    for (auto* item : list->getChildIterator())
+                    {
+                        ++items;
+                        int in = -1;
+                        juce::String nm;
+                        for (auto* field : item->getChildIterator())
+                        {
+                            if (field->getStringAttribute ("name") == "INote") in = field->getIntAttribute ("value");
+                            if (field->getStringAttribute ("name") == "Name") nm = field->getStringAttribute ("value");
+                        }
+                        if (in == 36) at36 = nm;
+                    }
+                if (list->getStringAttribute ("name") == "Order" && list->getFirstChildElement() != nullptr)
+                    firstInOrder = list->getFirstChildElement()->getStringAttribute ("value");
+            }
+        check (ok && items == 128 && at36 == "Kick 2" && firstInOrder == "35", "a Cubase drum map: 128 keys, named, the kit first");
+        const auto file = ss::saveCubaseDrumMap (k);
+        check (file.getFileName() == "Beat Box.drm" && file.getParentDirectory() == ss::drumMapsFolder() && file.loadFileAsString().contains ("Closed Hat"),
+               "saved in Documents/Song Savant/Drum Maps");
+
+        ss::KitMap chromatic;                      // one 808 played up and down the keyboard
+        for (int n = 24; n < 60; ++n) { ss::KitPad p; p.note = n; p.kind = "808"; chromatic.pads.push_back (p); }
+        ss::nameKitPads (chromatic);
+        check (chromatic.oneSound, "one sound across the keyboard is spotted (no drum map needed)");
+    }
+
+    void testKitMapping (const sstest::FakeComputer& fc)
+    {
+        section ("Mapping a real kit plug-in (Song Savant Scanner)");
+        const juce::File kit (SS_TEST_KIT_VST3), scanner (SS_TEST_SCANNER);
+        check (kit.isDirectory() && scanner.existsAsFile(), "the test kit and the scanner were built");
+
+        // the kit's class ID, from its own info, so a preset can be made for it
+        juce::String cid;
+        const auto moduleInfo = ss::parseLenientJson (kit.getChildFile ("Contents/Resources/moduleinfo.json").loadFileAsString());
+        if (auto* classes = moduleInfo["Classes"].getArray())
+            for (auto& c : *classes)
+                if (c["Category"].toString() == "Audio Module Class") cid = c["CID"].toString();
+        check (cid.length() == 32, "the test kit's class ID: " + cid);
+
+        const auto presets = fc.loc.home.getChildFile ("Documents/VST3 Presets/Grabber Audio/SS Test Kit");
+        auto writePreset = [&] (const juce::String& name, const juce::String& classId, const juce::String& state)
+        {
+            juce::StringPairArray attrs;
+            attrs.set ("PlugInName", "SS Test Kit");
+            juce::MemoryBlock comp (state.toRawUTF8(), state.getNumBytesAsUTF8());
+            const auto f = presets.getChildFile (name + ".vstpreset");
+            presets.createDirectory();
+            const auto data = ss::makeVstPreset (classId, comp, attrs);
+            f.replaceWithData (data.getData(), data.getSize());
+            return f;
+        };
+        const auto good = writePreset ("Beat Box", cid, "SSTESTKIT on");
+        const auto silent = writePreset ("Switched Off", cid, "SSTESTKIT off");
+        const auto wrong = writePreset ("Someone Else's", "0123456789ABCDEF0123456789ABCDEF", "SSTESTKIT on");
+
+        auto loc = fc.loc;
+        loc.vst3Folders = { kit.getParentDirectory() };
+        const auto installed = ss::scanInstalledPlugins (loc);
+        const auto found = ss::pluginForPreset (good, installed);
+        check (found.problem.isEmpty() && found.name == "SS Test Kit" && found.file == kit, "the preset's plug-in is found: " + found.name + found.problem);
+        check (ss::pluginForPreset (fc.halionPreset, installed).problem.contains ("Couldn't find"), "a preset for a plug-in you don't have says so");
+
+       #if JUCE_WINDOWS
+        _putenv_s ("SS_SCANNER", scanner.getFullPathName().toRawUTF8());
+       #else
+        setenv ("SS_SCANNER", scanner.getFullPathName().toRawUTF8(), 1);
+       #endif
+        auto map = [&] (const juce::File& preset)
+        {
+            ss::KitMapJob job;
+            job.timeoutSeconds = 150;
+            const int g = job.generation();
+            juce::StringArray statuses;
+            job.start (preset, loc);
+            for (int i = 0; i < 3200 && job.generation() == g; ++i)
+            {
+                juce::Thread::sleep (50);
+                statuses.addIfNotAlreadyThere (job.status().upToFirstOccurrenceOf (" (", false, false));
+            }
+            auto r = job.result();
+            return std::make_pair (r != nullptr ? *r : ss::KitMap(), statuses);
+        };
+
+        const auto [k, statuses] = map (good);
+        juce::StringArray got;
+        for (auto& p : k.pads) got.add (ss::noteName (p.note) + " " + p.name);
+        check (k.ok() && got.joinIntoString (", ") == "B0 808, C1 Kick, D1 Snare, D#1 Clap, F#1 Closed Hat, A1 Low Tom, A#1 Open Hat, C2 High Tom, C#2 Cymbal",
+               "every pad found and named: " + got.joinIntoString (", ") + k.error);
+        check (k.name == "Beat Box" && k.plugin == "SS Test Kit" && ! k.oneSound, "the map is named after the preset");
+        check (statuses.joinIntoString ("|").contains ("Playing key"), "progress is shown while it plays: " + statuses.joinIntoString (" | "));
+        const auto drm = ss::saveCubaseDrumMap (k);
+        check (drm.existsAsFile() && drm.loadFileAsString().contains ("High Tom"), "saved as a Cubase drum map");
+
+        const auto off = map (silent).first;
+        check (! off.ok() && off.error.contains ("No key made a sound"), "the preset is really loaded (switched off, it stays silent): " + off.error);
+        const auto other = map (wrong).first;
+        check (! other.ok() && other.error.contains ("isn't for"), "a preset made for another plug-in is refused: " + other.error);
+
+       #if JUCE_WINDOWS
+        _putenv_s ("SS_SCANNER", "");
+       #else
+        unsetenv ("SS_SCANNER");
+       #endif
+        presets.getParentDirectory().deleteRecursively();   // leave the fake computer as it was
+    }
+
     void testMusic()
     {
         section ("Music knowledge");
@@ -867,6 +1080,8 @@ int main (int argc, char** argv)
     testCatalog (fc);
     testPluginSuggestions (fc);
     testPluginCheck (fc);
+    testKitMap();
+    testKitMapping (fc);
     testMusic();
     testPalettes (fc);
     testCancelAndJob (fc);
