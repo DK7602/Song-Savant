@@ -555,6 +555,23 @@ namespace
             check (allowed.contains (got), juce::String (what) + " heard as " + got + "  (tonal " + juce::String (f.tonal, 2) + " at " + juce::String ((int) f.toneHz)
                                            + " Hz, zcr " + juce::String ((int) f.zcr) + ", decay " + juce::String (f.decay, 2) + " s)");
         }
+        // the kinds of sound in the owner's Beat Box (Analog Lab), as Song Savant measures them (round numbers)
+        {
+            auto hit = [] (float tonal, float tone, float lowHz, float zcr, float decay, float low, float body, float high, int bursts)
+            {
+                ss::HitFeatures f;
+                f.peak = 0.3f; f.tonal = tonal; f.toneHz = tone; f.pitchHz = lowHz; f.zcr = zcr; f.decay = decay;
+                f.lowRatio = low; f.bodyRatio = body; f.highRatio = high; f.bursts = bursts;
+                return ss::classifyHit (f);
+            };
+            const auto kick = hit (0.9f, 800, 25, 350, 0.13f, 0.95f, 0.97f, 0.0f, 3);
+            const auto snare = hit (0.8f, 120, 130, 1900, 0.15f, 0.45f, 0.9f, 0.0f, 2);     // pitched, but noisier than the pitch explains
+            const auto tom = hit (0.8f, 100, 95, 360, 0.17f, 0.65f, 0.94f, 0.0f, 2);
+            const auto breathyTom = hit (0.3f, 150, 130, 1550, 0.3f, 0.15f, 0.48f, 0.0f, 1); // noisy, but low, dark and ringing
+            const auto perc = hit (0.94f, 720, 500, 1800, 0.09f, 0.0f, 0.01f, 0.0f, 1);
+            check (kick == "Kick" && snare == "Snare" && tom == "Tom" && breathyTom == "Tom" && perc == "Perc",
+                   "Beat Box's sounds: " + kick + ", " + snare + ", " + tom + ", " + breathyTom + ", " + perc);
+        }
         std::vector<float> quiet (44100, 0.0f);
         check (ss::classifyHit (ss::analyseHit (quiet.data(), (int) quiet.size(), 44100.0)).isEmpty(), "a silent key is left out");
 

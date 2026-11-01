@@ -165,7 +165,13 @@ namespace ss
         if (f.lowRatio > 0.45f && f.pitchHz < 90.0f)
             return f.decay > 0.6f ? "808" : "Kick";
         if (noisy)
-            return f.bursts >= 3 ? "Clap" : "Snare";
+        {
+            if (f.bursts >= 3) return "Clap";
+            // a tom with a noisy, breathy hit: not very noisy or bright, low, and it rings on (a snare dies away fast)
+            const float low = f.toneHz > 0 ? f.toneHz : f.pitchHz;
+            if (f.zcr < 2200.0f && f.decay >= 0.2f && f.highRatio < 0.1f && low >= 60.0f && low < 400.0f) return "Tom";
+            return "Snare";
+        }
         const float hz = pitched && f.toneHz > 0 ? f.toneHz : f.pitchHz;
         if (hz >= 60.0f && hz < 400.0f && f.decay > 0.12f && f.bodyRatio > 0.35f) return "Tom";   // pitched, low to mid body, rings a while
         return "Perc";

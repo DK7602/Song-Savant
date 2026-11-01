@@ -292,8 +292,15 @@ Built in steps, each one a build the owner can try:
     names are still wrong.
   - **0.7.3, from the owner's video:** shift-click didn't work, because a click opens the rename menu and closing
     the menu also forgot the first pad. Now the first pad is remembered (`RangePicker`), and you can **drag across
-    pads** to pick a run of them. The zone fix helped (C3-F3 now toms, C6 now Perc) but F#3-D#4 are still called
-    Snare: waiting for the owner's "what Song Savant heard" file to tune that on real numbers.
+    pads** to pick a run of them. The zone fix helped (C3-F3 now toms, C6 now Perc) but F#3-F4 were still called
+    Snare.
+  - **0.7.4, tuned on the owner's "what Song Savant heard" file** (Beat Box, 73 keys): the zones were found exactly
+    (each key matches the one below at 1.00, and the match drops at every zone boundary). F#3-F4 is a second set of
+    toms with a breathy, noisy hit and no clear pitch, while the real snares (G1-F2) are short (about 0.15 s). A
+    noisy sound that isn't very noisy or bright (under 2,200 crossings a second, little above 5 kHz), is low (60-400
+    Hz) and rings for 0.2 s or more is now a Tom. Replaying the owner's numbers gives C0-F#1 Kick, G1-F2 Snare,
+    F#2-F4 Tom, F#4-C6 Perc, which is what the owner hears. (The owner's file isn't kept in the repo; the test uses
+    round numbers like it.)
   - **Settled:** with drum maps fixed, Analog Lab and HALion kits may be suggested as freely as Groove Agent kits
     (the owner, November 2026): any drum preset that isn't a loop or a single drum counts as a kit (+4), and their
     "How to load it" points to the DRUM MAPS page.
