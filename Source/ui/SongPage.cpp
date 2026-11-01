@@ -1,15 +1,19 @@
 #include "SongPage.h"
 #include "PluginProcessor.h"
 #include "core/Siblings.h"
+#include "core/Paths.h"
+#include "core/KitMap.h"
 
 namespace ss::ui
 {
     //==============================================================================
-    void PartCard::show (const PaletteSlot* s, const Sound* snd, bool sel)
+    void PartCard::show (const PaletteSlot* s, const Sound* snd, bool sel, const juce::String& info)
     {
         slot = s;
         sound = snd;
         isSelected = sel;
+        partInfo = info;
+        setTooltip (partInfo.isNotEmpty() ? "Starter part: " + partInfo + ". Drag the MIDI tag into Cubase." : juce::String());
         repaint();
     }
 
@@ -48,6 +52,23 @@ namespace ss::ui
         g.setGradientFill (juce::ColourGradient (colour.withAlpha (0.38f), art.getCentreX(), art.getY(), p.bgTop.withAlpha (0.6f), art.getCentreX(), art.getBottom(), false));
         g.fillRoundedRectangle (art, 10.0f);
         if (sound != nullptr) drawKindIcon (g, sound->kind, art.reduced (art.getHeight() * 0.2f), colour.brighter (0.4f));
+
+        midiArea = {};
+        if (partInfo.isNotEmpty())
+        {
+            // the starter part's tag: drag it into the DAW
+            midiArea = juce::Rectangle<float> (art.getX() + 6.0f, art.getBottom() - 24.0f, 54.0f, 18.0f);
+            const bool hot = midiArea.contains (getMouseXYRelative().toFloat()) && isMouseOver (true);
+            g.setColour ((hot ? p.gold : p.panel).withAlpha (hot ? 0.95f : 0.85f));
+            g.fillRoundedRectangle (midiArea, 9.0f);
+            g.setColour (hot ? p.goldText : p.gold);
+            g.drawRoundedRectangle (midiArea.reduced (0.5f), 9.0f, 1.0f);
+            g.setFont (sans (10.5f, true));
+            g.drawText ("MIDI", midiArea.withTrimmedLeft (8.0f), juce::Justification::centredLeft);
+            for (int row = 0; row < 3; ++row)
+                for (int col = 0; col < 2; ++col)
+                    g.fillEllipse (midiArea.getRight() - 15.0f + (float) col * 4.5f, midiArea.getY() + 4.5f + (float) row * 3.5f, 2.2f, 2.2f);
+        }
 
         lockArea = art.removeFromTop (30.0f).removeFromRight (30.0f).reduced (3.0f);
         if (slot->pick.isValid())
@@ -101,8 +122,22 @@ namespace ss::ui
         }
     }
 
+    void PartCard::mouseDown (const juce::MouseEvent& e)
+    {
+        pressedOnMidi = midiArea.contains (e.position);
+        dragging = false;
+    }
+
+    void PartCard::mouseDrag (const juce::MouseEvent& e)
+    {
+        if (! pressedOnMidi || dragging || e.getDistanceFromDragStart() < 6) return;
+        dragging = true;
+        if (onDragPart) onDragPart();
+    }
+
     void PartCard::mouseUp (const juce::MouseEvent& e)
     {
+        if (dragging) { dragging = false; return; }
         const auto pos = e.position;
         if (prevArea.contains (pos)) { if (onPrev) onPrev(); }
         else if (nextArea.contains (pos)) { if (onNext) onNext(); }
@@ -197,6 +232,12 @@ namespace ss::ui
             refresh();
         };
         addAndMakeVisible (newBtn);
+
+        ideaBtn.setTooltip ("Another take on the starter parts: other chords from the style, a new hook");
+        ideaBtn.onClick = [this] { ++proc.song.partsSeed; refresh(); };
+        addAndMakeVisible (ideaBtn);
+        allParts.setTooltip ("Drag every starter part into Cubase: one track each");
+        addAndMakeVisible (allParts);
 
         choices.onChoose = [this] (int i)
         {
@@ -306,6 +347,11 @@ namespace ss::ui
         juce::PopupMenu m;
         m.addSectionHeader ("KEY COMPASS SONGS");
         if (songs.empty()) m.addItem (-1, "No Key Compass songs found", false);
+        if (proc.song.form.fromSong.isNotEmpty())
+        {
+            m.addItem (1000, "Don't use " + proc.song.form.fromSong + " any more");
+            m.addSeparator();
+        }
         for (size_t i = 0; i < songs.size() && i < 20; ++i)
         {
             const auto& s = songs[i];
@@ -314,13 +360,68 @@ namespace ss::ui
         m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&keyCompassBtn),
                          [this, songs, safe = juce::Component::SafePointer<SongPage> (this)] (int r)
         {
-            if (safe == nullptr || r <= 0 || r > (int) songs.size()) return;
+            if (safe == nullptr || r <= 0) return;
+            if (r == 1000)
+            {
+                proc.song.form.fromSong.clear();
+                proc.song.form.chords.clear();
+                refresh();
+                return;
+            }
+            if (r > (int) songs.size()) return;
             const auto& s = songs[(size_t) r - 1];
             if (s.key >= 0) keyBox.setSelectedId (s.key + 2, juce::dontSendNotification);
             if (s.bpm > 0) bpmBox.setText (juce::String (juce::roundToInt (s.bpm)), false);
             proc.song.form.fromSong = s.name;
-            repaint();
+            proc.song.form.chords = s.chords;      // the starter parts follow the song's chords
+            refresh();
         });
+    }
+
+    DrumNotes SongPage::drumNotes() const
+    {
+        // the drum card's sound, if Song Savant mapped it on the Drum Maps page (same name)
+        if (auto* pal = proc.song.palettes.empty() ? nullptr : &proc.song.palettes[(size_t) juce::jlimit (0, (int) proc.song.palettes.size() - 1, proc.song.current)])
+            for (auto& slot : pal->slots)
+                if (partTypeFor (slot.part) == PartType::drums && catalog != nullptr && slot.current().isValid())
+                {
+                    const auto& snd = catalog->sounds[(size_t) slot.current().sound];
+                    const auto drm = drumMapsFolder().getChildFile (juce::File::createLegalFileName (snd.name).trim() + ".drm");
+                    if (drm.existsAsFile())
+                        if (auto mapped = drumNotesFromMap (drm)) return *mapped;
+                }
+        return generalMidiDrums();
+    }
+
+    juce::File SongPage::writeStarterParts (int card)
+    {
+        auto* pal = proc.song.currentPalette();
+        if (pal == nullptr) return {};
+        const auto plan = proc.song.partsPlan();
+        const auto drums = drumNotes();
+        std::vector<NamedPart> parts;
+        for (int i = 0; i < (int) pal->slots.size(); ++i)
+        {
+            if (card >= 0 && i != card) continue;
+            const auto& slot = pal->slots[(size_t) i];
+            const auto type = partTypeFor (slot.part);
+            if (type == PartType::none) continue;
+            const Sound* snd = catalog != nullptr && slot.current().isValid() ? &catalog->sounds[(size_t) slot.current().sound] : nullptr;
+            parts.push_back ({ slot.part.role + (snd != nullptr ? " - " + snd->name : juce::String()),
+                               makePart (plan, type, drums, snd != nullptr ? snd->kind : slot.part.kinds.front()) });
+        }
+        if (parts.empty()) return {};
+        const auto what = card >= 0 ? pal->slots[(size_t) card].part.role : juce::String ("Starter parts");
+        const auto file = paths::tempDir().getChildFile ("Starter Parts")
+                              .getChildFile (juce::File::createLegalFileName (what + " - " + keyName (plan.key) + " " + juce::String (juce::roundToInt (plan.bpm)) + " BPM.mid"));
+        return writeMidiFile (plan, parts, file) ? file : juce::File();
+    }
+
+    void SongPage::dragPart (int card)
+    {
+        const auto file = writeStarterParts (card);
+        if (! file.existsAsFile() || card < 0 || card >= cards.size()) return;
+        juce::DragAndDropContainer::performExternalDragDropOfFiles ({ file.getFullPathName() }, false, cards[card]);
     }
 
     PaletteSlot* SongPage::selectedSlot()
@@ -352,6 +453,8 @@ namespace ss::ui
         newBtn.setEnabled (pal != nullptr);
 
         const int n = pal != nullptr ? (int) pal->slots.size() : 0;
+        const auto plan = proc.song.partsPlan();
+        const auto drums = drumNotes();
         while (cards.size() > n) cards.removeLast();
         while (cards.size() < n) addAndMakeVisible (cards.add (new PartCard()));
         if (pal != nullptr && selectedSlot() == nullptr && ! pal->slots.empty()) selectedRole = pal->slots.front().part.role;
@@ -362,12 +465,21 @@ namespace ss::ui
                                  ? &catalog->sounds[(size_t) slot.current().sound] : nullptr;
             auto* card = cards[i];
             const auto role = slot.part.role;
-            card->show (&slot, snd, role == selectedRole);
+            const auto type = partTypeFor (slot.part);
+            card->show (&slot, snd, role == selectedRole,
+                        type == PartType::none ? juce::String() : describePart (plan, type, drums, snd != nullptr ? snd->kind : slot.part.kinds.front()));
+            card->onDragPart = [this, i] { dragPart (i); };
             card->onSelect = [this, role] { if (selectedRole != role) { selectedRole = role; copiedNote.clear(); } refresh(); };
             card->onPrev = [this, i] { if (auto* p = proc.song.currentPalette()) { auto& s = p->slots[(size_t) i]; s.cycle (-1); if (catalog != nullptr && s.current().isValid()) s.keepKey = soundKey (catalog->sounds[(size_t) s.current().sound]); } };
             card->onNext = [this, i] { if (auto* p = proc.song.currentPalette()) { auto& s = p->slots[(size_t) i]; s.cycle (1); if (catalog != nullptr && s.current().isValid()) s.keepKey = soundKey (catalog->sounds[(size_t) s.current().sound]); } };
             card->onLock = [this, i] { if (auto* p = proc.song.currentPalette()) { auto& s = p->slots[(size_t) i]; if (s.current().isValid()) s.locked = ! s.locked; } };
         }
+        // the starter parts, all together
+        ideaBtn.setVisible (pal != nullptr);
+        allParts.setVisible (pal != nullptr);
+        if (pal != nullptr)
+            allParts.setFile (writeStarterParts (-1), plan.chordLine() + "  |  " + juce::String (juce::roundToInt (plan.bpm)) + " BPM", "No parts yet");
+
         auto* sel = selectedSlot();
         choices.show (sel, catalog.get());
         copyBtn.setVisible (sel != nullptr);
@@ -399,7 +511,7 @@ namespace ss::ui
                 u = "Your song: " + bits.joinIntoString ("  |  ");
             }
             else u = "Name a genre, a feeling, an artist or a song. Song Savant picks sounds you already own.";
-            if (proc.song.form.fromSong.isNotEmpty()) u << "     (key and tempo from Key Compass: " << proc.song.form.fromSong << ")";
+            if (proc.song.form.fromSong.isNotEmpty()) u << "     (key, tempo and chords from Key Compass: " << proc.song.form.fromSong << ")";
             g.setColour (status.isNotEmpty() ? p.warn : proc.song.palettes.empty() ? p.dim : p.gold);
             g.setFont (sans (14.0f, ! proc.song.palettes.empty()));
             g.drawText (u, understoodLine, juce::Justification::centredLeft, true);
@@ -417,9 +529,18 @@ namespace ss::ui
                               detailsPanel.reduced (30.0f).toNearestInt(), juce::Justification::centred, 3);
             return;
         }
-        g.setColour (p.dim);
-        g.setFont (sans (12.5f));
-        g.drawText ("Click a card for details. Arrows switch sounds; the lock keeps a part when you ask for new palettes.", barHint, juce::Justification::centredRight, true);
+        if (barHint.getWidth() >= 300.0f)       // when there's room: what the starter parts play
+        {
+            const auto plan = proc.song.partsPlan();
+            auto top = barHint.withTrimmedBottom (barHint.getHeight() * 0.5f);
+            g.setColour (p.gold);
+            g.setFont (sans (13.0f, true));
+            g.drawText ("STARTER PARTS IN " + keyName (plan.key).toUpperCase(), top, juce::Justification::bottomRight, true);
+            g.setColour (p.dim);
+            g.setFont (sans (12.0f));
+            juce::String sub = (plan.keyGiven ? juce::String() : "Key picked for you. ") + juce::String ("Drag a card's MIDI tag for one part.");
+            g.drawText (sub, barHint.withTrimmedTop (barHint.getHeight() * 0.5f), juce::Justification::topRight, true);
+        }
 
         auto* sel = selectedSlot();
         if (sel == nullptr) return;
@@ -545,11 +666,15 @@ namespace ss::ui
         r.removeFromTop (12.0f);
 
         // the palette bar
-        auto bar = r.removeFromTop (38.0f);
-        for (auto* t : tabs) if (t->isVisible()) { t->setBounds (bar.removeFromLeft (120.0f).toNearestInt()); bar.removeFromLeft (8.0f); }
-        bar.removeFromLeft (8.0f);
-        newBtn.setBounds (bar.removeFromLeft (170.0f).toNearestInt());
-        barHint = bar.withTrimmedLeft (16.0f);
+        auto bar = r.removeFromTop (44.0f);
+        auto pills = bar.withSizeKeepingCentre (bar.getWidth(), 38.0f);
+        for (auto* t : tabs) if (t->isVisible()) { t->setBounds (pills.removeFromLeft (120.0f).toNearestInt()); pills.removeFromLeft (8.0f); }
+        pills.removeFromLeft (8.0f);
+        newBtn.setBounds (pills.removeFromLeft (170.0f).toNearestInt());
+        allParts.setBounds (bar.removeFromRight (250.0f).toNearestInt());
+        bar.removeFromRight (10.0f);
+        ideaBtn.setBounds (bar.removeFromRight (120.0f).withSizeKeepingCentre (120.0f, 38.0f).toNearestInt());
+        barHint = bar.withLeft (newBtn.getRight() + 16.0f).withTrimmedRight (12.0f);
         r.removeFromTop (12.0f);
 
         // the cards, then the details of the selected one

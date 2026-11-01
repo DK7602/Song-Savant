@@ -1324,6 +1324,16 @@ namespace
                 {
                     e->getView().getSong().setDescription (song);
                     e->getView().getSong().find();
+                    if (name == "song")
+                    {
+                        const auto all = e->getView().getSong().writeStarterParts (-1);
+                        juce::MidiFile mf;
+                        juce::FileInputStream in (all);
+                        const bool read = in.openedOk() && mf.readFrom (in);
+                        check (read && mf.getNumTracks() >= 6 && all.getFileName().contains ("BPM"),
+                               "the Song page writes all its starter parts: " + all.getFileName() + ", " + juce::String (mf.getNumTracks() - 1) + " parts");
+                        check (e->getView().getSong().writeStarterParts (1).existsAsFile(), "and one card's part");
+                    }
                 }
             }
             auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);

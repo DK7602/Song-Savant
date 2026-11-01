@@ -16,6 +16,7 @@ namespace ss
     {
         brief = makeBrief();
         seed = 1;
+        partsSeed = 1;
         palettes = makePalettes (c, brief, { 3, 6, seed });
         current = 0;
         pending.reset();
@@ -42,6 +43,8 @@ namespace ss
         x->setAttribute ("key", form.key);
         x->setAttribute ("bpm", form.bpm);
         x->setAttribute ("fromSong", form.fromSong);
+        x->setAttribute ("chords", form.chords.joinIntoString (" "));
+        x->setAttribute ("partsSeed", (int) partsSeed);
         x->setAttribute ("seed", (int) seed);
         x->setAttribute ("current", current);
         x->setAttribute ("made", ! palettes.empty() || (pending != nullptr && pending->getBoolAttribute ("made")));
@@ -72,6 +75,9 @@ namespace ss
         form.key = juce::jlimit (-1, 23, x.getIntAttribute ("key", -1));
         form.bpm = juce::jlimit (0.0, 300.0, x.getDoubleAttribute ("bpm", 0.0));
         form.fromSong = x.getStringAttribute ("fromSong");
+        form.chords = juce::StringArray::fromTokens (x.getStringAttribute ("chords"), " ", "");
+        form.chords.removeEmptyStrings();
+        partsSeed = (juce::uint32) juce::jmax (1, x.getIntAttribute ("partsSeed", 1));
         seed = (juce::uint32) juce::jmax (1, x.getIntAttribute ("seed", 1));
         current = x.getIntAttribute ("current", 0);
         palettes.clear();

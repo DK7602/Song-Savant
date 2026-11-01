@@ -9,12 +9,14 @@ class SongSavantProcessor;
 
 namespace ss::ui
 {
-    class PartCard : public juce::Component
+    class PartCard : public juce::Component, public juce::SettableTooltipClient
     {
     public:
-        std::function<void()> onSelect, onPrev, onNext, onLock;
-        void show (const PaletteSlot*, const Sound*, bool selected);
+        std::function<void()> onSelect, onPrev, onNext, onLock, onDragPart;
+        void show (const PaletteSlot*, const Sound*, bool selected, const juce::String& partInfo = {});
         void paint (juce::Graphics&) override;
+        void mouseDown (const juce::MouseEvent&) override;
+        void mouseDrag (const juce::MouseEvent&) override;
         void mouseUp (const juce::MouseEvent&) override;
         void mouseMove (const juce::MouseEvent&) override   { repaint(); }
         void mouseExit (const juce::MouseEvent&) override   { repaint(); }
@@ -22,8 +24,9 @@ namespace ss::ui
     private:
         const PaletteSlot* slot = nullptr;
         const Sound* sound = nullptr;
-        bool isSelected = false;
-        juce::Rectangle<float> prevArea, nextArea, lockArea;
+        bool isSelected = false, pressedOnMidi = false, dragging = false;
+        juce::String partInfo;                      // the starter part, when the card has one
+        juce::Rectangle<float> prevArea, nextArea, lockArea, midiArea;
     };
 
     // The other sounds a part could use: click one to switch
@@ -53,6 +56,7 @@ namespace ss::ui
         void find();                                  // FIND MY SOUNDS (also the tests)
         void themeChanged();
         void setDescription (const juce::String&);    // tests
+        juce::File writeStarterParts (int card = -1); // one card's part, or all of them (-1): the MIDI file to drag
 
     private:
         void timerCallback() override;
@@ -62,6 +66,8 @@ namespace ss::ui
         void showKeyCompassMenu();
         PaletteSlot* selectedSlot();
         void copySelected();
+        void dragPart (int card);
+        DrumNotes drumNotes() const;                  // the drum card's own drum map, if Song Savant made one
 
         SongSavantProcessor& proc;
         std::shared_ptr<const Catalog> catalog;
@@ -73,7 +79,9 @@ namespace ss::ui
         PillButton findBtn { "FIND MY SOUNDS", PillButton::Style::gold },
                    keyCompassBtn { "KEY COMPASS", PillButton::Style::outline },
                    newBtn { "NEW PALETTES", PillButton::Style::outline },
-                   copyBtn { "COPY NAME", PillButton::Style::gold };
+                   copyBtn { "COPY NAME", PillButton::Style::gold },
+                   ideaBtn { "NEW IDEA", PillButton::Style::outline };
+        DragChip allParts { "ALL PARTS", DragChip::Kind::midi };
         juce::OwnedArray<PillButton> tabs;
         juce::OwnedArray<PartCard> cards;
         ChoiceList choices;

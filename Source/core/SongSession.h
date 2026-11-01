@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Palette.h"
+#include "StarterParts.h"
 #include <juce_core/juce_core.h>
 
 namespace ss
@@ -15,6 +16,7 @@ namespace ss
         int key = -1;                 // -1 = from the description (or none)
         double bpm = 0;               // 0 = from the description / the style
         juce::String fromSong;        // the Key Compass song it came from, if any
+        juce::StringArray chords;     // that song's chords, in order (the starter parts follow them)
     };
 
     class SongSession
@@ -25,6 +27,8 @@ namespace ss
         std::vector<Palette> palettes;
         int current = 0;
         juce::uint32 seed = 1;
+        juce::uint32 partsSeed = 1;                   // starter parts: each NEW IDEA is the next one
+        PartsPlan partsPlan() const                   { return planParts (makeBrief(), form.chords, partsSeed); }
 
         SongBrief makeBrief() const;                  // the description, with the form's choices on top
         void find (const Catalog&);                   // fresh palettes for the form
