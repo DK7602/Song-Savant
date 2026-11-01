@@ -1,0 +1,1779 @@
+{
+ "genres": {
+  "hiphop": {
+   "summary": "Hip-hop is built on the beat: hard drums, a sample or loop, and a bass that locks to the kick, all leaving room for the voice.",
+   "tempo": "85-100 BPM",
+   "feel": "4/4 with a slight swing on the 16ths (the MPC feel). The kick plays around the beat; the snare lands hard on 2 and 4.",
+   "keys": "Mostly minor keys. Minor 7th chords and Dorian colour from jazz and soul records.",
+   "sounds": [
+    "Punchy sampled drums: a dusty kick, a cracking snare, crisp hats",
+    "A soul, jazz or funk sample (keys, horns, strings) chopped into a loop",
+    "A deep, round bass (electric or sub) that follows the kick",
+    "Rhodes or Wurlitzer for warm chords",
+    "Vinyl crackle and tape saturation for character"
+   ],
+   "drums": [
+    "Kick on 1 and the 'and' of 2 or 3; snare on 2 and 4",
+    "Hats in 8ths with a little swing (about 55-60%)",
+    "Ghost snares or rimshots between the hits add bounce",
+    "Keep fills short: drop the drums for a bar before the hook"
+   ],
+   "bass": [
+    "Play the root on the kick hits and rest when the kick rests",
+    "Short, round notes sit best; slide into the next root now and then"
+   ],
+   "harmony": [
+    "Loop two or four chords, often minor 7ths (i7 - iv7, i7 - VI7)",
+    "Jazz voicings on keys: add 9ths and 11ths",
+    "The loop often never 'resolves': it hypnotises"
+   ],
+   "arrangement": [
+    "Intro 4-8 bars (the sample alone, or filtered)",
+    "Verse 16 bars, hook 8 bars, repeated",
+    "Change the drums for the hook (add a clap or open hats)"
+   ],
+   "mix": [
+    "Kick and bass share the low end: sidechain or EQ them apart",
+    "Low-pass the sample under the verse, open it up in the hook",
+    "Light tape saturation glues everything together"
+   ],
+   "tips": [
+    "Pick the sample first, then build the drums around its groove",
+    "Leave space for the vocal (1-4 kHz) in the verse"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i7",
+      "iv7"
+     ],
+     [
+      "i7",
+      "VI7"
+     ],
+     [
+      "i",
+      "VII",
+      "VI",
+      "VII"
+     ],
+     [
+      "i7",
+      "v7",
+      "VI7",
+      "VII"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 57,
+     "kick": "x.......x.x.....",
+     "snare": "....x.......x...",
+     "hat": "x.x.x.x.x.x.x.x.",
+     "fill": {
+      "snare": "....x.......x.gg"
+     }
+    },
+    "bass": "rootkick",
+    "chords": "neo",
+    "melody": "hook"
+   }
+  },
+  "trap": {
+   "summary": "Trap is half-time and heavy: rolling hi-hats, a booming 808 that carries the bass line, and a dark, simple melody on top.",
+   "tempo": "130-160 BPM, felt in half time (like 65-80)",
+   "feel": "4/4 in half time: the clap or snare lands on beat 3 of each bar. Hats in 8ths and 16ths with fast rolls and triplets.",
+   "keys": "Minor keys (natural minor, harmonic minor; Phrygian for an even darker colour). C#, F, G and A minor are common.",
+   "sounds": [
+    "808: a long, tuned sub bass with a little distortion so it's heard on phones",
+    "Crisp hi-hats and a clap or snare with a short tail",
+    "Dark bells, plucks or piano for the melody (music box, glockenspiel)",
+    "Pads, choirs or strings for atmosphere",
+    "FX: risers, reversed cymbals, vocal chops"
+   ],
+   "drums": [
+    "Clap or snare on beat 3 (half time)",
+    "Kick on 1, then syncopated hits that the 808 follows",
+    "Hats in 8ths with 1/16, 1/32 and triplet rolls, mostly at the end of phrases",
+    "Open hats and percussion on offbeats; drop the drums for a bar before the hook"
+   ],
+   "bass": [
+    "The 808 is the bass: tune it to the key and play the roots with the kick",
+    "Glide (portamento) up or down an octave between notes for movement",
+    "Let it ring between hits, and stop it before the next one"
+   ],
+   "harmony": [
+    "Two to four minor chords: i - VI, or i - VI - III - VII",
+    "Melodies from the minor pentatonic or harmonic minor (the raised 7th sounds dark)",
+    "Keep it simple: the melody loop repeats through the song"
+   ],
+   "arrangement": [
+    "Intro 4-8 bars (melody alone)",
+    "Hook 8 bars - Verse 16 bars - Hook 8 bars",
+    "Strip the drums in the intro and bridge; bring the full 808 in with the hook"
+   ],
+   "mix": [
+    "808 in mono, under 100 Hz; saturate it for upper harmonics",
+    "Kick and 808 hit together (or sidechain the 808 to the kick)",
+    "Bright hats panned a little; reverb on the melody, the 808 dry"
+   ],
+   "tips": [
+    "Tune the 808 to the key: its pitch IS the bass line",
+    "Keep the melody high and sparse so the vocal has room"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i",
+      "VI",
+      "III",
+      "VII"
+     ],
+     [
+      "i",
+      "VI"
+     ],
+     [
+      "i",
+      "iv",
+      "VI",
+      "v"
+     ],
+     [
+      "i",
+      "i",
+      "VI",
+      "VII"
+     ]
+    ],
+    "groove": {
+     "steps": 32,
+     "swing": 50,
+     "kick": "x.........x.....x.....x...x.....",
+     "clap": "........x...............x.......",
+     "hat": "x.x.x.x.x.x.x.x.x.x.x.x.x.x.r.t.",
+     "openhat": "..............x.................",
+     "fill": {
+      "hat": "x.x.x.x.xrxrtttt",
+      "clap": "........x......."
+     }
+    },
+    "bass": "808",
+    "chords": "pad",
+    "melody": "bells"
+   }
+  },
+  "rnb": {
+   "summary": "R&B is smooth and soulful: rich chords, a warm bass that grooves, and drums that sit back so the voice can float.",
+   "tempo": "60-100 BPM (slow jams 60-75)",
+   "feel": "4/4 with a laid-back, swung 16th feel; snare on 2 and 4, a little behind the beat.",
+   "keys": "Major and minor keys with lots of 7th, 9th and 11th chords. Dorian minor is common.",
+   "sounds": [
+    "Rhodes or another electric piano, warm keys",
+    "Smooth synth bass or fingered electric bass",
+    "Soft, punchy drums: rimshots, finger snaps, a tight kick",
+    "Pads, strings and lush vocal stacks",
+    "Chorused guitar licks; a talkbox in funkier styles"
+   ],
+   "drums": [
+    "Snare, rim or snap on 2 and 4, laid back",
+    "Kick syncopated around the bass line",
+    "16th hats with swing and a few skipped notes",
+    "Ghost notes and a shaker keep it moving"
+   ],
+   "bass": [
+    "Melodic: the root on the downbeat, then passing notes into the next chord",
+    "Slides and short syncopated notes; leave space"
+   ],
+   "harmony": [
+    "Extended chords: maj7, m7, 9ths, e.g. IVmaj7 - iii7 - ii7 - Imaj7",
+    "ii - V movements and chromatic passing chords",
+    "Move every note of a chord as little as possible to the next one (voice leading)"
+   ],
+   "arrangement": [
+    "Intro 4 - Verse 8 or 16 - Pre-chorus 4 - Chorus 8 - Bridge 8",
+    "Thin the drums in the verse; add pads and harmonies in the chorus"
+   ],
+   "mix": [
+    "Warm low mids, soft highs: nothing harsh",
+    "Kick and bass tight; vocal forward with a plate reverb and delay throws"
+   ],
+   "tips": [
+    "Let the keys answer the vocal with little rhythmic fills",
+    "Stack harmonies in the chorus"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "IVmaj7",
+      "iii7",
+      "ii7",
+      "Imaj7"
+     ],
+     [
+      "ii7",
+      "V7",
+      "Imaj7",
+      "vi7"
+     ],
+     [
+      "i9",
+      "iv9"
+     ],
+     [
+      "Imaj7",
+      "vi7",
+      "ii7",
+      "V7"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 58,
+     "kick": "x.....x...x.....",
+     "snare": "....x.......x...",
+     "hat": "x.xxx.x.x.xxx.x.",
+     "shaker": "..x...x...x...x."
+    },
+    "bass": "rnb",
+    "chords": "neo",
+    "melody": "hook"
+   }
+  },
+  "pop": {
+   "summary": "Pop is about the hook: a clear, catchy melody, simple strong chords and a polished production where every part lifts the chorus.",
+   "tempo": "90-130 BPM",
+   "feel": "4/4, straight. Kick on every beat (dance pop) or on 1 and 3, with the snare and a clap on 2 and 4.",
+   "keys": "Mostly major keys; minor for darker pop. Keep the melody in an easy singing range.",
+   "sounds": [
+    "Bright piano or synth chords",
+    "Punchy, clean drums with a clap layered on the snare",
+    "Synth bass or electric bass locked to the kick",
+    "Plucks, arpeggios and pads for movement and width",
+    "Vocal chops and ear candy (risers, sweeps)"
+   ],
+   "drums": [
+    "Kick on 1 and 3 (or every beat), snare and clap on 2 and 4",
+    "8th or 16th hats; open hats on the offbeats to lift the chorus",
+    "Build into the chorus with a snare roll or a riser"
+   ],
+   "bass": [
+    "Root notes in 8ths that follow the kick",
+    "Octave jumps add energy in the chorus"
+   ],
+   "harmony": [
+    "The four-chord loop: I - V - vi - IV (or vi - IV - I - V)",
+    "Keep the chords simple so the melody stands out",
+    "Change the bass note under a chord (an inversion) for a lift without new chords"
+   ],
+   "arrangement": [
+    "Intro 4-8 - Verse 8 - Pre-chorus 4-8 - Chorus 8 - Verse - Pre - Chorus - Bridge 8 - Final chorus",
+    "Each chorus adds something: a layer, a harmony, a drum change"
+   ],
+   "mix": [
+    "Bright and loud, the vocal on top",
+    "Sidechain pads and bass to the kick for a gentle pump",
+    "Wide chorus, narrower verse"
+   ],
+   "tips": [
+    "Write the chorus hook first, and repeat it",
+    "Contrast: the verse lower and sparser, the chorus higher and fuller"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "I",
+      "V",
+      "vi",
+      "IV"
+     ],
+     [
+      "vi",
+      "IV",
+      "I",
+      "V"
+     ],
+     [
+      "I",
+      "vi",
+      "IV",
+      "V"
+     ],
+     [
+      "IV",
+      "I",
+      "V",
+      "vi"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x.......x.x.....",
+     "snare": "....x.......x...",
+     "clap": "....x.......x...",
+     "hat": "x.x.x.x.x.x.x.x.",
+     "crash": true,
+     "fill": {
+      "snare": "....x...x.x.xxxx"
+     }
+    },
+    "bass": "eighths",
+    "chords": "pluck",
+    "melody": "hook"
+   }
+  },
+  "rock": {
+   "summary": "Rock is driven by guitars and a live band: big riffs and power chords, a pounding kit and a bass that locks the groove.",
+   "tempo": "100-160 BPM",
+   "feel": "4/4, straight 8ths; the snare hits hard on 2 and 4.",
+   "keys": "Guitar keys (E, A, D, G); major and minor, blues notes, and the flat 7 (Mixolydian).",
+   "sounds": [
+    "Distorted electric guitars for the rhythm, plus a lead guitar",
+    "A live acoustic kit with room sound",
+    "Electric bass (played with a pick for punch)",
+    "Organ or piano in classic rock",
+    "Big cymbals: a crash on the first beat of each section"
+   ],
+   "drums": [
+    "Kick on 1 and 3 (and the 'and' of 3)",
+    "Snare on 2 and 4, loud",
+    "8ths on the hi-hat in the verse, on the ride or crash in the chorus",
+    "Tom fills at the ends of phrases"
+   ],
+   "bass": [
+    "Root 8th notes with the guitar riff",
+    "Follow the kick; walk up into the next chord"
+   ],
+   "harmony": [
+    "Power chords (root and fifth)",
+    "I - IV - V, I - bVII - IV, i - VI - VII",
+    "Riffs from the minor pentatonic"
+   ],
+   "arrangement": [
+    "Intro riff - Verse - Chorus - Verse - Chorus - Solo - Chorus",
+    "Double the guitars (left and right) in the chorus"
+   ],
+   "mix": [
+    "Guitars wide (two takes panned), bass and kick in the centre",
+    "Room mics on the drums for size"
+   ],
+   "tips": [
+    "Start with a riff, then fit the chords around it",
+    "Dynamics: a quieter verse makes a louder chorus"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "I",
+      "bVII",
+      "IV",
+      "I"
+     ],
+     [
+      "I",
+      "IV",
+      "V",
+      "IV"
+     ],
+     [
+      "i",
+      "VI",
+      "VII",
+      "i"
+     ],
+     [
+      "I",
+      "V",
+      "vi",
+      "IV"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x.....x.x.......",
+     "snare": "....x.......x...",
+     "hat": "x.x.x.x.x.x.x.x.",
+     "crash": true,
+     "fill": {
+      "snare": "....x.......xx..",
+      "tomhigh": "..............x.",
+      "tomlow": "...............x"
+     }
+    },
+    "bass": "eighths",
+    "chords": "power",
+    "melody": "riff"
+   }
+  },
+  "country": {
+   "summary": "Country tells a story: a clear vocal, acoustic and twangy electric guitars, steel or fiddle fills, and a solid, simple groove.",
+   "tempo": "70-130 BPM (ballads around 70, up-tempo 120+)",
+   "feel": "4/4, straight or with a shuffle; a two-beat or train beat in classic country.",
+   "keys": "Major keys (G, D, A, E, C: guitar keys, often with a capo).",
+   "sounds": [
+    "Acoustic guitar strums (bright steel strings)",
+    "A twangy electric (Telecaster style) with slapback delay",
+    "Pedal steel, fiddle, banjo or dobro for fills",
+    "Piano (honky-tonk in classic styles)",
+    "Live drums and a round electric bass"
+   ],
+   "drums": [
+    "Kick on 1 and 3, snare on 2 and 4 (modern)",
+    "A two-beat or train beat (snare 8ths with accents) in classic styles",
+    "Brushes for ballads and Americana"
+   ],
+   "bass": [
+    "Root on 1, fifth on 3 (the 'boom-chick')",
+    "Walk up or down into the next chord"
+   ],
+   "harmony": [
+    "I - IV - V and I - V - vi - IV",
+    "The II major chord and the vi minor for a lift",
+    "Simple chords: the story and the melody matter most"
+   ],
+   "arrangement": [
+    "Intro lick - Verse - Chorus - Verse - Chorus - Bridge or solo - Chorus",
+    "Steel or fiddle fills answer the vocal lines"
+   ],
+   "mix": [
+    "The vocal clear and upfront",
+    "Bright acoustic; the electric with slapback",
+    "Natural, roomy reverb"
+   ],
+   "tips": [
+    "Fill the gaps between vocal lines with a lick",
+    "Keep the beat steady and simple"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "I",
+      "IV",
+      "V",
+      "I"
+     ],
+     [
+      "I",
+      "V",
+      "vi",
+      "IV"
+     ],
+     [
+      "I",
+      "IV",
+      "I",
+      "V"
+     ],
+     [
+      "vi",
+      "IV",
+      "I",
+      "V"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x.......x.......",
+     "snare": "....x.......x...",
+     "hat": "x.x.x.x.x.x.x.x.",
+     "crash": true,
+     "fill": {
+      "snare": "....x.......x.xx"
+     }
+    },
+    "bass": "rootfifth",
+    "chords": "strum",
+    "melody": "fills"
+   }
+  },
+  "worship": {
+   "summary": "Worship music builds: ambient pads and piano under a singable melody, growing from a quiet start to a big, anthemic chorus.",
+   "tempo": "65-140 BPM (most songs around 70-80 or 120-130)",
+   "feel": "4/4 (sometimes 6/8). It builds from sparse to full; delay guitars give an 8th-note pulse.",
+   "keys": "Singable major keys: G, A, B, C, D, E.",
+   "sounds": [
+    "Ambient pads (shimmer, swells) holding the song up",
+    "Grand or felt piano",
+    "Clean electric guitars with a dotted-8th delay, and swells",
+    "Warm bass, with a deep sub in the builds",
+    "Big live drums with toms; choir and strings in the bridge"
+   ],
+   "drums": [
+    "Verse: kick on 1, a rim or nothing else",
+    "Build: toms and 8th-note kicks",
+    "Chorus: kick on 1 and 3, snare on 2 and 4, crashes",
+    "Cymbal swells into the big sections"
+   ],
+   "bass": [
+    "Whole and half notes on the roots; octaves in the chorus",
+    "An 8th-note pulse in the builds"
+   ],
+   "harmony": [
+    "I - V - vi - IV, IV - I - V - vi, vi - IV - I - V",
+    "Sus2 and add9 chords for an open sound",
+    "The bridge often starts on IV or vi"
+   ],
+   "arrangement": [
+    "Intro (pad and piano) - Verse - Chorus - Verse - Chorus - Bridge (repeated, building) - Chorus - Tag",
+    "Dynamics are everything: drop to the pad alone, then build"
+   ],
+   "mix": [
+    "Long reverbs and delays",
+    "Pads wide and low in level",
+    "The vocal clear and centred"
+   ],
+   "tips": [
+    "A dotted-8th delay on the guitar gives that shimmer",
+    "Let the bridge repeat and build two or three times"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "I",
+      "V",
+      "vi",
+      "IV"
+     ],
+     [
+      "IV",
+      "I",
+      "V",
+      "vi"
+     ],
+     [
+      "vi",
+      "IV",
+      "I",
+      "V"
+     ],
+     [
+      "I",
+      "IV",
+      "vi",
+      "V"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x.......x.......",
+     "snare": "....x.......x...",
+     "hat": "x.x.x.x.x.x.x.x.",
+     "crash": true,
+     "fill": {
+      "tomhigh": "........xx......",
+      "tommid": "..........xx....",
+      "tomlow": "............xxxx"
+     }
+    },
+    "bass": "sustain",
+    "chords": "ballad",
+    "melody": "swells"
+   }
+  },
+  "edm": {
+   "summary": "EDM is built for the dance floor: a driving kick, big builds and drops, and sound design that keeps moving.",
+   "tempo": "120-130 (house), 125-140 (techno), 140 (dubstep), 170-175 (drum & bass)",
+   "feel": "4/4 with the kick on every beat (house, techno); half time for dubstep; breakbeats for drum & bass.",
+   "keys": "Mostly minor keys (F, G, A minor) with simple chords.",
+   "sounds": [
+    "A punchy kick with a tight low end",
+    "Claps, offbeat open hats, shakers",
+    "Synth bass (a sub plus a mid layer), plucks, supersaw chords",
+    "Risers, sweeps and impacts for builds and drops",
+    "Vocal chops"
+   ],
+   "drums": [
+    "Kick on every beat",
+    "Clap on 2 and 4",
+    "Open hat on every offbeat; 16th closed hats for drive",
+    "A snare roll that speeds up into the drop"
+   ],
+   "bass": [
+    "Offbeat bass (between the kicks) in house",
+    "Rolling 16ths or a sustained sub elsewhere"
+   ],
+   "harmony": [
+    "i - VI - III - VII, vi - IV - I - V",
+    "Stab chords on the offbeats",
+    "Keep the bass and chords simple: the groove matters most"
+   ],
+   "arrangement": [
+    "Intro 16-32 bars (DJ friendly) - Build 8-16 - Drop 16-32 - Break - Build - Drop - Outro",
+    "Take the kick out in the breakdown; bring it back at the drop"
+   ],
+   "mix": [
+    "Sidechain almost everything to the kick",
+    "Mono below 120 Hz",
+    "Loud and bright; automate filters in the builds"
+   ],
+   "tips": [
+    "Make the drop simple and strong",
+    "Movement comes from automation (filters, volume, effects)"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i",
+      "VI",
+      "III",
+      "VII"
+     ],
+     [
+      "vi",
+      "IV",
+      "I",
+      "V"
+     ],
+     [
+      "i",
+      "VII",
+      "VI",
+      "VII"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x...x...x...x...",
+     "clap": "....x.......x...",
+     "openhat": "..x...x...x...x.",
+     "hat": "oooooooooooooooo",
+     "crash": true,
+     "fill": {
+      "snare": "x.x.x.x.xxxxxxxx",
+      "clap": "................"
+     }
+    },
+    "bass": "offbeat",
+    "chords": "stabs",
+    "melody": "arp"
+   }
+  },
+  "lofi": {
+   "summary": "Lo-fi is relaxed and nostalgic: dusty swung drums, jazzy chords, a soft bass and a warm, worn tape sound.",
+   "tempo": "70-90 BPM",
+   "feel": "4/4 with heavy swing; the drums lazy, a little behind the beat.",
+   "keys": "Minor and major with jazz chords: maj7, m7, m9.",
+   "sounds": [
+    "Soft, dusty drums (sampled kits, low-passed)",
+    "Rhodes, felt piano or jazz guitar chords",
+    "A warm round bass or upright",
+    "Vinyl crackle, tape hiss, rain or room ambience",
+    "A mellow lead: flute, muted trumpet, guitar"
+   ],
+   "drums": [
+    "A boom-bap pattern with lots of swing",
+    "A soft snare or rim on 2 and 4",
+    "Hats lazy and quiet; skip a few"
+   ],
+   "bass": [
+    "Round notes on the roots with a few passing notes",
+    "Leave space: less is more"
+   ],
+   "harmony": [
+    "ii7 - V7 - Imaj7 - vi7 and IVmaj7 - iii7 - vi7",
+    "Add 9ths; a little detune (wow and flutter) adds age"
+   ],
+   "arrangement": [
+    "Short loops (8-16 bars) that change slowly",
+    "Filter the drums in and out"
+   ],
+   "mix": [
+    "Low-pass everything a little and roll off the highs",
+    "Tape saturation and wobble",
+    "Quiet and warm, not loud"
+   ],
+   "tips": [
+    "Imperfect is good: swing, wobble, crackle",
+    "Keep it short (under three minutes)"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "ii7",
+      "V7",
+      "Imaj7",
+      "vi7"
+     ],
+     [
+      "IVmaj7",
+      "iii7",
+      "vi7",
+      "ii7"
+     ],
+     [
+      "i7",
+      "iv7",
+      "VII7",
+      "IIImaj7"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 62,
+     "kick": "x.......x.x.....",
+     "snare": "....x.......x...",
+     "hat": "o.o.o.o.o.o.o.o."
+    },
+    "bass": "rnb",
+    "chords": "neo",
+    "melody": "hook"
+   }
+  },
+  "cinematic": {
+   "summary": "Cinematic music paints a picture: big strings and brass, epic percussion, and dramatic builds that follow the story.",
+   "tempo": "Free, or 60-140 BPM; tension builds speed up",
+   "feel": "4/4 or 3/4. Ostinatos (short repeating patterns) drive the motion.",
+   "keys": "Minor keys for drama (D, C minor); modal colours (Dorian, Phrygian).",
+   "sounds": [
+    "String ensemble: staccato ostinatos and long legato lines",
+    "Brass: horns for heroic lines, low brass for weight",
+    "Epic drums: taikos, toms, hits and booms",
+    "Piano for emotion, choir for size",
+    "Sound design: drones, risers, impacts"
+   ],
+   "drums": [
+    "Taiko and tom patterns on 1 and 3 that build up",
+    "Big hits (booms) at the start of sections",
+    "Snare rolls for tension"
+   ],
+   "bass": [
+    "Low strings or brass on long root notes",
+    "Pedal tones: one low note under changing chords"
+   ],
+   "harmony": [
+    "i - VI - III - VII, i - iv - VI - V",
+    "Pedal points and suspended chords build tension",
+    "Minor to major at the end for triumph"
+   ],
+   "arrangement": [
+    "Start small (piano or pad) and add a layer every 8 bars",
+    "Build - climax - release; trailers often in three acts"
+   ],
+   "mix": [
+    "Big hall reverbs",
+    "Strings wide, percussion centred"
+   ],
+   "tips": [
+    "Ostinato strings keep the momentum",
+    "Contrast quiet and loud sections"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i",
+      "VI",
+      "III",
+      "VII"
+     ],
+     [
+      "i",
+      "iv",
+      "VI",
+      "V"
+     ],
+     [
+      "i",
+      "VI",
+      "iv",
+      "V"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x.......x.......",
+     "tomlow": "x..x..x.x..x..x.",
+     "tomhigh": "......x.......x.",
+     "crash": true,
+     "fill": {
+      "snare": "........xxxxxxxx"
+     }
+    },
+    "bass": "sustain",
+    "chords": "ballad",
+    "melody": "swells"
+   }
+  }
+ },
+ "styles": {
+  "hiphop.east": {
+   "summary": "East Coast boom bap: hard sampled drums, a chopped soul or jazz sample and a gritty, swung groove (think Nas, Gang Starr, Wu-Tang).",
+   "sounds": [
+    "Dusty drum breaks sampled from records",
+    "Jazz or soul samples: piano, horns, strings",
+    "An upright or deep bass that follows the kick",
+    "Scratches on the hook"
+   ],
+   "tips": [
+    "Chop the sample on the beat and re-order the pieces",
+    "Swing the hats, keep the kick and snare tight"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 16,
+     "swing": 58,
+     "kick": "x.......x.x....x",
+     "snare": "....x.......x...",
+     "hat": "x.x.x.x.x.x.x.x."
+    }
+   }
+  },
+  "hiphop.west": {
+   "summary": "West Coast G-funk: slow rolling grooves, a whiny high synth lead, funky bass and P-Funk style keys (think Dr. Dre, Snoop Dogg, Warren G).",
+   "tempo": "88-100 BPM",
+   "sounds": [
+    "A high synth lead that glides between notes (the G-funk whistle)",
+    "A funky, Moog-style synth bass",
+    "Rhodes, clavinet and talkbox",
+    "Clean claps and rolling 16th hats"
+   ],
+   "harmony": [
+    "Minor 7th to a major-ish IV7 (Dorian): i7 - IV7",
+    "Smooth, laid-back chord changes"
+   ],
+   "tips": [
+    "Let the synth lead slide (portamento) between notes",
+    "Lay the bass back a little behind the beat"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i7",
+      "IV7"
+     ],
+     [
+      "ii7",
+      "V7"
+     ],
+     [
+      "i7",
+      "iv7",
+      "VII7",
+      "IIImaj7"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 55,
+     "kick": "x.....x...x.....",
+     "snare": "....x.......x...",
+     "clap": "....x.......x...",
+     "hat": "xxxxxxxxxxxxxxxx"
+    },
+    "bass": "funk",
+    "chords": "neo",
+    "melody": "hook"
+   }
+  },
+  "hiphop.memphis": {
+   "summary": "Memphis rap and phonk: dark and lo-fi, cowbell melodies, distorted 808s and chopped vocal samples (think Three 6 Mafia; phonk: Kordhell, DVRST).",
+   "tempo": "130-160 BPM (phonk), or slow and half-time",
+   "keys": "Minor and Phrygian (the flat 2 sounds evil): i - bII",
+   "sounds": [
+    "Cowbell melodies (the 808 cowbell)",
+    "A heavily distorted 808",
+    "Lo-fi Memphis vocal chops",
+    "Gritty, crunchy drums"
+   ],
+   "drums": [
+    "Trap-style half time with a hard clap on 3",
+    "Fast hats with rolls",
+    "Cowbell patterns as the lead"
+   ],
+   "tips": [
+    "Distort the 808 hard and low-pass the vocal samples",
+    "Keep the melody short and repeating"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i",
+      "bII"
+     ],
+     [
+      "i",
+      "VI"
+     ],
+     [
+      "i",
+      "i",
+      "bII",
+      "i"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x.....x...x.....",
+     "clap": "........x.......",
+     "hat": "x.x.x.x.xxx.x.x.",
+     "perc": "x..x..x.x..x..x."
+    },
+    "bass": "808",
+    "chords": "pad",
+    "melody": "bells"
+   }
+  },
+  "hiphop.south": {
+   "summary": "Southern hip-hop and crunk: big 808 kicks, chanted hooks, synth stabs and slowed-down 'chopped and screwed' moods (think UGK, Three 6 Mafia, Lil Jon).",
+   "tempo": "70-80 BPM (or 140-160 in double time)",
+   "sounds": [
+    "Booming 808s",
+    "Synth stabs and brass hits",
+    "Crowd chants and shouts",
+    "Snappy claps"
+   ],
+   "tips": [
+    "Hooks are chanted: short, loud and repeated",
+    "Slow it down and pitch it down for the 'screwed' sound"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 16,
+     "swing": 52,
+     "kick": "x..x..x...x.....",
+     "clap": "....x.......x...",
+     "hat": "x.x.x.x.x.x.x.x."
+    },
+    "bass": "808",
+    "chords": "stabs"
+   }
+  },
+  "hiphop.oldschool": {
+   "summary": "Old school and electro: drum machines (808, DMX), funky bass and breakbeats built for breakdancing (think Afrika Bambaataa, Run-DMC, Grandmaster Flash).",
+   "tempo": "100-120 BPM",
+   "sounds": [
+    "Roland TR-808 drums: cowbell, hand claps, toms",
+    "Synth bass and robot vocoder voices",
+    "Scratches and orchestra stabs"
+   ],
+   "tips": [
+    "Program the drums stiff and electronic",
+    "Answer the rap with stabs and scratches"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x..x..x...x.....",
+     "clap": "....x.......x...",
+     "hat": "x.x.x.x.x.x.x.x.",
+     "perc": "......x.......x."
+    },
+    "bass": "funk",
+    "chords": "stabs",
+    "melody": "hook"
+   }
+  },
+  "trap.atlanta": {
+   "summary": "Atlanta trap: hard 808s, rapid hats and dark piano or bell loops (think Metro Boomin, Southside, Future).",
+   "sounds": [
+    "Dark piano or string loops",
+    "Distorted, long 808s",
+    "Hard claps and crisp hats",
+    "Choirs or brass for drama"
+   ]
+  },
+  "trap.ukdrill": {
+   "summary": "UK drill: sliding 808s, stop-start syncopated drums and dark minor melodies (think Headie One, Central Cee, M-Huncho).",
+   "tempo": "138-145 BPM",
+   "feel": "Half time, with a snare on 3 and an extra, late snare; hats in triplet-ish patterns; the 808 slides between notes.",
+   "sounds": [
+    "808 with lots of glides (pitch slides)",
+    "Dark strings, piano or bells",
+    "Short, snappy snares",
+    "Triplet hats with gaps"
+   ],
+   "drums": [
+    "Snare on beat 3 plus a late snare just before beat 4 in every other bar",
+    "Kicks syncopated, rarely on the downbeat after bar 1",
+    "Hats in triplet groups with gaps"
+   ],
+   "bass": [
+    "The 808 slides: overlap the notes so the glide plays",
+    "Move between the root, the fifth and the minor third"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 32,
+     "swing": 50,
+     "kick": "x.........x...x.......x...x.....",
+     "snare": "........x..............x..x.....",
+     "hat": "x..x..x.x..x..x.x..x..x.x..x.tt."
+    },
+    "bass": "808glide",
+    "chords": "pad",
+    "melody": "bells"
+   }
+  },
+  "trap.nydrill": {
+   "summary": "NY drill: Brooklyn's take on UK drill, with sliding 808s, sampled vocal or R&B loops and aggressive drums (think Pop Smoke, Fivio Foreign).",
+   "tempo": "138-145 BPM",
+   "sounds": [
+    "Sampled vocal or R&B loops, choirs",
+    "Sliding 808s",
+    "Aggressive, punchy snares",
+    "Triplet hats"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 32,
+     "swing": 50,
+     "kick": "x.........x...x.......x...x.....",
+     "snare": "........x..............x..x.....",
+     "hat": "x..x..x.x..x..x.x..x..x.x..x.tt."
+    },
+    "bass": "808glide",
+    "chords": "pad",
+    "melody": "bells"
+   }
+  },
+  "trap.rage": {
+   "summary": "Rage: fast, loud and distorted, with buzzing supersaw leads, blown-out 808s and lots of energy (think Playboi Carti, Trippie Redd, Ken Carson).",
+   "tempo": "150-165 BPM",
+   "sounds": [
+    "Distorted, detuned supersaw leads",
+    "A very loud, clipped 808",
+    "Simple, hard drums",
+    "Synth arpeggios"
+   ],
+   "tips": [
+    "Distortion on almost everything; keep the parts few and loud",
+    "A simple four-note lead loop is enough"
+   ],
+   "midi": {
+    "chords": "stabs",
+    "melody": "arp"
+   }
+  },
+  "trap.plugg": {
+   "summary": "Plugg and melodic trap: soft, bright synths and pads, bouncy 808s and dreamy melodies (think Pi'erre Bourne, Lil Uzi Vert).",
+   "keys": "Major keys and major-7th chords are common here, unlike darker trap.",
+   "sounds": [
+    "Bright, video-game style synth leads and plucks",
+    "Soft pads",
+    "A bouncy 808 with shorter notes"
+   ],
+   "harmony": [
+    "Major 7th chords: Imaj7 - vi7 - IVmaj7 - V",
+    "Sweet, simple melodies"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "Imaj7",
+      "vi7",
+      "IVmaj7",
+      "V"
+     ],
+     [
+      "IVmaj7",
+      "V",
+      "iii7",
+      "vi7"
+     ]
+    ],
+    "chords": "pad",
+    "melody": "arp"
+   }
+  },
+  "rnb.newjack": {
+   "summary": "New jack swing and 90s R&B: swung hip-hop drums with R&B chords and harmonies, synth stabs and gated snares (think Teddy Riley, Bobby Brown, Boyz II Men).",
+   "tempo": "95-110 BPM (slow jams around 65)",
+   "sounds": [
+    "Gated, punchy snares and hard claps",
+    "Synth brass stabs and organ",
+    "Slap bass or synth bass",
+    "Big vocal harmonies"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 16,
+     "swing": 62,
+     "kick": "x..x..x...x..x..",
+     "snare": "....x.......x...",
+     "hat": "x.x.x.x.x.x.x.x."
+    },
+    "chords": "stabs"
+   }
+  },
+  "rnb.neosoul": {
+   "summary": "Neo soul: live-feeling, jazzy chords, laid-back drums and a warm bass (think D'Angelo, Erykah Badu, Jill Scott).",
+   "tempo": "70-95 BPM",
+   "sounds": [
+    "Rhodes with rich voicings",
+    "A warm fingered bass",
+    "Dusty, behind-the-beat drums",
+    "Muted guitar and soft horns"
+   ],
+   "harmony": [
+    "Chords that move by step with 9ths and 11ths: i9 - iv9, IVmaj7 - iii7 - ii7 - Imaj7",
+    "Play the drums and bass slightly late for that lazy pocket"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i9",
+      "iv9"
+     ],
+     [
+      "IVmaj7",
+      "iii7",
+      "ii7",
+      "Imaj7"
+     ],
+     [
+      "ii9",
+      "V7",
+      "Imaj9",
+      "vi7"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 62,
+     "kick": "x.....x...x..x..",
+     "snare": "....x.......x...",
+     "hat": "x.xx.xx.x.xx.xx."
+    },
+    "bass": "rnb",
+    "chords": "neo"
+   }
+  },
+  "rnb.alt": {
+   "summary": "Modern and alternative R&B: dark, spacious and trap-influenced, with moody pads and lots of reverb (think The Weeknd, Frank Ocean, SZA, Bryson Tiller).",
+   "tempo": "60-80 BPM (or 120-140 felt in half time)",
+   "sounds": [
+    "Moody pads and reverb-heavy keys",
+    "808s or a deep sub",
+    "Sparse trap drums with soft hats",
+    "Vocal chops and textures"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 32,
+     "swing": 54,
+     "kick": "x.........x.............x.......",
+     "clap": "........x...............x.......",
+     "hat": "x...x...x...x.x.x...x...x...x.r."
+    },
+    "bass": "808",
+    "chords": "pad",
+    "melody": "swells"
+   }
+  },
+  "rnb.funk": {
+   "summary": "Funk and Motown: tight live band grooves, syncopated bass, horn stabs and everything landing on 'the one' (think James Brown, Stevie Wonder, The Temptations).",
+   "tempo": "100-120 BPM",
+   "sounds": [
+    "Clavinet and wah guitar chops",
+    "Slap or fingered bass full of syncopation",
+    "A horn section playing stabs",
+    "Tight live drums with ghost notes"
+   ],
+   "drums": [
+    "Hit 'the one' hard; ghost notes on the snare",
+    "16th hats, open on some offbeats"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i7",
+      "IV7"
+     ],
+     [
+      "I7",
+      "IV7"
+     ],
+     [
+      "ii7",
+      "V7"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 52,
+     "kick": "x.....x...x.....",
+     "snare": "....x..g.g..x..g",
+     "hat": "xxxxxxxxxxxxxxxx"
+    },
+    "bass": "funk",
+    "chords": "stabs",
+    "melody": "hook"
+   }
+  },
+  "pop.synth": {
+   "summary": "Synth pop and the 80s: gated drums, analog synths, arpeggios and big chorus melodies (think a-ha, Depeche Mode, The Weeknd's 'Blinding Lights').",
+   "tempo": "110-125 BPM",
+   "sounds": [
+    "A gated-reverb snare",
+    "Analog poly synths (Juno, Jupiter) and arpeggios",
+    "Synth bass in 8ths",
+    "A bright lead synth"
+   ],
+   "midi": {
+    "bass": "eighths",
+    "chords": "pad",
+    "melody": "arp"
+   }
+  },
+  "pop.dance": {
+   "summary": "Dance pop: four-on-the-floor, sidechained chords and a huge hook (think Dua Lipa, Lady Gaga, Calvin Harris).",
+   "tempo": "118-128 BPM",
+   "midi": {
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x...x...x...x...",
+     "clap": "....x.......x...",
+     "openhat": "..x...x...x...x.",
+     "hat": "oooooooooooooooo",
+     "crash": true
+    },
+    "bass": "offbeat",
+    "chords": "stabs",
+    "melody": "hook"
+   }
+  },
+  "pop.rock": {
+   "summary": "Pop rock: guitars and live drums with pop melodies and polish (think Paramore, Kelly Clarkson, Maroon 5).",
+   "tempo": "110-140 BPM",
+   "sounds": [
+    "Crunchy electric guitars with clean pop production",
+    "Live drums",
+    "Piano or synth pads underneath"
+   ],
+   "midi": {
+    "bass": "eighths",
+    "chords": "power",
+    "melody": "hook"
+   }
+  },
+  "pop.indie": {
+   "summary": "Indie and bedroom pop: lo-fi warmth, dreamy chorused guitars, soft synths and an intimate vocal (think Clairo, Rex Orange County, beabadoobee).",
+   "tempo": "80-110 BPM",
+   "sounds": [
+    "A clean guitar with chorus",
+    "Soft, warm synths and Rhodes",
+    "A simple drum machine or loose live drums"
+   ],
+   "harmony": [
+    "Major 7ths: Imaj7 - vi7 - IVmaj7 - V",
+    "Gentle, dreamy changes"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "Imaj7",
+      "vi7",
+      "IVmaj7",
+      "V"
+     ],
+     [
+      "IVmaj7",
+      "iii7",
+      "vi7",
+      "V"
+     ]
+    ],
+    "bass": "rnb",
+    "chords": "pluck",
+    "melody": "hook"
+   }
+  },
+  "rock.classic": {
+   "summary": "Classic rock: blues-based riffs, Hammond organ and live band energy (think Led Zeppelin, The Rolling Stones, Lynyrd Skynyrd).",
+   "tempo": "100-130 BPM",
+   "sounds": [
+    "A crunchy tube-amp guitar",
+    "Hammond B3 organ",
+    "Live drums in a big room"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "I",
+      "bVII",
+      "IV",
+      "I"
+     ],
+     [
+      "I",
+      "IV",
+      "V",
+      "IV"
+     ]
+    ]
+   }
+  },
+  "rock.hard": {
+   "summary": "Hard rock: heavier riffs, louder guitars and big choruses (think AC/DC, Guns N' Roses, Foo Fighters).",
+   "tempo": "110-150 BPM"
+  },
+  "rock.metal": {
+   "summary": "Metal: down-tuned, high-gain guitars, double-kick drums and palm-muted riffs (think Metallica, Slipknot, Bring Me the Horizon).",
+   "tempo": "100-200 BPM",
+   "keys": "E, D and C minor; drop tunings; Phrygian (flat 2) for darkness.",
+   "sounds": [
+    "High-gain, down-tuned guitars (double-tracked)",
+    "Double kick drums",
+    "A tight, clanky bass"
+   ],
+   "drums": [
+    "Double kick in 16ths under the riff",
+    "Snare on 2 and 4 (or half time)",
+    "China and crash cymbals"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i",
+      "bII",
+      "i",
+      "VI"
+     ],
+     [
+      "i",
+      "VI",
+      "VII",
+      "i"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "xxxxxxxxxxxxxxxx",
+     "snare": "....x.......x...",
+     "crash": true
+    }
+   }
+  },
+  "rock.alt": {
+   "summary": "Alternative and grunge: quiet-loud dynamics, fuzzy guitars and moody chords (think Nirvana, Radiohead, Pearl Jam).",
+   "tempo": "90-130 BPM",
+   "harmony": [
+    "Moody minor progressions and unexpected major chords",
+    "Quiet verse, explosive chorus on the same chords"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i",
+      "VI",
+      "III",
+      "VII"
+     ],
+     [
+      "I",
+      "bIII",
+      "IV",
+      "I"
+     ]
+    ]
+   }
+  },
+  "rock.punk": {
+   "summary": "Punk and pop punk: fast, simple and loud, with power chords, driving 8ths and shout-along choruses (think Ramones, Green Day, Blink-182).",
+   "tempo": "160-200 BPM",
+   "drums": [
+    "The skate beat: kick on the beat, snare on every offbeat",
+    "Crash on every chorus downbeat"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x...x...x...x...",
+     "snare": "..x...x...x...x.",
+     "hat": "x.x.x.x.x.x.x.x.",
+     "crash": true
+    },
+    "bass": "eighths",
+    "chords": "power",
+    "melody": "hook"
+   }
+  },
+  "country.classic": {
+   "summary": "Classic country and honky-tonk: a shuffle or two-beat, steel guitar and fiddle, honky-tonk piano (think Hank Williams, George Strait, Merle Haggard).",
+   "tempo": "90-130 BPM",
+   "feel": "Shuffle (swung 8ths) or a two-beat feel.",
+   "sounds": [
+    "Pedal steel and fiddle",
+    "Honky-tonk piano",
+    "Brushes or a light kit",
+    "Upright or round electric bass"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 16,
+     "swing": 62,
+     "kick": "x.......x.......",
+     "snare": "....x.......x...",
+     "hat": "x.x.x.x.x.x.x.x."
+    },
+    "bass": "rootfifth",
+    "chords": "strum"
+   }
+  },
+  "country.modern": {
+   "summary": "Modern Nashville: pop-polished country with big choruses, loops and a live band (think Morgan Wallen, Luke Combs, Kane Brown).",
+   "tempo": "75-130 BPM",
+   "sounds": [
+    "Acoustic guitar strums",
+    "A clean electric with delay; banjo loops",
+    "Programmed and live drums, claps",
+    "A sub or 808 layered under the bass"
+   ]
+  },
+  "country.rap": {
+   "summary": "Country rap: trap drums and an 808 under country guitars and storytelling (think Jelly Roll, Upchurch, Colt Ford).",
+   "tempo": "70-80 BPM (or 140-160 in half time)",
+   "sounds": [
+    "Trap drums with an 808 in the kit",
+    "Acoustic or slide guitar picking",
+    "A bass that sits above the 808",
+    "Banjo or dobro hooks"
+   ],
+   "bass": [
+    "The 808 goes with the drums; the bass guitar plays above it (or follows the same notes)"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 32,
+     "swing": 50,
+     "kick": "x.........x.....x.....x...x.....",
+     "clap": "........x...............x.......",
+     "hat": "x.x.x.x.x.x.x.x.x.x.x.x.x.x.r.t."
+    },
+    "bass": "rootkick",
+    "chords": "strum",
+    "melody": "fills"
+   }
+  },
+  "country.americana": {
+   "summary": "Americana and folk: acoustic, organic and rootsy, with acoustic guitar, banjo, mandolin and upright bass (think Chris Stapleton, Zach Bryan, The Lumineers).",
+   "tempo": "70-120 BPM",
+   "sounds": [
+    "Acoustic guitar (fingerpicked or strummed)",
+    "Banjo, mandolin, dobro",
+    "Upright bass",
+    "Stomps, claps and a sparse kit"
+   ],
+   "drums": [
+    "Kick 'stomp' on 1 and 3, claps or snare on 2 and 4",
+    "Brushes and tambourine"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 16,
+     "swing": 54,
+     "kick": "x.......x.......",
+     "clap": "....x.......x...",
+     "shaker": "x.x.x.x.x.x.x.x."
+    },
+    "bass": "rootfifth",
+    "chords": "strum"
+   }
+  },
+  "worship.modern": {
+   "summary": "Modern worship: big builds, ambient guitars and pads and anthemic choruses (think Elevation Worship, Hillsong, Bethel)."
+  },
+  "worship.gospel": {
+   "summary": "Gospel and church: Hammond organ, piano runs, a choir and tight drums with fills, over rich, soulful harmony (think Kirk Franklin, Tye Tribbett, Maverick City).",
+   "tempo": "70-120 BPM",
+   "sounds": [
+    "Hammond organ with a Leslie speaker",
+    "Gospel piano with runs and fills",
+    "A choir and call-and-response vocals",
+    "Tight drums with chops and ghost notes",
+    "A busy, melodic bass"
+   ],
+   "harmony": [
+    "Lots of 7ths and passing chords: ii7 - V7 - Imaj7",
+    "The IV - iv change (major to minor four) for emotion",
+    "Walk-ups between chords"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "ii7",
+      "V7",
+      "Imaj7",
+      "vi7"
+     ],
+     [
+      "I",
+      "I7",
+      "IV",
+      "iv"
+     ],
+     [
+      "IVmaj7",
+      "V7",
+      "iii7",
+      "vi7"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 58,
+     "kick": "x.....x...x.....",
+     "snare": "....x..g....x...",
+     "hat": "x.x.x.x.x.x.x.x.",
+     "crash": true
+    },
+    "bass": "rnb",
+    "chords": "organ",
+    "melody": "hook"
+   }
+  },
+  "worship.ambient": {
+   "summary": "Ambient worship and hymns: spacious pads, piano and soft swells, with little or no drums.",
+   "tempo": "60-80 BPM",
+   "drums": [
+    "Often no drums; a soft kick on 1 or swells",
+    "Bring in toms only for the climax"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x...............",
+     "rim": "........x......."
+    },
+    "bass": "sustain",
+    "chords": "pad",
+    "melody": "swells"
+   }
+  },
+  "edm.house": {
+   "summary": "House: four-on-the-floor at 120-128 BPM, offbeat hats, a groovy bass and piano or organ stabs (think Disclosure, Fisher, Frankie Knuckles).",
+   "tempo": "120-128 BPM",
+   "sounds": [
+    "Piano or organ stabs",
+    "A warm, groovy bass",
+    "Claps and shakers",
+    "Vocal samples"
+   ],
+   "midi": {
+    "bass": "offbeat",
+    "chords": "stabs",
+    "melody": "hook"
+   }
+  },
+  "edm.techno": {
+   "summary": "Techno: hypnotic, driving and minimal at 125-140 BPM, with dark synths and lots of percussion (think Charlotte de Witte, Adam Beyer, Amelie Lens).",
+   "tempo": "125-140 BPM",
+   "harmony": [
+    "Often one chord or none: the groove and the sound are the music",
+    "A short, repeating synth motif that changes slowly"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i"
+     ],
+     [
+      "i",
+      "i",
+      "VII",
+      "i"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x...x...x...x...",
+     "clap": "....x.......x...",
+     "openhat": "..x...x...x...x.",
+     "hat": "xxxxxxxxxxxxxxxx",
+     "perc": "...x..x....x..x."
+    },
+    "bass": "rolling",
+    "chords": "stabs",
+    "melody": "arp"
+   }
+  },
+  "edm.dnb": {
+   "summary": "Drum & bass: fast breakbeats at 170-175 BPM with a deep sub bass and rolling energy (think Pendulum, Chase & Status, Netsky).",
+   "tempo": "170-175 BPM",
+   "feel": "The two-step: kick on 1 and the 'and' of 3, snare on 2 and 4, at high speed.",
+   "midi": {
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x.........x.....",
+     "snare": "....x.......x...",
+     "hat": "x.x.x.x.x.x.x.x."
+    },
+    "bass": "sustain",
+    "chords": "pad",
+    "melody": "arp"
+   }
+  },
+  "edm.dubstep": {
+   "summary": "Dubstep and bass music: half time at 140 BPM with huge, wobbling basses and big drops (think Skrillex, Excision).",
+   "tempo": "140 BPM (half time)",
+   "feel": "Half time: kick on 1, snare on 3.",
+   "midi": {
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x.........x.....",
+     "snare": "........x.......",
+     "hat": "x.x.x.x.x.x.x.x."
+    },
+    "bass": "wobble",
+    "chords": "pad",
+    "melody": "arp"
+   }
+  },
+  "edm.disco": {
+   "summary": "Disco and nu-disco: four-on-the-floor, octave bass lines, strings and funky guitars (think Daft Punk, Purple Disco Machine, Dua Lipa's 'Levitating').",
+   "tempo": "110-125 BPM",
+   "sounds": [
+    "An octave-jumping bass",
+    "Funky muted guitar chops",
+    "String stabs and swells",
+    "Open hats on the offbeats"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i7",
+      "IV7"
+     ],
+     [
+      "ii7",
+      "V7",
+      "Imaj7",
+      "vi7"
+     ],
+     [
+      "vi",
+      "IV",
+      "I",
+      "V"
+     ]
+    ],
+    "groove": {
+     "steps": 16,
+     "swing": 50,
+     "kick": "x...x...x...x...",
+     "clap": "....x.......x...",
+     "openhat": "..x...x...x...x.",
+     "hat": "xxxxxxxxxxxxxxxx",
+     "crash": true
+    },
+    "bass": "octave",
+    "chords": "stabs",
+    "melody": "hook"
+   }
+  },
+  "lofi.jazzhop": {
+   "summary": "Jazz hop and chillhop: swung boom-bap drums with jazz chords and samples (think Nujabes, J Dilla, the Lofi Girl playlists)."
+  },
+  "lofi.trap": {
+   "summary": "Lo-fi trap and sad trap: slow, emotional trap with lo-fi textures, soft 808s, sad piano and guitar (think XXXTentacion, Juice WRLD's mellow songs).",
+   "tempo": "70-90 BPM (or 140-160 in half time)",
+   "sounds": [
+    "Sad piano or clean guitar loops",
+    "A soft 808",
+    "Lo-fi, low-passed trap drums",
+    "Vinyl and tape textures"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i",
+      "VI",
+      "III",
+      "VII"
+     ],
+     [
+      "vi",
+      "IV",
+      "I",
+      "V"
+     ]
+    ],
+    "groove": {
+     "steps": 32,
+     "swing": 52,
+     "kick": "x.........x.....x.....x.........",
+     "clap": "........x...............x.......",
+     "hat": "o.o.o.o.o.o.o.o.o.o.o.o.o.o.r.o."
+    },
+    "bass": "808",
+    "chords": "ballad",
+    "melody": "bells"
+   }
+  },
+  "cinematic.trailer": {
+   "summary": "Epic trailer music: a three-act build with big drums, brass and choir, rising tension and huge hits (think Two Steps From Hell, Hans Zimmer).",
+   "tempo": "70-140 BPM",
+   "sounds": [
+    "Taikos and huge hits",
+    "Staccato string ostinatos",
+    "Massive brass and choir",
+    "Risers, booms and braams"
+   ]
+  },
+  "cinematic.horror": {
+   "summary": "Dark and horror: dissonance, drones, sudden hits and silence (think the 'Hereditary' score, 'Stranger Things' synths).",
+   "keys": "Minor and Phrygian; clusters and the flat 2.",
+   "sounds": [
+    "Drones and dark pads",
+    "Dissonant strings (clusters, glissandos)",
+    "Sudden hits and stingers",
+    "Analog synth arpeggios"
+   ],
+   "harmony": [
+    "Phrygian: i - bII",
+    "Hold a low drone and move dissonant notes above it"
+   ],
+   "midi": {
+    "progressions": [
+     [
+      "i",
+      "bII"
+     ],
+     [
+      "i",
+      "i",
+      "VI",
+      "bII"
+     ]
+    ],
+    "chords": "pad",
+    "melody": "swells"
+   }
+  },
+  "cinematic.world": {
+   "summary": "World percussion: rhythmic ensembles of hand drums, frame drums and ethnic percussion over drones (think 'The Lion King', 'Gladiator').",
+   "sounds": [
+    "Hand drums, frame drums, djembe, congas",
+    "Shakers and bells",
+    "Drones and ethnic flutes or voices"
+   ],
+   "midi": {
+    "groove": {
+     "steps": 16,
+     "swing": 54,
+     "kick": "x.......x.......",
+     "tomlow": "x..x..x...x..x..",
+     "tomhigh": "..x..x..x..x..x.",
+     "shaker": "xxxxxxxxxxxxxxxx"
+    },
+    "bass": "sustain",
+    "chords": "pad",
+    "melody": "swells"
+   }
+  }
+ }
+}

@@ -84,7 +84,8 @@ juce_add_binary_data(SongSavantBinaryData
         Resources/owl.png
         Resources/wordmark.png
         Resources/owl-light.png
-        Resources/wordmark-light.png)
+        Resources/wordmark-light.png
+        Resources/StyleGuide.json)
 
 set(SS_CORE_SOURCES
     Source/core/Paths.cpp
@@ -111,6 +112,8 @@ set(SS_CORE_SOURCES
     Source/core/PluginTypes.cpp
     Source/core/KitMap.cpp
     Source/core/KitMapJob.cpp
+    Source/core/StyleGuide.cpp
+    Source/core/StarterParts.cpp
     Source/core/ScanJob.cpp)
 
 set(SS_UI_SOURCES

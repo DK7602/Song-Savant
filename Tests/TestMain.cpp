@@ -19,6 +19,8 @@
 #include "core/PluginTypes.h"
 #include "core/KitMap.h"
 #include "core/KitMapJob.h"
+#include "core/StyleGuide.h"
+#include "core/StarterParts.h"
 #include <map>
 #include <algorithm>
 #include "PluginProcessor.h"
@@ -794,6 +796,162 @@ namespace
         presets.getParentDirectory().deleteRecursively();   // leave the fake computer as it was
     }
 
+    void testStyleGuide()
+    {
+        section ("Style knowledge");
+        int complete = 0, total = 0;
+        juce::StringArray thin;
+        for (int g = 0; g < ss::numGenres; ++g)
+            for (auto* st : ss::stylesFor ((ss::Genre) g))
+            {
+                ++total;
+                const auto guide = ss::styleGuide ((ss::Genre) g, st->id);
+                const bool ok = guide.summary.isNotEmpty() && guide.tempo.isNotEmpty() && guide.sounds.size() >= 3 && guide.drums.size() >= 2
+                                && guide.harmony.size() >= 2 && guide.arrangement.size() >= 1 && guide.mix.size() >= 1 && guide.tips.size() >= 1
+                                && ! guide.progressions.empty() && guide.groove.lanes.count ("kick") + guide.groove.lanes.count ("tomlow") > 0;
+                if (ok) ++complete; else thin.add (st->id);
+            }
+        check (complete == total && total == 50, "every genre and style has its knowledge: " + juce::String (complete) + " of " + juce::String (total)
+                                                  + (thin.isEmpty() ? juce::String() : " (missing: " + thin.joinIntoString (", ") + ")"));
+        const auto drill = ss::styleGuide (ss::Genre::trap, "trap.ukdrill");
+        const auto trap = ss::styleGuide (ss::Genre::trap);
+        check (drill.name == "UK Drill" && drill.bassStyle == "808glide" && drill.summary.contains ("drill") && drill.mix == trap.mix
+               && drill.groove.steps == 32 && drill.groove.lanes.at ("hat").length() == 32,
+               "a style adds to its genre (UK drill: its own drums and summary, trap's mix tips)");
+        check (ss::styleGuide (ss::Genre::country, "country.rap").bass.joinIntoString (" ").contains ("808 goes with the drums"),
+               "country rap knows the 808 goes with the drums");
+    }
+
+    void testStarterParts()
+    {
+        section ("Starter MIDI parts");
+        auto name = [] (const juce::String& numeral, int tonic, bool minor) { auto c = ss::chordFromRoman (numeral, tonic, minor, false); return c ? c->name : juce::String ("?"); };
+        check (name ("i", 9, true) == "Am" && name ("VI", 9, true) == "F" && name ("III", 9, true) == "C" && name ("VII", 9, true) == "G",
+               "Roman numerals in A minor: i VI III VII = Am F C G");
+        auto bVII = ss::chordFromRoman ("bVII", 0, false, false);
+        check (bVII && bVII->name == "Bb" && name ("ii7", 0, false) == "Dm7" && name ("IVmaj7", 0, false) == "Fmaj7" && name ("i9", 9, true) == "Am9",
+               "flats, 7ths and 9ths: bVII, ii7, IVmaj7, i9");
+        auto fs = ss::chordFromName ("F#m7");
+        auto gb = ss::chordFromName ("G/B");
+        auto sus = ss::chordFromName ("Csus2");
+        check (fs && fs->root == 6 && fs->intervals == std::vector<int> ({ 0, 3, 7, 10 }) && gb && gb->root == 7 && gb->name == "G"
+               && sus && sus->pitchClasses() == std::vector<int> ({ 0, 2, 7 }) && ! ss::chordFromName ("hello"), "chord names: F#m7, G/B, Csus2");
+
+        const auto trapBrief = ss::readBrief ("trap 142 BPM in A minor");
+        const auto plan = ss::planParts (trapBrief);
+        check (plan.key == 21 && std::abs (plan.bpm - 142.0) < 0.01 && plan.chords.size() == 8 && plan.chordLine() == "Am - F - C - G",
+               "a trap song in A minor: " + plan.chordLine() + " at " + juce::String (plan.bpm) + " BPM");
+        const auto relative = ss::planParts (ss::readBrief ("trap in C major"));
+        check (relative.chordLine() == "Am - F - C - G", "a minor progression in a major key comes from the relative minor: " + relative.chordLine());
+        const auto kc = ss::planParts (ss::readBrief ("country in G"), juce::StringArray ({ "G", "Em", "C", "D" }));
+        check (kc.chordLine() == "G - Em - C - D" && kc.chordSource.contains ("Key Compass"), "a Key Compass song's chords are used");
+        const auto next = ss::planParts (trapBrief, {}, 2);
+        check (next.chordLine() != plan.chordLine(), "a new idea takes another progression: " + next.chordLine());
+
+        // which part plays what
+        juce::StringArray types;
+        for (auto& part : ss::partsFor (trapBrief)) types.add (part.role + "=" + ss::partTypeName (ss::partTypeFor (part)));
+        check (types.joinIntoString (", ").contains ("Drums=drums") && types.joinIntoString (", ").contains ("Bass=bass line")
+               && types.joinIntoString (", ").contains ("Melody=hook idea") && types.joinIntoString (", ").contains ("Pad=held chords"),
+               "each trap card gets a part: " + types.joinIntoString (", "));
+
+        auto notesOf = [] (const juce::MidiMessageSequence& seq)
+        {
+            std::vector<int> v;
+            for (auto* e : seq) if (e->message.isNoteOn()) v.push_back (e->message.getNoteNumber());
+            return v;
+        };
+        const auto gm = ss::generalMidiDrums();
+        const auto drums = notesOf (ss::makePart (plan, ss::PartType::drums, gm));
+        const auto bass = ss::makePart (plan, ss::PartType::bass);
+        const auto bassNotes = notesOf (bass);
+        const auto pad = ss::makePart (plan, ss::PartType::pad);
+        const auto hook = notesOf (ss::makePart (plan, ss::PartType::hook));
+        check (drums.size() > 60 && std::count (drums.begin(), drums.end(), 36) >= 8 && std::count (drums.begin(), drums.end(), 39) >= 8,
+               "drums: kicks and claps on the General MIDI keys (" + juce::String ((int) drums.size()) + " hits)");
+        bool bassLow = ! bassNotes.empty();
+        for (auto n : bassNotes) bassLow = bassLow && n >= 24 && n <= 50;
+        check (bassLow && bassNotes.front() == 33, "the 808 is low and starts on the root, A (key 33)");
+
+        // every held chord is the bar's chord
+        bool padRight = true;
+        int padNotes = 0;
+        for (auto* e : pad)
+            if (e->message.isNoteOn())
+            {
+                ++padNotes;
+                const int bar = (int) (e->message.getTimeStamp() / (ss::ticksPerQuarter * 4));
+                const auto pcs = plan.chords[(size_t) bar].pitchClasses();
+                padRight = padRight && std::find (pcs.begin(), pcs.end(), e->message.getNoteNumber() % 12) != pcs.end();
+            }
+        check (padRight && padNotes >= 24, "the pad plays each bar's chord");
+        bool inScale = ! hook.empty();
+        for (auto n : hook) { const int pc = n % 12; inScale = inScale && (pc == 9 || pc == 11 || pc == 0 || pc == 2 || pc == 4 || pc == 5 || pc == 7); }
+        check (inScale, "the trap hook stays in A minor (" + juce::String ((int) hook.size()) + " notes)");
+
+        // every style makes every kind of part
+        int styled = 0, total = 0;
+        for (int g = 0; g < ss::numGenres; ++g)
+            for (auto* st : ss::stylesFor ((ss::Genre) g))
+            {
+                ++total;
+                const auto p = ss::planParts (ss::readBrief ("", (ss::Genre) g, st->id));
+                bool all = true;
+                for (auto t : { ss::PartType::drums, ss::PartType::bass, ss::PartType::chords, ss::PartType::pad, ss::PartType::hook })
+                    all = all && ss::makePart (p, t).getNumEvents() > 0 && ss::describePart (p, t).isNotEmpty();
+                if (all) ++styled;
+            }
+        check (styled == total, "every style makes drums, bass, chords, pads and a hook: " + juce::String (styled) + " of " + juce::String (total));
+        const auto country = ss::planParts (ss::readBrief ("modern country"));
+        check (ss::chordStyleFor (country, ss::Kind::guitar) == "strum" && ss::chordStyleFor (country, ss::Kind::piano) == "ballad"
+               && ss::chordStyleFor (ss::planParts (ss::readBrief ("modern worship")), ss::Kind::guitar) == "pluck",
+               "a guitar strums (or picks in worship), a piano doesn't strum");
+
+        // drums from a Song Savant drum map
+        ss::KitMap kit;
+        kit.name = "Beat Box";
+        for (auto [note, kind] : std::initializer_list<std::pair<int, const char*>> { { 24, "Kick" }, { 25, "Kick" }, { 43, "Snare" }, { 54, "Tom" },
+                                                                                       { 60, "Tom" }, { 78, "Perc" } })
+        {
+            ss::KitPad pad1;
+            pad1.note = note;
+            pad1.kind = kind;
+            kit.pads.push_back (pad1);
+        }
+        ss::nameKitPads (kit);
+        const auto drm = ss::saveCubaseDrumMap (kit);
+        const auto mapped = ss::drumNotesFromMap (drm);
+        check (mapped && mapped->note ("kick") == 24 && mapped->note ("snare") == 43 && mapped->note ("tomlow") == 54 && mapped->note ("tomhigh") == 60
+               && mapped->source.contains ("Beat Box"), "a drum map says which key is the kick, the snare and the toms");
+
+        // the MIDI file: a tempo track and one track per part
+        const auto file = ss::paths::tempDir().getChildFile ("Starter parts test.mid");
+        std::vector<ss::NamedPart> parts { { "Drums", ss::makePart (plan, ss::PartType::drums) }, { "Bass", bass } };
+        check (ss::writeMidiFile (plan, parts, file), "writes a MIDI file");
+        juce::MidiFile back;
+        juce::FileInputStream in (file);
+        double bpmBack = 0;
+        if (in.openedOk() && back.readFrom (in))
+        {
+            juce::MidiMessageSequence tempos;
+            back.findAllTempoEvents (tempos);
+            if (tempos.getNumEvents() > 0) bpmBack = 60.0 / tempos.getEventPointer (0)->message.getTempoSecondsPerQuarterNote();
+        }
+        check (back.getNumTracks() == 3 && std::abs (bpmBack - 142.0) < 0.1, "the file has a tempo track and a track per part, at 142 BPM");
+
+        // SS_DUMP_PARTS=<folder>: write every style's parts, to look at and listen to
+        if (const auto dump = juce::SystemStats::getEnvironmentVariable ("SS_DUMP_PARTS", {}); dump.isNotEmpty())
+            for (int g = 0; g < ss::numGenres; ++g)
+                for (auto* st : ss::stylesFor ((ss::Genre) g))
+                {
+                    const auto p = ss::planParts (ss::readBrief ("", (ss::Genre) g, st->id));
+                    std::vector<ss::NamedPart> all;
+                    for (auto t : { ss::PartType::drums, ss::PartType::bass, ss::PartType::chords, ss::PartType::pad, ss::PartType::hook })
+                        all.push_back ({ ss::partTypeName (t), ss::makePart (p, t) });
+                    ss::writeMidiFile (p, all, juce::File (dump).getChildFile (st->id + ".mid"));
+                }
+    }
+
     void testMusic()
     {
         section ("Music knowledge");
@@ -1226,6 +1384,8 @@ int main (int argc, char** argv)
     testKitMap();
     testKitMapping (fc);
     testMusic();
+    testStyleGuide();
+    testStarterParts();
     testPalettes (fc);
     testCancelAndJob (fc);
 
