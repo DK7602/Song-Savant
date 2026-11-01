@@ -44,6 +44,10 @@ namespace ss
         juce::String chordLine() const;     // "Am - F - C - G"
     };
 
+    // A progression's chords in a key: { "i", "VI", "III", "VII" } in A minor = "Am - F - C - G" (a minor progression
+    // in a major key is played from the relative minor, and the other way round)
+    juce::String progressionInKey (const juce::StringArray& numerals, int key);
+
     // The plan for the song: its key and tempo (or the style's), and its chords (the Key Compass song's when given)
     PartsPlan planParts (const SongBrief&, const juce::StringArray& songChords = {}, juce::uint32 seed = 1);
 

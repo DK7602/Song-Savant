@@ -263,16 +263,23 @@ Built in steps, each one a build the owner can try:
   progressions written as Roman numerals), arrangement, mix and tips, plus the rules the starter parts follow (drum
   groove, swing, how the bass, chords and hook play). A style adds to or replaces its genre's entries. Shared by the
   starter parts and the Masterclass page.
-- **Starter MIDI parts** *(started November 2026)*: for the palette on the Song page, 8-bar parts in the song's key
+- **Starter MIDI parts** *(built in 0.8.0; owner to try)*: for the palette on the Song page, 8-bar parts in the song's key
   and tempo: drums (from the style's groove; General MIDI notes, or a Song Savant drum map with the same name as
   the drum sound), bass (808 that follows the kick, root-fifth, 8ths, offbeat, walking...), chords (pads, strums,
   stabs, neo-soul voicings...), and a hook idea. The chords come from the Key Compass song when one is picked,
   otherwise from the style's progressions. Drag one part, or all of them (one track each), into Cubase. NEW IDEA
-  makes another take.
-- **MASTERCLASS page** *(the owner asked for a learning page, November 2026; the name pairs with Song Savant: the
-  savant gives the masterclass)*: follows the genre and style on the Song page, or pick another one to learn. Shows
+  makes another take. *(0.8.0: each card with a part has a MIDI tag on its picture to drag; ALL PARTS next to the
+  palette tabs drags them all, one track each, and shows the chords and tempo; NEW IDEA takes the next progression
+  and varies the drums and hook. A guitar card strums or picks and a piano doesn't strum (`chordStyleFor`). The
+  drums use the drum card's Song Savant drum map when one has the same name. `Tests` render every style's parts;
+  `SS_DUMP_PARTS=<folder>` writes them all out to listen to.)*
+- **MASTERCLASS page** *(built in 0.8.0; the owner asked for a learning page, November 2026; the name pairs with
+  Song Savant: the savant gives the masterclass)*: follows the genre and style on the Song page, or pick another one to learn. Shows
   the style's sound, the instruments and sounds it uses (and the best ones in your own library), drums, bass, chords
-  in your key, arrangement, mix tips, and artists to listen to.
+  in your key, arrangement, mix tips, and artists to listen to. *(0.8.0: a tab between SONG and LIBRARY; genre and
+  style pickers, BACK TO MY SONG, USE FOR MY SONG; cards in two columns: At a glance, The sounds it uses, In your
+  library (the best pick per part), Drums with the groove drawn as a grid, Bass, Chords (each progression in your
+  key), Arrangement, Mix, Tips, Listen to. The header's tabs size to their names and the logo shrinks to fit.)*
 - **Map a drum kit** *(built in 0.7.0, the owner's idea; owner to try it)*. Kits such as Analog Lab's "Beat Box"
   have no drum map in Cubase: the GM Map is wrong and "create drum map from instrument" is greyed out. The owner
   saves the kit as a preset from the plug-in window in Cubase (that file holds the plug-in's whole state, so it

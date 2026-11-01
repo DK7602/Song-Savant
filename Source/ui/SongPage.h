@@ -57,6 +57,7 @@ namespace ss::ui
         void themeChanged();
         void setDescription (const juce::String&);    // tests
         juce::File writeStarterParts (int card = -1); // one card's part, or all of them (-1): the MIDI file to drag
+        void showForm();                              // shows the song's form again (after the Masterclass changed it)
 
     private:
         void timerCallback() override;

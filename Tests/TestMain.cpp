@@ -1324,6 +1324,22 @@ namespace
                 {
                     e->getView().getSong().setDescription (song);
                     e->getView().getSong().find();
+                    if (name.startsWith ("masterclass"))
+                    {
+                        auto& mc = e->getView().getMasterclass();
+                        mc.followSong();
+                        juce::StringArray titles;
+                        for (auto& c : mc.getLesson().getCards()) titles.add (c.title);
+                        check (titles.contains ("Drums") && titles.contains ("In your library") && titles.contains ("Chords") && titles.contains ("Listen to"),
+                               "the Masterclass shows its lessons: " + titles.joinIntoString (", "));
+                        if (name == "masterclass")
+                        {
+                            bool inKey = false;
+                            for (auto& c : mc.getLesson().getCards())
+                                if (c.title == "Chords") inKey = c.points.joinIntoString ("|").contains ("D - A - Bm - G");
+                            check (mc.isFollowingSong() && inKey, "it follows the song (worship in D major: I - V - vi - IV = D - A - Bm - G)");
+                        }
+                    }
                     if (name == "song")
                     {
                         const auto all = e->getView().getSong().writeStarterParts (-1);
@@ -1350,6 +1366,9 @@ namespace
         shoot ("library", false, 1240, 820, 1);
         shoot ("library-search", false, 1240, 820, 1, "warm pad");
         shoot ("library-small", false, 1060, 780, 1);
+        shoot ("masterclass", false, 1240, 820, 4, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
+        shoot ("masterclass-small", false, 1060, 780, 4, {}, "uk drill 142 bpm");
+        shoot ("masterclass-tall", false, 1240, 1900, 4, {}, "uk drill 142 bpm in F minor");
         shoot ("drum-maps-empty", false, 1240, 820, 3);
         shoot ("drum-maps-kit", false, 1240, 820, 3);
         shoot ("drum-maps-kit-small", false, 1060, 780, 3);
@@ -1361,6 +1380,7 @@ namespace
         shoot ("library-light", false, 1240, 820, 1, "warm pad");
         shoot ("setup-check-light", true, 1140, 800, 2);
         shoot ("drum-maps-kit-light", false, 1240, 820, 3);
+        shoot ("masterclass-light", false, 1240, 820, 4, {}, "modern country like Morgan Wallen in G");
         ss::ui::setLightTheme (false);
         check (! ss::ui::isLightTheme(), "back to dark");
         juce::ignoreUnused (r);

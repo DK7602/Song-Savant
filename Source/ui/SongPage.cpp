@@ -253,19 +253,23 @@ namespace ss::ui
         copyBtn.onClick = [this] { copySelected(); };
         addAndMakeVisible (copyBtn);
 
-        // the form as it was saved
-        const auto& f = proc.song.form;
-        describeBox.setText (f.description, false);
-        genreBox.setSelectedId (f.genre >= 0 ? f.genre + 2 : 1, juce::dontSendNotification);
-        fillStyles (f.genre);
-        keyBox.setSelectedId (f.key >= 0 ? f.key + 2 : 1, juce::dontSendNotification);
-        if (f.bpm > 0) bpmBox.setText (juce::String (juce::roundToInt (f.bpm)), false);
-
+        showForm();          // the form as it was saved
         timerCallback();
         startTimerHz (6);
     }
 
     SongPage::~SongPage()   { stopTimer(); }
+
+    void SongPage::showForm()
+    {
+        const auto& f = proc.song.form;
+        describeBox.setText (f.description, false);
+        genreBox.setSelectedId (f.genre >= 0 ? f.genre + 2 : 1, juce::dontSendNotification);
+        fillStyles (f.genre);
+        keyBox.setSelectedId (f.key >= 0 ? f.key + 2 : 1, juce::dontSendNotification);
+        bpmBox.setText (f.bpm > 0 ? juce::String (juce::roundToInt (f.bpm)) : juce::String(), false);
+        repaint();
+    }
 
     void SongPage::fillStyles (int genre)
     {

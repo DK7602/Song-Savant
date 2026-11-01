@@ -604,6 +604,21 @@ namespace ss
         return names.joinIntoString (" - ");
     }
 
+    juce::String progressionInKey (const juce::StringArray& prog, int key)
+    {
+        if (prog.isEmpty()) return {};
+        auto first = prog[0];
+        if (first.startsWith ("b") || first.startsWith ("#")) first = first.substring (1);
+        const bool progMinor = first.isNotEmpty() && juce::CharacterFunctions::isLowerCase (first[0]);
+        int tonic = key % 12;
+        if (progMinor && key < 12) tonic = mod12 (tonic + 9);
+        if (! progMinor && key >= 12) tonic = mod12 (tonic + 3);
+        juce::StringArray names;
+        for (auto& n : prog)
+            if (auto c = chordFromRoman (n, tonic, progMinor, keyUsesFlats (key))) names.add (c->name);
+        return names.joinIntoString (" - ");
+    }
+
     PartsPlan planParts (const SongBrief& brief, const juce::StringArray& songChords, juce::uint32 seed)
     {
         PartsPlan p;

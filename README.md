@@ -6,8 +6,10 @@
 through the instruments and presets you already own, then suggests a complete sound palette: rhythm, bass,
 leads, pads and drums, each with alternatives, plus starter MIDI parts to get the song moving.
 
-> **Status: Phase 2 started, version 0.7.4.** New: the **DRUM MAPS** page names every pad of a kit you saved in
-> your DAW (Analog Lab, HALion...) and writes a Cubase drum map for it. Describe your song ("modern country like Morgan Wallen, warm,
+> **Status: Phase 2, version 0.8.0.** New: **starter MIDI parts** (drag a card's part, or all of them, into your
+> DAW, in your key and tempo), the **MASTERCLASS** page (learn any genre or style: its sounds, drums, bass, chords in
+> your key, arrangement, mix and artists, plus the best matches in your own library), and the **DRUM MAPS** page
+> (names every pad of a kit you saved in your DAW and writes a Cubase drum map). Describe your song ("modern country like Morgan Wallen, warm,
 > 120 BPM in A minor") and Song Savant suggests a palette of sounds you already own, one card per part, with
 > alternatives, locks and new takes. Instruments whose presets it can't read (SSD Sampler, FM8...) are suggested as
 > the plug-in itself, and a small helper program (Song Savant Scanner) safely finds out what unlabelled plug-ins
