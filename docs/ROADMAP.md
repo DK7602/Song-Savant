@@ -329,7 +329,17 @@ Built in steps, each one a build the owner can try:
   - Next: use these maps for the starter drum parts.
 - **Starter MIDI parts** (chords, bass, rhythm parts, hook idea) in key and tempo; follow Key Compass chords.
   Drag to DAW.
-- **Arrangement map** (which parts play in each section).
+- **Arrangement map** *(built in 0.9.0; the owner asked for it next, November 2026)*. The **ARRANGE** tab (after
+  SONG): sections across (intro, verse, pre-chorus, chorus, bridge, drop...), the palette's parts down, a box for each
+  part in each section. Each genre has its usual song shape in the style knowledge (bars, who plays: drums light /
+  groove / build / full, bass, chords, pad, hook; "all" brings in the extras; which progression: the main one, the
+  verse's, the bridge's). Shapes: the full song, a short one (the second verse goes, shorter intro and outro), or the
+  picked Key Compass song's own sections and chords. Click a box to switch a part on or off (the drums step through
+  light, groove, build, full); click a section's name to change its length, copy, move or remove it; START OVER goes
+  back to the shape. **WHOLE SONG** drags it all into Cubase: a track per part, each section's starter parts in
+  place, a marker per section. The song keeps its map (`Source/core/Arrangement.*`, `Source/ui/ArrangePage.*`).
+  The header's SETUP CHECK became a small icon next to the light/dark switch (it's a one-off tool now), to make
+  room.
 - **Groove Grabber hand-off** for drums (and the matching change in Groove Grabber).
 - Plugin: follows DAW tempo, plays parts in sync, saves the palette with the project.
 - Release 1.0.

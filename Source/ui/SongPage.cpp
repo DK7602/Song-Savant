@@ -388,17 +388,8 @@ namespace ss::ui
 
     DrumNotes SongPage::drumNotes() const
     {
-        // the drum card's sound, if Song Savant mapped it on the Drum Maps page (same name)
-        if (auto* pal = proc.song.palettes.empty() ? nullptr : &proc.song.palettes[(size_t) juce::jlimit (0, (int) proc.song.palettes.size() - 1, proc.song.current)])
-            for (auto& slot : pal->slots)
-                if (partTypeFor (slot.part) == PartType::drums && catalog != nullptr && slot.current().isValid())
-                {
-                    const auto& snd = catalog->sounds[(size_t) slot.current().sound];
-                    const auto drm = drumMapsFolder().getChildFile (juce::File::createLegalFileName (snd.name).trim() + ".drm");
-                    if (drm.existsAsFile())
-                        if (auto mapped = drumNotesFromMap (drm)) return *mapped;
-                }
-        return generalMidiDrums();
+        if (proc.song.palettes.empty()) return generalMidiDrums();
+        return drumNotesFor (proc.song.palettes[(size_t) juce::jlimit (0, (int) proc.song.palettes.size() - 1, proc.song.current)], catalog.get());
     }
 
     juce::File SongPage::writeStarterParts (int card)

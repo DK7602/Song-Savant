@@ -293,4 +293,24 @@ namespace ss::ui
             }
         }
     }
+
+    void SetupButton::paintButton (juce::Graphics& g, bool over, bool)
+    {
+        const auto& p = pal();
+        auto r = getLocalBounds().toFloat().reduced (2.0f);
+        const bool on = getToggleState();
+        g.setColour ((on ? p.gold.withAlpha (0.25f) : p.panelHi).withAlpha (over || on ? 1.0f : 0.7f));
+        g.fillEllipse (r);
+        g.setColour (p.gold.withAlpha (over || on ? 1.0f : 0.8f));
+        g.drawEllipse (r, on ? 1.8f : 1.2f);
+        // a clipboard with a tick
+        auto c = r.reduced (r.getWidth() * 0.3f, r.getHeight() * 0.26f);
+        g.drawRoundedRectangle (c, 2.0f, 1.4f);
+        g.fillRoundedRectangle (c.withSizeKeepingCentre (c.getWidth() * 0.5f, 3.0f).withY (c.getY() - 1.5f), 1.0f);
+        juce::Path tick;
+        tick.startNewSubPath (c.getX() + c.getWidth() * 0.22f, c.getCentreY() + 0.5f);
+        tick.lineTo (c.getX() + c.getWidth() * 0.44f, c.getBottom() - c.getHeight() * 0.24f);
+        tick.lineTo (c.getRight() - c.getWidth() * 0.18f, c.getY() + c.getHeight() * 0.3f);
+        g.strokePath (tick, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
 }

@@ -6,6 +6,7 @@
 #include "SetupCheckPage.h"
 #include "DrumMapsPage.h"
 #include "MasterclassPage.h"
+#include "ArrangePage.h"
 
 class SongSavantProcessor;
 
@@ -14,7 +15,7 @@ namespace ss::ui
     class MainView : public juce::Component
     {
     public:
-        enum Page { song = 0, library = 1, setupCheck = 2, drumMaps = 3, masterclass = 4 };
+        enum Page { song = 0, library = 1, setupCheck = 2, drumMaps = 3, masterclass = 4, arrange = 5 };
 
         explicit MainView (SongSavantProcessor&);
         ~MainView() override;
@@ -28,23 +29,26 @@ namespace ss::ui
         SetupCheckPage& getSetupCheck()  { return setupPage; }
         DrumMapsPage& getDrumMaps()      { return drumMapsPage; }
         MasterclassPage& getMasterclass() { return masterclassPage; }
+        ArrangePage& getArrange()        { return arrangePage; }
 
     private:
         SongSavantProcessor& proc;
         SavantLookAndFeel lookAndFeel;
         juce::Image owl, wordmark;
         ThemeButton themeBtn;
+        SetupButton setupBtn;
         void applyTheme();
         PillButton songTab { "SONG", PillButton::Style::subtle },
+                   arrangeTab { "ARRANGE", PillButton::Style::subtle },
                    libraryTab { "LIBRARY", PillButton::Style::subtle },
                    masterclassTab { "MASTERCLASS", PillButton::Style::subtle },
-                   drumMapsTab { "DRUM MAPS", PillButton::Style::subtle },
-                   setupTab { "SETUP CHECK", PillButton::Style::subtle };
+                   drumMapsTab { "DRUM MAPS", PillButton::Style::subtle };
         SongPage songPage;
         LibraryPage libraryPage;
         SetupCheckPage setupPage;
         DrumMapsPage drumMapsPage;
         MasterclassPage masterclassPage;
+        ArrangePage arrangePage;
         juce::TooltipWindow tooltips { this, 500 };
         juce::Rectangle<float> headerArea, subtitleArea;
         int page = song;

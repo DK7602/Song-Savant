@@ -19,6 +19,10 @@ namespace ss
     };
     std::vector<ArrangementPart> arrangementParts (const Palette&, const Catalog*);
 
+    // Which key plays which drum for this palette: the drum card's own Song Savant drum map (same name as the sound),
+    // or General MIDI
+    DrumNotes drumNotesFor (const Palette&, const Catalog*);
+
     struct ArrangementSection
     {
         juce::String name;                        // "Chorus"

@@ -24,6 +24,14 @@ namespace ss::ui
         void paintButton (juce::Graphics&, bool over, bool down) override;
     };
 
+    // The setup check's button in the header: a clipboard with a tick (gold when its page is showing)
+    class SetupButton : public juce::Button
+    {
+    public:
+        SetupButton() : juce::Button ("setup")  { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+        void paintButton (juce::Graphics&, bool over, bool down) override;
+    };
+
     // Something the user drags out of Song Savant into their DAW (a preset file, a MIDI clip)
     class DragChip : public juce::Component, public juce::SettableTooltipClient
     {

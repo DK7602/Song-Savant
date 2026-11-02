@@ -1,4 +1,5 @@
 #include "Arrangement.h"
+#include "KitMap.h"
 
 namespace ss
 {
@@ -100,6 +101,19 @@ namespace ss
             out.push_back (p);
         }
         return out;
+    }
+
+    DrumNotes drumNotesFor (const Palette& pal, const Catalog* cat)
+    {
+        for (auto& slot : pal.slots)
+            if (partTypeFor (slot.part) == PartType::drums && cat != nullptr && slot.current().isValid() && slot.current().sound < (int) cat->sounds.size())
+            {
+                const auto& snd = cat->sounds[(size_t) slot.current().sound];
+                const auto drm = drumMapsFolder().getChildFile (juce::File::createLegalFileName (snd.name).trim() + ".drm");
+                if (drm.existsAsFile())
+                    if (auto mapped = drumNotesFromMap (drm)) return *mapped;
+            }
+        return generalMidiDrums();
     }
 
     juce::String ArrangementSection::modeFor (const juce::String& role) const

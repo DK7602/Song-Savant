@@ -6,7 +6,8 @@
 through the instruments and presets you already own, then suggests a complete sound palette: rhythm, bass,
 leads, pads and drums, each with alternatives, plus starter MIDI parts to get the song moving.
 
-> **Status: Phase 2, version 0.8.0.** New: **starter MIDI parts** (drag a card's part, or all of them, into your
+> **Status: Phase 2, version 0.9.0.** New: the **ARRANGE** page (your song's shape, which parts play where, and the
+> whole song dragged into your DAW with a marker per section), **starter MIDI parts** (drag a card's part, or all of them, into your
 > DAW, in your key and tempo), the **MASTERCLASS** page (learn any genre or style: its sounds, drums, bass, chords in
 > your key, arrangement, mix and artists, plus the best matches in your own library), and the **DRUM MAPS** page
 > (names every pad of a kit you saved in your DAW and writes a Cubase drum map). Describe your song ("modern country like Morgan Wallen, warm,

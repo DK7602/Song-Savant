@@ -1410,6 +1410,16 @@ namespace
                 {
                     e->getView().getSong().setDescription (song);
                     e->getView().getSong().find();
+                    if (name.startsWith ("arrange"))
+                    {
+                        auto& ar = e->getView().getArrange();
+                        ar.refresh();
+                        const auto whole = ar.writeWholeSong();
+                        juce::MidiFile mf;
+                        juce::FileInputStream in (whole);
+                        check (in.openedOk() && mf.readFrom (in) && mf.getNumTracks() >= 5 && ar.getArrangement().sections.size() >= 5,
+                               "the Arrange page maps the song and writes it whole: " + whole.getFileName());
+                    }
                     if (name.startsWith ("masterclass"))
                     {
                         auto& mc = e->getView().getMasterclass();
@@ -1452,6 +1462,9 @@ namespace
         shoot ("library", false, 1240, 820, 1);
         shoot ("library-search", false, 1240, 820, 1, "warm pad");
         shoot ("library-small", false, 1060, 780, 1);
+        shoot ("arrange", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
+        shoot ("arrange-small", false, 1060, 780, 5, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
+        shoot ("arrange-empty", false, 1240, 820, 5);
         shoot ("masterclass", false, 1240, 820, 4, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("masterclass-small", false, 1060, 780, 4, {}, "uk drill 142 bpm");
         shoot ("masterclass-tall", false, 1240, 1900, 4, {}, "uk drill 142 bpm in F minor");
