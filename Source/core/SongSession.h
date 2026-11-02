@@ -4,6 +4,7 @@
 
 #include "Palette.h"
 #include "StarterParts.h"
+#include "Arrangement.h"
 #include <juce_core/juce_core.h>
 
 namespace ss
@@ -17,6 +18,8 @@ namespace ss
         double bpm = 0;               // 0 = from the description / the style
         juce::String fromSong;        // the Key Compass song it came from, if any
         juce::StringArray chords;     // that song's chords, in order (the starter parts follow them)
+        juce::StringArray sections;   // that song's sections ("Verse", "Chorus"...)
+        std::vector<juce::StringArray> sectionChords;   // and each section's chords (the arrangement follows them)
     };
 
     class SongSession
@@ -29,6 +32,13 @@ namespace ss
         juce::uint32 seed = 1;
         juce::uint32 partsSeed = 1;                   // starter parts: each NEW IDEA is the next one
         PartsPlan partsPlan() const                   { return planParts (makeBrief(), form.chords, partsSeed); }
+
+        // The arrangement map: made from the style's song shape (or the Key Compass song's sections) and then edited
+        Arrangement arrangement;
+        SongShape songShape = SongShape::full;
+        KeyCompassShape keyCompassShape() const       { return { form.fromSong, form.sections, form.sectionChords }; }
+        void updateArrangement (const std::vector<ArrangementPart>&);   // made again when the style, the parts or the shape changed
+        void resetArrangement (const std::vector<ArrangementPart>&);    // back to the shape as it comes
 
         SongBrief makeBrief() const;                  // the description, with the form's choices on top
         void find (const Catalog&);                   // fresh palettes for the form

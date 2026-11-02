@@ -76,7 +76,45 @@
     },
     "bass": "rootkick",
     "chords": "neo",
-    "melody": "hook"
+    "melody": "hook",
+    "form": [
+     {
+      "name": "Intro",
+      "bars": 4,
+      "play": "chords hook",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 16,
+      "play": "drums:groove bass chords",
+      "progression": 0
+     },
+     {
+      "name": "Hook",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 16,
+      "play": "drums:groove bass chords pad",
+      "progression": 0
+     },
+     {
+      "name": "Hook",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Outro",
+      "bars": 4,
+      "play": "chords hook",
+      "progression": 0
+     }
+    ]
    }
   },
   "trap": {
@@ -160,7 +198,51 @@
     },
     "bass": "808",
     "chords": "pad",
-    "melody": "bells"
+    "melody": "bells",
+    "form": [
+     {
+      "name": "Intro",
+      "bars": 8,
+      "play": "hook pad",
+      "progression": 0
+     },
+     {
+      "name": "Hook",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 16,
+      "play": "drums:groove bass pad",
+      "progression": 0
+     },
+     {
+      "name": "Hook",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 16,
+      "play": "drums:groove bass pad hook",
+      "progression": 0
+     },
+     {
+      "name": "Hook",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Outro",
+      "bars": 8,
+      "play": "hook pad",
+      "progression": 0
+     }
+    ]
    }
   },
   "rnb": {
@@ -237,7 +319,69 @@
     },
     "bass": "rnb",
     "chords": "neo",
-    "melody": "hook"
+    "melody": "hook",
+    "form": [
+     {
+      "name": "Intro",
+      "bars": 4,
+      "play": "chords pad",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 8,
+      "play": "drums:light bass chords",
+      "progression": 1
+     },
+     {
+      "name": "Pre-chorus",
+      "bars": 4,
+      "play": "drums:groove bass chords pad",
+      "progression": 2
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 8,
+      "play": "drums:groove bass chords",
+      "progression": 1
+     },
+     {
+      "name": "Pre-chorus",
+      "bars": 4,
+      "play": "drums:groove bass chords pad",
+      "progression": 2
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Bridge",
+      "bars": 8,
+      "play": "bass chords pad",
+      "progression": 2
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Outro",
+      "bars": 4,
+      "play": "chords pad",
+      "progression": 0
+     }
+    ]
    }
   },
   "pop": {
@@ -320,7 +464,69 @@
     },
     "bass": "eighths",
     "chords": "pluck",
-    "melody": "hook"
+    "melody": "hook",
+    "form": [
+     {
+      "name": "Intro",
+      "bars": 4,
+      "play": "chords pad hook",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 8,
+      "play": "drums:light bass chords",
+      "progression": 1
+     },
+     {
+      "name": "Pre-chorus",
+      "bars": 4,
+      "play": "drums:build bass chords pad",
+      "progression": 2
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 8,
+      "play": "drums:groove bass chords",
+      "progression": 1
+     },
+     {
+      "name": "Pre-chorus",
+      "bars": 4,
+      "play": "drums:build bass chords pad",
+      "progression": 2
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Bridge",
+      "bars": 8,
+      "play": "pad chords",
+      "progression": 2
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Outro",
+      "bars": 4,
+      "play": "chords pad",
+      "progression": 0
+     }
+    ]
    }
   },
   "rock": {
@@ -404,7 +610,57 @@
     },
     "bass": "eighths",
     "chords": "power",
-    "melody": "riff"
+    "melody": "riff",
+    "form": [
+     {
+      "name": "Intro",
+      "bars": 4,
+      "play": "drums:groove bass chords hook",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 8,
+      "play": "drums:groove bass chords",
+      "progression": 1
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 8,
+      "play": "drums:groove bass chords",
+      "progression": 1
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Solo",
+      "bars": 8,
+      "play": "drums:full bass chords hook",
+      "progression": 1
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Outro",
+      "bars": 4,
+      "play": "drums:full bass chords",
+      "progression": 0
+     }
+    ]
    }
   },
   "country": {
@@ -486,7 +742,57 @@
     },
     "bass": "rootfifth",
     "chords": "strum",
-    "melody": "fills"
+    "melody": "fills",
+    "form": [
+     {
+      "name": "Intro",
+      "bars": 4,
+      "play": "chords hook",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 8,
+      "play": "drums:light bass chords",
+      "progression": 1
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 8,
+      "play": "drums:groove bass chords hook",
+      "progression": 1
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Bridge",
+      "bars": 8,
+      "play": "drums:light bass chords pad",
+      "progression": 2
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Outro",
+      "bars": 4,
+      "play": "chords hook",
+      "progression": 0
+     }
+    ]
    }
   },
   "worship": {
@@ -571,7 +877,63 @@
     },
     "bass": "sustain",
     "chords": "ballad",
-    "melody": "swells"
+    "melody": "swells",
+    "form": [
+     {
+      "name": "Intro",
+      "bars": 4,
+      "play": "pad chords",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 8,
+      "play": "pad chords bass",
+      "progression": 1
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "drums:light pad chords bass hook",
+      "progression": 0
+     },
+     {
+      "name": "Verse",
+      "bars": 8,
+      "play": "drums:light pad chords bass",
+      "progression": 1
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Bridge",
+      "bars": 8,
+      "play": "drums:light pad chords bass",
+      "progression": 2
+     },
+     {
+      "name": "Bridge",
+      "bars": 8,
+      "play": "drums:build pad chords bass hook",
+      "progression": 2
+     },
+     {
+      "name": "Chorus",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Tag",
+      "bars": 4,
+      "play": "pad chords",
+      "progression": 0
+     }
+    ]
    }
   },
   "edm": {
@@ -650,7 +1012,51 @@
     },
     "bass": "offbeat",
     "chords": "stabs",
-    "melody": "arp"
+    "melody": "arp",
+    "form": [
+     {
+      "name": "Intro",
+      "bars": 16,
+      "play": "drums:groove bass",
+      "progression": 0
+     },
+     {
+      "name": "Build",
+      "bars": 8,
+      "play": "drums:build chords hook",
+      "progression": 0
+     },
+     {
+      "name": "Drop",
+      "bars": 16,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Break",
+      "bars": 8,
+      "play": "pad chords hook",
+      "progression": 1
+     },
+     {
+      "name": "Build",
+      "bars": 8,
+      "play": "drums:build chords hook",
+      "progression": 0
+     },
+     {
+      "name": "Drop",
+      "bars": 16,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Outro",
+      "bars": 8,
+      "play": "drums:groove bass",
+      "progression": 0
+     }
+    ]
    }
   },
   "lofi": {
@@ -721,7 +1127,45 @@
     },
     "bass": "rnb",
     "chords": "neo",
-    "melody": "hook"
+    "melody": "hook",
+    "form": [
+     {
+      "name": "Intro",
+      "bars": 4,
+      "play": "chords",
+      "progression": 0
+     },
+     {
+      "name": "A",
+      "bars": 8,
+      "play": "drums:groove bass chords",
+      "progression": 0
+     },
+     {
+      "name": "B",
+      "bars": 8,
+      "play": "all",
+      "progression": 1
+     },
+     {
+      "name": "A",
+      "bars": 8,
+      "play": "drums:groove bass chords hook",
+      "progression": 0
+     },
+     {
+      "name": "B",
+      "bars": 8,
+      "play": "all",
+      "progression": 1
+     },
+     {
+      "name": "Outro",
+      "bars": 4,
+      "play": "chords pad",
+      "progression": 0
+     }
+    ]
    }
   },
   "cinematic": {
@@ -796,7 +1240,39 @@
     },
     "bass": "sustain",
     "chords": "ballad",
-    "melody": "swells"
+    "melody": "swells",
+    "form": [
+     {
+      "name": "Opening",
+      "bars": 8,
+      "play": "pad chords",
+      "progression": 0
+     },
+     {
+      "name": "Build",
+      "bars": 8,
+      "play": "drums:light bass pad chords",
+      "progression": 0
+     },
+     {
+      "name": "Rise",
+      "bars": 8,
+      "play": "drums:groove bass pad chords hook",
+      "progression": 1
+     },
+     {
+      "name": "Climax",
+      "bars": 8,
+      "play": "all",
+      "progression": 0
+     },
+     {
+      "name": "Release",
+      "bars": 8,
+      "play": "pad hook",
+      "progression": 1
+     }
+    ]
    }
   }
  },

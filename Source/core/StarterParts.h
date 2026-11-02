@@ -48,6 +48,9 @@ namespace ss
     // in a major key is played from the relative minor, and the other way round)
     juce::String progressionInKey (const juce::StringArray& numerals, int key);
 
+    // The chords for one of the style's progressions (0 = the plan's main one, 1 = the next...), one per bar
+    std::vector<Chord> progressionChords (const PartsPlan&, int index, int bars);
+
     // The plan for the song: its key and tempo (or the style's), and its chords (the Key Compass song's when given)
     PartsPlan planParts (const SongBrief&, const juce::StringArray& songChords = {}, juce::uint32 seed = 1);
 
@@ -76,6 +79,8 @@ namespace ss
         juce::String name;
         juce::MidiMessageSequence notes;
     };
-    // A MIDI file with the tempo, time and key signature, and one track per part
-    bool writeMidiFile (const PartsPlan&, const std::vector<NamedPart>&, const juce::File&);
+    // A MIDI file with the tempo, time and key signature, and one track per part. Markers (in ticks) name places in
+    // the song (sections); `bars` is its length when it isn't the plan's.
+    bool writeMidiFile (const PartsPlan&, const std::vector<NamedPart>&, const juce::File&,
+                        const std::vector<std::pair<double, juce::String>>& markers = {}, int bars = 0);
 }

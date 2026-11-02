@@ -19,6 +19,15 @@ namespace ss
         std::map<juce::String, juce::String> fill;        // the last bar's lanes (16 steps), for a fill
     };
 
+    // One section of the style's usual song shape
+    struct FormSection
+    {
+        juce::String name;                                // "Verse"
+        int bars = 8;
+        juce::String play;                                // what plays: "drums:light bass chords", or "all"
+        int progression = 0;                              // 0 = the main progression, 1 = the verse's, 2 = the bridge's
+    };
+
     struct StyleGuide
     {
         juce::String id, name, genre;                     // "trap.ukdrill", "UK Drill", "Trap / Drill"
@@ -29,6 +38,7 @@ namespace ss
         std::vector<juce::StringArray> progressions;      // Roman numerals: { "i", "VI", "III", "VII" }
         Groove groove;
         juce::String bassStyle, chordStyle, melodyStyle;  // "808", "rootfifth"...; "pad", "strum"...; "bells", "hook"...
+        std::vector<FormSection> form;                    // the usual song shape (intro, verse, chorus...)
     };
 
     StyleGuide styleGuide (Genre, const juce::String& styleId = {});

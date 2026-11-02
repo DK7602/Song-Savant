@@ -369,6 +369,8 @@ namespace ss::ui
             {
                 proc.song.form.fromSong.clear();
                 proc.song.form.chords.clear();
+                proc.song.form.sections.clear();
+                proc.song.form.sectionChords.clear();
                 refresh();
                 return;
             }
@@ -378,6 +380,8 @@ namespace ss::ui
             if (s.bpm > 0) bpmBox.setText (juce::String (juce::roundToInt (s.bpm)), false);
             proc.song.form.fromSong = s.name;
             proc.song.form.chords = s.chords;      // the starter parts follow the song's chords
+            proc.song.form.sections = s.sections;  // and the arrangement its sections
+            proc.song.form.sectionChords = s.sectionChords;
             refresh();
         });
     }

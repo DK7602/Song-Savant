@@ -22,6 +22,9 @@ namespace ss
         {
             s.sections.add (sec->getStringAttribute ("name"));
             s.chords.addTokens (sec->getStringAttribute ("chords"), " ", "");
+            auto own = juce::StringArray::fromTokens (sec->getStringAttribute ("chords"), " ", "");
+            own.removeEmptyStrings();
+            s.sectionChords.push_back (own);
         }
         s.chords.removeEmptyStrings();
         return s;

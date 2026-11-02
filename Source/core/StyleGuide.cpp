@@ -69,6 +69,12 @@ namespace ss
             if (midi.hasProperty ("bass")) g.bassStyle = midi["bass"].toString();
             if (midi.hasProperty ("chords")) g.chordStyle = midi["chords"].toString();
             if (midi.hasProperty ("melody")) g.melodyStyle = midi["melody"].toString();
+            if (auto* form = midi["form"].getArray())
+            {
+                g.form.clear();
+                for (auto& f : *form)
+                    g.form.push_back ({ f["name"].toString(), juce::jlimit (1, 64, (int) f["bars"]), f["play"].toString(), (int) f["progression"] });
+            }
         }
     }
 

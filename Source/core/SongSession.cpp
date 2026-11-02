@@ -34,6 +34,22 @@ namespace ss
         current = 0;
     }
 
+    void SongSession::resetArrangement (const std::vector<ArrangementPart>& parts)
+    {
+        auto shape = songShape;
+        if (shape == SongShape::keyCompass && form.sections.isEmpty()) shape = SongShape::full;
+        arrangement = makeArrangement (partsPlan(), parts, keyCompassShape(), shape);
+        arrangement.signature = arrangementSignature (makeBrief(), parts, keyCompassShape(), shape);
+    }
+
+    void SongSession::updateArrangement (const std::vector<ArrangementPart>& parts)
+    {
+        auto shape = songShape;
+        if (shape == SongShape::keyCompass && form.sections.isEmpty()) shape = SongShape::full;
+        if (arrangement.empty() || arrangement.signature != arrangementSignature (makeBrief(), parts, keyCompassShape(), shape))
+            resetArrangement (parts);
+    }
+
     std::unique_ptr<juce::XmlElement> SongSession::toXml() const
     {
         auto x = std::make_unique<juce::XmlElement> ("Song");
@@ -45,6 +61,14 @@ namespace ss
         x->setAttribute ("fromSong", form.fromSong);
         x->setAttribute ("chords", form.chords.joinIntoString (" "));
         x->setAttribute ("partsSeed", (int) partsSeed);
+        x->setAttribute ("songShape", (int) songShape);
+        if (! arrangement.empty()) x->addChildElement (arrangement.toXml().release());
+        for (int i = 0; i < form.sections.size(); ++i)
+        {
+            auto* sx = x->createNewChildElement ("SongSection");
+            sx->setAttribute ("name", form.sections[i]);
+            sx->setAttribute ("chords", i < (int) form.sectionChords.size() ? form.sectionChords[(size_t) i].joinIntoString (" ") : juce::String());
+        }
         x->setAttribute ("seed", (int) seed);
         x->setAttribute ("current", current);
         x->setAttribute ("made", ! palettes.empty() || (pending != nullptr && pending->getBoolAttribute ("made")));
@@ -78,6 +102,18 @@ namespace ss
         form.chords = juce::StringArray::fromTokens (x.getStringAttribute ("chords"), " ", "");
         form.chords.removeEmptyStrings();
         partsSeed = (juce::uint32) juce::jmax (1, x.getIntAttribute ("partsSeed", 1));
+        songShape = (SongShape) juce::jlimit (0, 2, x.getIntAttribute ("songShape", 0));
+        arrangement = {};
+        if (auto* ax = x.getChildByName ("Arrangement")) arrangement = Arrangement::fromXml (*ax);
+        form.sections.clear();
+        form.sectionChords.clear();
+        for (auto* sx : x.getChildWithTagNameIterator ("SongSection"))
+        {
+            form.sections.add (sx->getStringAttribute ("name"));
+            auto c = juce::StringArray::fromTokens (sx->getStringAttribute ("chords"), " ", "");
+            c.removeEmptyStrings();
+            form.sectionChords.push_back (c);
+        }
         seed = (juce::uint32) juce::jmax (1, x.getIntAttribute ("seed", 1));
         current = x.getIntAttribute ("current", 0);
         palettes.clear();
@@ -91,7 +127,15 @@ namespace ss
 
         // the same song and seed make the same palettes; then put back what you'd locked and switched
         std::vector<PaletteSlot> keep;
-        const auto* saved = pending->getChildElement (juce::jlimit (0, juce::jmax (0, pending->getNumChildElements() - 1), current));
+        const juce::XmlElement* saved = nullptr;          // the palette that was showing (by its place among the palettes)
+        {
+            int i = 0;
+            for (auto* px : pending->getChildWithTagNameIterator ("Palette"))
+            {
+                saved = px;                           // ends on the current one, or the last one
+                if (i++ == current) break;
+            }
+        }
         if (saved != nullptr)
             for (auto* sx : saved->getChildWithTagNameIterator ("Slot"))
                 if (sx->getBoolAttribute ("locked"))

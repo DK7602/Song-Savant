@@ -114,6 +114,7 @@ set(SS_CORE_SOURCES
     Source/core/KitMapJob.cpp
     Source/core/StyleGuide.cpp
     Source/core/StarterParts.cpp
+    Source/core/Arrangement.cpp
     Source/core/ScanJob.cpp)
 
 set(SS_UI_SOURCES

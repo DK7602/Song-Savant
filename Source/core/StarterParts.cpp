@@ -619,6 +619,49 @@ namespace ss
         return names.joinIntoString (" - ");
     }
 
+    namespace
+    {
+        bool isMinorProgression (const juce::StringArray& prog)
+        {
+            auto first = prog[0];
+            if (first.startsWith ("b") || first.startsWith ("#")) first = first.substring (1);
+            return first.isNotEmpty() && juce::CharacterFunctions::isLowerCase (first[0]);
+        }
+
+        // the style's progressions, the ones in the song's mode first
+        std::vector<const juce::StringArray*> orderedProgressions (const PartsPlan& p)
+        {
+            std::vector<const juce::StringArray*> fitting, others;
+            for (auto& prog : p.guide.progressions) (isMinorProgression (prog) == p.minor() ? fitting : others).push_back (&prog);
+            for (auto* o : others) fitting.push_back (o);
+            return fitting;
+        }
+
+        const juce::StringArray& progressionFor (const PartsPlan& p, int index)
+        {
+            const auto list = orderedProgressions (p);
+            return *list[(size_t) (((int) p.seed - 1 + index) % (int) list.size())];
+        }
+    }
+
+    std::vector<Chord> progressionChords (const PartsPlan& p, int index, int bars)
+    {
+        std::vector<Chord> out;
+        if (p.guide.progressions.empty()) return out;
+        const auto& prog = progressionFor (p, index);
+        // a minor progression in a major key is played from the relative minor (and the other way round)
+        const bool progMinor = isMinorProgression (prog);
+        int tonic = p.tonic();
+        if (progMinor && ! p.minor()) tonic = mod12 (tonic + 9);
+        if (! progMinor && p.minor()) tonic = mod12 (tonic + 3);
+        for (int bar = 0; bar < bars; ++bar)
+        {
+            auto c = chordFromRoman (prog[bar % prog.size()], tonic, progMinor, keyUsesFlats (p.key));
+            out.push_back (c ? *c : Chord { tonic, { 0, 4, 7 }, pitchName (tonic, keyUsesFlats (p.key)) });
+        }
+        return out;
+    }
+
     PartsPlan planParts (const SongBrief& brief, const juce::StringArray& songChords, juce::uint32 seed)
     {
         PartsPlan p;
@@ -629,12 +672,6 @@ namespace ss
         if (styleBpm <= 0) for (auto* s : stylesFor (brief.genre)) if (s->isGeneral()) styleBpm = s->bpm;
         p.bpm = brief.bpm > 0 ? brief.bpm : (styleBpm > 0 ? styleBpm : 120.0);
 
-        auto isMinorProgression = [] (const juce::StringArray& prog)
-        {
-            auto first = prog[0];
-            if (first.startsWith ("b") || first.startsWith ("#")) first = first.substring (1);
-            return first.isNotEmpty() && juce::CharacterFunctions::isLowerCase (first[0]);
-        };
 
         // the key: the song's, or the one the style's progressions suit
         p.keyGiven = brief.key >= 0;
@@ -660,22 +697,9 @@ namespace ss
         }
 
         // otherwise one of the style's progressions, preferring ones in the song's mode; each new idea takes the next
-        std::vector<const juce::StringArray*> fitting, others;
-        for (auto& prog : p.guide.progressions) (isMinorProgression (prog) == p.minor() ? fitting : others).push_back (&prog);
-        for (auto* o : others) fitting.push_back (o);
-        const auto& prog = *fitting[(size_t) ((p.seed - 1) % fitting.size())];
-
-        // a minor progression in a major key is played from the relative minor (and the other way round)
-        const bool progMinor = isMinorProgression (prog);
-        int tonic = p.tonic();
-        if (progMinor && ! p.minor()) tonic = mod12 (tonic + 9);
-        if (! progMinor && p.minor()) tonic = mod12 (tonic + 3);
-        for (int bar = 0; bar < p.bars; ++bar)
-        {
-            auto c = chordFromRoman (prog[bar % prog.size()], tonic, progMinor, flats);
-            p.chords.push_back (c ? *c : Chord { tonic, { 0, 4, 7 }, pitchName (tonic, flats) });
-        }
-        p.chordSource = p.guide.name + ": " + prog.joinIntoString (" - ");
+        p.chords = progressionChords (p, 0, p.bars);
+        p.chordSource = p.guide.name + ": " + progressionFor (p, 0).joinIntoString (" - ");
+        juce::ignoreUnused (flats);
         return p;
     }
 
@@ -851,11 +875,12 @@ namespace ss
         return {};
     }
 
-    bool writeMidiFile (const PartsPlan& p, const std::vector<NamedPart>& parts, const juce::File& file)
+    bool writeMidiFile (const PartsPlan& p, const std::vector<NamedPart>& parts, const juce::File& file,
+                        const std::vector<std::pair<double, juce::String>>& markers, int bars)
     {
         juce::MidiFile mf;
         mf.setTicksPerQuarterNote (ticksPerQuarter);
-        const double end = (double) p.bars * barTicks;
+        const double end = (double) (bars > 0 ? bars : p.bars) * barTicks;
 
         juce::MidiMessageSequence conductor;
         conductor.addEvent (juce::MidiMessage::tempoMetaEvent ((int) std::round (60000000.0 / p.bpm)), 0);
@@ -866,7 +891,9 @@ namespace ss
             const int major = p.minor() ? mod12 (p.tonic() + 3) : p.tonic();
             conductor.addEvent (juce::MidiMessage::keySignatureMetaEvent (majorAccidentals[major], p.minor()), 0);
         }
+        for (auto& [tick, name] : markers) conductor.addEvent (juce::MidiMessage::textMetaEvent (6, name), tick);
         conductor.addEvent (juce::MidiMessage::endOfTrack(), end);
+        conductor.sort();
         mf.addTrack (conductor);
 
         for (auto& part : parts)

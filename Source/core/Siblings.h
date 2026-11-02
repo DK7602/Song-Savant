@@ -18,6 +18,7 @@ namespace ss
         double bpm = 0;
         juce::StringArray sections;
         juce::StringArray chords;        // every chord, in order, across the sections
+        std::vector<juce::StringArray> sectionChords;   // each section's chords
         juce::File file;
     };
 

@@ -21,6 +21,8 @@
 #include "core/KitMapJob.h"
 #include "core/StyleGuide.h"
 #include "core/StarterParts.h"
+#include "core/Arrangement.h"
+#include "core/SongSession.h"
 #include <map>
 #include <algorithm>
 #include "PluginProcessor.h"
@@ -952,6 +954,90 @@ namespace
                 }
     }
 
+    void testArrangement (const sstest::FakeComputer& fc)
+    {
+        section ("Arrangement map");
+        std::atomic<bool> cancel { false };
+        const auto cat = ss::buildCatalog (fc.loc, cancel);
+        const auto brief = ss::readBrief ("trap 142 BPM in A minor");
+        const auto pals = ss::makePalettes (cat, brief);
+        const auto parts = ss::arrangementParts (pals[0], &cat);
+        const auto plan = ss::planParts (brief);
+        const ss::KeyCompassShape none;
+
+        auto full = ss::makeArrangement (plan, parts, none, ss::SongShape::full);
+        juce::StringArray names;
+        for (auto& s : full.sections) names.add (s.name + " " + juce::String (s.bars));
+        check (names.joinIntoString (", ") == "Intro 8, Hook 8, Verse 16, Hook 8, Verse 16, Hook 8, Outro 8" && full.totalBars() == 72,
+               "a trap song's shape: " + names.joinIntoString (", "));
+        juce::String drumsRole, bassRole;
+        for (auto& p : parts) { if (p.type == ss::PartType::drums) drumsRole = p.role; if (p.type == ss::PartType::bass) bassRole = p.role; }
+        check (full.sections[0].modeFor (drumsRole).isEmpty() && full.sections[0].modeFor (bassRole).isEmpty() && full.sections[1].modeFor (drumsRole) == "full"
+               && full.sections[2].modeFor (drumsRole) == "groove", "the intro has no drums or 808; the hook has everything");
+
+        const auto shortSong = ss::makeArrangement (plan, parts, none, ss::SongShape::shortSong);
+        check (shortSong.totalBars() < full.totalBars() && shortSong.sections.size() == full.sections.size() - 2, "a short song drops the second verse and hook");
+
+        // the whole song as MIDI: the drums only start with the hook (bar 9)
+        const auto song = ss::arrangeParts (plan, full, parts, ss::generalMidiDrums());
+        double firstDrum = -1;
+        for (size_t i = 0; i < parts.size(); ++i)
+            if (parts[i].type == ss::PartType::drums)
+                for (auto* e : song[i].notes)
+                    if (e->message.isNoteOn()) { firstDrum = e->message.getTimeStamp(); break; }
+        check (std::abs (firstDrum - 8.0 * ss::ticksPerQuarter * 4) < 1.0, "the drums come in at the hook (bar 9)");
+        const auto file = ss::paths::tempDir().getChildFile ("Whole song test.mid");
+        check (ss::writeArrangement (plan, full, song, file), "writes the whole song");
+        juce::MidiFile mf;
+        juce::FileInputStream in (file);
+        int markers = 0;
+        if (in.openedOk() && mf.readFrom (in))
+            for (auto* e : *mf.getTrack (0)) if (e->message.isTextMetaEvent() && e->message.getMetaEventType() == 6) ++markers;
+        check (mf.getNumTracks() == (int) parts.size() + 1 && markers == 7, "a track per part and a marker per section (" + juce::String (markers) + ")");
+
+        // clicking boxes, editing sections
+        auto edited = full;
+        for (auto& p : parts)
+            if (p.type == ss::PartType::drums)
+            {
+                ss::toggleArrangementCell (edited, 0, p);
+                const auto first = edited.sections[0].modeFor (p.role);
+                ss::toggleArrangementCell (edited, 0, p);
+                check (first == "light" && edited.sections[0].modeFor (p.role) == "groove", "the drums box steps through light, groove...");
+            }
+        ss::setSectionBars (edited, 0, 4);
+        ss::copySection (edited, 1);
+        ss::moveSection (edited, 0, 1);
+        ss::removeSection (edited, 3);
+        check (edited.sections[0].name == "Hook" && edited.sections[1].name == "Intro" && edited.sections[1].bars == 4 && edited.sections.size() == 7,
+               "sections can be shortened, copied, moved and removed");
+        const auto back = ss::Arrangement::fromXml (*edited.toXml());
+        check (back.sections.size() == edited.sections.size() && back.sections[1].bars == 4 && back.sections[0].modeFor (drumsRole) == "full",
+               "the map is saved with the song");
+
+        // a Key Compass song's own sections and chords
+        ss::KeyCompassShape kc { "Back Roads", { "Verse", "Chorus" }, { { "Am", "F", "C", "G" }, { "F", "G", "Am" } } };
+        const auto kcArr = ss::makeArrangement (plan, parts, kc, ss::SongShape::keyCompass);
+        check (kcArr.sections.size() == 2 && kcArr.sections[1].name == "Chorus" && kcArr.sections[1].modeFor (drumsRole) == "full"
+               && ss::sectionChords (plan, kcArr.sections[1])[2].name == "Am" && ss::songShapeNames (kc).contains ("Key Compass: Back Roads"),
+               "a Key Compass song's sections and chords");
+
+        // the song session keeps it, and makes it again when the style changes
+        ss::SongSession session;
+        session.form.description = "trap 142 BPM in A minor";
+        session.updateArrangement (parts);
+        ss::toggleArrangementCell (session.arrangement, 0, parts[0]);
+        const auto mine = session.arrangement.sections[0].play;
+        session.updateArrangement (parts);
+        check (session.arrangement.sections[0].play == mine, "your changes stay while the song stays the same");
+        session.form.description = "modern country";
+        session.updateArrangement (parts);
+        check (session.arrangement.sections.size() == 8, "a new style gets its own shape");
+        ss::SongSession restored;
+        restored.fromXml (*session.toXml());
+        check (restored.arrangement.sections.size() == 8 && restored.arrangement.signature == session.arrangement.signature, "saved and restored with the song");
+    }
+
     void testMusic()
     {
         section ("Music knowledge");
@@ -1416,6 +1502,7 @@ int main (int argc, char** argv)
     testMusic();
     testStyleGuide();
     testStarterParts();
+    testArrangement (fc);
     testPalettes (fc);
     testCancelAndJob (fc);
 
