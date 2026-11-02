@@ -263,7 +263,7 @@ Built in steps, each one a build the owner can try:
   progressions written as Roman numerals), arrangement, mix and tips, plus the rules the starter parts follow (drum
   groove, swing, how the bass, chords and hook play). A style adds to or replaces its genre's entries. Shared by the
   starter parts and the Masterclass page.
-- **Starter MIDI parts** *(built in 0.8.0; owner to try)*: for the palette on the Song page, 8-bar parts in the song's key
+- **Starter MIDI parts** *(built in 0.8.0; the owner confirmed they drag into Cubase and work, November 2026)*: for the palette on the Song page, 8-bar parts in the song's key
   and tempo: drums (from the style's groove; General MIDI notes, or a Song Savant drum map with the same name as
   the drum sound), bass (808 that follows the kick, root-fifth, 8ths, offbeat, walking...), chords (pads, strums,
   stabs, neo-soul voicings...), and a hook idea. The chords come from the Key Compass song when one is picked,
