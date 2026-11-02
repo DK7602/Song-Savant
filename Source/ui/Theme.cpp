@@ -93,7 +93,7 @@ namespace ss::ui
                               : juce::ImageCache::getFromMemory (SSBinary::wordmark_png, SSBinary::wordmark_pngSize);
     }
 
-    // Both themes show the same drawing (the light pictures are made from the dark ones by tools/make_light_logo.py),
+    // The light pictures are made by tools/make_light_logo.py on the dark pictures' canvases, sized and placed to match,
     // so the boxes are the same: the header draws both themes at exactly the same size and place.
     juce::Rectangle<float> owlContent()        { return { 18.0f, 27.0f, 235.0f, 270.0f }; }   // owl.png, 276 x 300
     juce::Rectangle<float> wordmarkContent()   { return { 4.0f, 3.0f, 556.0f, 127.0f }; }    // wordmark.png, 564 x 180
