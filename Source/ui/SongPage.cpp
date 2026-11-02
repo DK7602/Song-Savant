@@ -339,9 +339,15 @@ namespace ss::ui
 
     void SongPage::timerCallback()
     {
+        if (++kitTicks >= 18)            // every 3 seconds: a kit saved in Groove Grabber?
+        {
+            kitTicks = 0;
+            checkGrooveGrabberKits();
+        }
         if (proc.catalog.generation() != seenGeneration)
         {
             seenGeneration = proc.catalog.generation();
+            if (lookedAtKits) kitsStale = true;      // the library was read again: read the kits into it again too
             const auto previous = catalog;
             catalog = proc.catalog.catalog();
             if (catalog != nullptr && proc.song.needsRestore()) proc.song.restore (*catalog);
@@ -444,14 +450,52 @@ namespace ss::ui
             drums = catalog->sounds[(size_t) s->current().sound].name;
         const auto file = ss::sendToGrooveGrabber (proc.song, drums);
         const auto name = songNameFor (proc.song);
+        if (file != juce::File()) sentAt = juce::Time::getCurrentTime();
         if (file == juce::File())
             copiedNote = "Couldn't save the song for Groove Grabber in " + grooveGrabberSongsFolder().getFullPathName() + ".";
         else if (! grooveGrabberInstalled())
             copiedNote = "Saved \"" + name + "\" for Groove Grabber. It isn't installed on this computer yet: once it is, the song is in its KEY COMPASS menu.";
         else
-            copiedNote = "Sent \"" + name + "\". In Groove Grabber click USE IT on the BUILD page (or pick it in the KEY COMPASS menu): it builds 4 kits for it.";
+            copiedNote = "Sent \"" + name + "\". In Groove Grabber click USE IT, then SAVE KIT on the one you like: it comes back here on the drum card.";
         repaint();
         return file;
+    }
+
+    bool SongPage::checkGrooveGrabberKits()
+    {
+        if (catalog == nullptr || proc.catalog.isBuilding()) return false;
+        if (ggKits == juce::File()) ggKits = proc.locationProvider().grooveGrabberKits;
+        const auto files = grooveGrabberKitFiles (ggKits);
+        if (! lookedAtKits)
+        {
+            // the first look: the library was just read with these kits in it
+            lookedAtKits = true;
+            ggKitFiles = files;
+            return false;
+        }
+        if (files == ggKitFiles && ! kitsStale) return false;
+        const auto before = ggKitFiles;
+        ggKitFiles = files;
+        kitsStale = false;
+
+        const auto key = newKitForSong (ggKits, before, proc.song, sentAt);
+        proc.catalog.setCatalog (withGrooveGrabberKits (*catalog, ggKits));
+        seenGeneration = proc.catalog.generation();
+        catalog = proc.catalog.catalog();
+        proc.song.moveTo (*catalog);
+
+        bool placed = false;
+        if (key.isNotEmpty() && putOnDrumCard (proc.song, *catalog, key) > 0)
+        {
+            if (auto* pal = proc.song.currentPalette())
+                for (auto& slot : pal->slots)
+                    if (partTypeFor (slot.part) == PartType::drums) selectedRole = slot.part.role;
+            copiedNote = "Your Groove Grabber kit \"" + catalog->sounds[(size_t) findSoundByKey (*catalog, key)].name
+                         + "\" is on the drum card (locked). The starter parts and ARRANGE use it.";
+            placed = true;
+        }
+        refresh();
+        return placed;
     }
 
     void SongPage::copySelected()

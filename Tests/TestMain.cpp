@@ -1141,6 +1141,65 @@ namespace
             check ((int) v2["key"] == song.partsPlan().key && v2["genre"] == "worship" && v2["style"] == "" && v2["name"] == "Worship",
                    "without a key: the starter parts' key (" + v2["keyName"].toString() + ")");
         }
+
+        // a kit you save in Groove Grabber comes back by itself, on the drum card when it was built for this song
+        {
+            const auto dir = ss::paths::tempDir().getChildFile ("gg kits back");
+            dir.deleteRecursively();
+            auto writeKit = [&dir] (const juce::String& name, const juce::String& description)
+            {
+                auto f = dir.getChildFile ("Trap/" + name + ".ggkit");
+                f.getParentDirectory().createDirectory();
+                f.replaceWithText ("{\"name\": \"" + name + "\", \"genre\": \"trap\", \"style\": \"trap.nydrill\", \"description\": \"" + description
+                                   + "\", \"slots\": {\"kick\": {\"path\": \"k.wav\"}, \"808\": {\"path\": \"808.wav\"}}}");
+                return f;
+            };
+            writeKit ("Old Faithful", "something else");
+            auto base = cat;
+            base.sounds.erase (std::remove_if (base.sounds.begin(), base.sounds.end(), [] (const ss::Sound& x) { return ss::isGrooveGrabberKit (x); }),
+                               base.sounds.end());
+            const auto since = ss::grooveGrabberKitFiles (dir);
+            const auto sentAt = juce::Time::getCurrentTime();
+            writeKit ("After Dark Vault", "Modern Trap");
+            check (ss::grooveGrabberKitFiles (dir) != since && ss::grooveGrabberKitFiles (dir).size() == 2, "saving a kit changes what Song Savant sees in the folder");
+
+            const auto merged = ss::withGrooveGrabberKits (base, dir);
+            int kits = 0;
+            for (auto& x : merged.sounds) kits += ss::isGrooveGrabberKit (x) ? 1 : 0;
+            check (kits == 2 && merged.sounds.size() == base.sounds.size() + 2, "the library gets the kits without being read again");
+            bool sorted = true;
+            for (size_t i = 1; i < merged.sounds.size(); ++i)
+                if (merged.sounds[i - 1].kind == merged.sounds[i].kind && merged.sounds[i - 1].name.compareNatural (merged.sounds[i].name) > 0) sorted = false;
+            check (sorted, "and stays in order");
+
+            ss::SongSession song;
+            song.form.description = "modern trap";
+            check (ss::newKitForSong (dir, since, song) == "after dark vault|groove grabber|trap / drill kits",
+                   "the kit built for this song (same description) is found: " + ss::newKitForSong (dir, since, song));
+            song.form.description = "dark trap";
+            check (ss::newKitForSong (dir, since, song).isEmpty(), "a kit built for another song isn't");
+            check (ss::newKitForSong (dir, since, song, sentAt).isNotEmpty(), "...unless it was saved after this song was sent to Groove Grabber");
+            check (ss::newKitForSong (dir, ss::grooveGrabberKitFiles (dir), song, sentAt).isEmpty(), "only kits saved since the last look");
+            check (ss::newKitForSong (dir, since, song, sentAt + juce::RelativeTime::seconds (60)).isEmpty(), "and not ones saved before it was sent");
+
+            song.form.description = "modern trap";
+            song.find (merged);
+            const auto key = ss::newKitForSong (dir, since, song);
+            check (ss::putOnDrumCard (song, merged, key) == (int) song.palettes.size(), "it goes on every palette's drum card");
+            bool onCard = true;
+            for (auto& pal : song.palettes)
+                for (auto& slot : pal.slots)
+                    if (ss::partTypeFor (slot.part) == ss::PartType::drums)
+                        onCard = onCard && slot.locked && slot.current().isValid() && merged.sounds[(size_t) slot.current().sound].name == "After Dark Vault";
+            check (onCard, "locked, as the card's sound");
+            song.newPalettes (merged);
+            juce::String kept;
+            for (auto& slot : song.palettes[0].slots)
+                if (ss::partTypeFor (slot.part) == ss::PartType::drums && slot.current().isValid()) kept = merged.sounds[(size_t) slot.current().sound].name;
+            check (kept == "After Dark Vault", "and it stays through NEW PALETTES (got " + kept + ")");
+            check (ss::drumNotesFor (song.palettes[0], &merged).source == "Groove Grabber's pads", "so the drum parts and ARRANGE use its pads");
+            dir.deleteRecursively();
+        }
     }
 
     void testMusic()
@@ -1553,6 +1612,22 @@ namespace
                         check (read && mf.getNumTracks() >= 6 && all.getFileName().contains ("BPM"),
                                "the Song page writes all its starter parts: " + all.getFileName() + ", " + juce::String (mf.getNumTracks() - 1) + " parts");
                         check (e->getView().getSong().writeStarterParts (1).existsAsFile(), "and one card's part");
+
+                        // a kit saved in Groove Grabber for this song lands on the drum card by itself
+                        auto& sp = e->getView().getSong();
+                        sp.checkGrooveGrabberKits();                    // the first look
+                        auto kitFile = fc.loc.grooveGrabberKits.getChildFile ("Worship/Sunday Room.ggkit");
+                        kitFile.getParentDirectory().createDirectory();
+                        kitFile.replaceWithText ("{\"name\": \"Sunday Room\", \"genre\": \"worship\", \"description\": \"" + song
+                                                 + "\", \"slots\": {\"kick\": {\"path\": \"k.wav\"}}}");
+                        const bool placed = sp.checkGrooveGrabberKits();
+                        juce::String onCard;
+                        if (auto* pal = proc.song.currentPalette())
+                            for (auto& slot : pal->slots)
+                                if (ss::partTypeFor (slot.part) == ss::PartType::drums && slot.current().isValid() && slot.locked)
+                                    onCard = proc.catalog.catalog()->sounds[(size_t) slot.current().sound].name;
+                        check (placed && onCard == "Sunday Room", "the Song page puts a kit saved for this song on the drum card: " + onCard);
+                        kitFile.getParentDirectory().deleteRecursively();
                     }
                 }
             }

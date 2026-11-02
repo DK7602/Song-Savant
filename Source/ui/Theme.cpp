@@ -28,23 +28,22 @@ namespace ss::ui
             return p;
         }
 
-        juce::PropertiesFile& settings()
+        // The settings file is opened when it's needed and closed straight away. Never keep JUCE objects with timers,
+        // fonts or images in a static: in a DAW those are let go only when the plug-in is unloaded at quit, which can
+        // freeze the DAW on Windows (it did with Groove Grabber's fonts).
+        std::unique_ptr<juce::PropertiesFile> openSettings()
         {
-            static juce::PropertiesFile file = []
-            {
-                juce::PropertiesFile::Options o;
-                o.applicationName = "settings";
-                o.filenameSuffix = ".xml";
-                o.storageFormat = juce::PropertiesFile::storeAsXML;
-                o.millisecondsBeforeSaving = 300;
-                return juce::PropertiesFile (ss::paths::appDataDir().getChildFile ("settings.xml"), o);
-            }();
-            return file;
+            juce::PropertiesFile::Options o;
+            o.applicationName = "settings";
+            o.filenameSuffix = ".xml";
+            o.storageFormat = juce::PropertiesFile::storeAsXML;
+            o.millisecondsBeforeSaving = 0;
+            return std::make_unique<juce::PropertiesFile> (ss::paths::appDataDir().getChildFile ("settings.xml"), o);
         }
 
         bool& lightFlag()
         {
-            static bool light = settings().getBoolValue ("lightTheme", false);
+            static bool light = openSettings()->getBoolValue ("lightTheme", false);
             return light;
         }
     }
@@ -61,8 +60,9 @@ namespace ss::ui
     void setLightTheme (bool on)
     {
         lightFlag() = on;
-        settings().setValue ("lightTheme", on);
-        settings().saveIfNeeded();
+        auto file = openSettings();
+        file->setValue ("lightTheme", on);
+        file->saveIfNeeded();
     }
 
     juce::Font sans (float h, bool bold)

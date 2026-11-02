@@ -144,7 +144,12 @@ Tags guessed from a preset's name or category are shown as guesses.
   electronic...) and "808" when it has one. Your kit made for the song's style scores +4 more than another kit
   (+1, and +3 for the style), and one made for another genre -3. The Groove Grabber plug-in itself stays among the
   choices (to build new kits). How to load it: Groove Grabber's MY KITS, LOAD (it plays the kit itself), or EXPORT
-  for Groove Agent. With a Groove Grabber kit (or the plug-in) on the drum card, the starter drum parts play its pads
+  for Groove Agent. **A kit you save comes back by itself** *(0.10.1: the owner found the round trip too complicated,
+  November 2026)*: the Song page looks at Groove Grabber's Kits folder every 3 seconds, reads new kits into the
+  library without REFRESH LIBRARY, and puts the one built for this song (Groove Grabber keeps the song's description
+  with the kit; or one saved after SEND TO GROOVE GRABBER) on the drum card of every palette, locked, so ARRANGE uses
+  it. So the whole trip is: SEND TO GROOVE GRABBER, USE IT, SAVE KIT on the one you like.
+  With a Groove Grabber kit (or the plug-in) on the drum card, the starter drum parts play its pads
   (General MIDI drums on 36..51, toms on 43/47/50, the 808 on 52, percussion on 53..55), and in styles built on the
   808 the kit's 808 plays with the kick. Code: `Source/core/GrooveGrabberLink.*`.
   Groove Agent kits, SSD Sampler 5, MT-PowerDrumKit and other drum instruments appear as alternatives.
@@ -378,6 +383,10 @@ Built in steps, each one a build the owner can try:
 ---
 
 ## Things to remember
+- **Never keep fonts, images, timers or threads in statics.** In a DAW, JUCE shuts down when the last instance of the
+  plug-in closes, but a static lives until the DAW unloads the plug-in at quit, and letting go of graphics there can
+  freeze Windows. Groove Grabber 1.0.12 froze Cubase on quit that way (fixed in 1.0.13); Song Savant 0.10.1 stopped
+  keeping its settings file in a static for the same reason.
 - **Before selling:** the Windows installer tool (Inno Setup 6.7) prints "Non-commercial use only" in the build
   log. Check its licence (buy one or switch installers) before selling Song Savant or Groove Grabber, and sign
   the installers so Windows stops warning "Windows protected your PC".

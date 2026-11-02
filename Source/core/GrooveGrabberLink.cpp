@@ -1,6 +1,7 @@
 #include "GrooveGrabberLink.h"
 #include "FileWalk.h"
 #include "Paths.h"
+#include <map>
 
 #ifdef SS_VERSION
  #define SS_LINK_VERSION SS_VERSION
@@ -109,6 +110,45 @@ namespace ss
         }
     }
 
+    std::optional<Sound> grooveGrabberKitFromFile (const juce::File& f, juce::String* songDescription)
+    {
+        if (! f.hasFileExtension (".ggkit") || f.getSize() > 2 * 1024 * 1024) return std::nullopt;
+        const auto v = juce::JSON::parse (f);
+        if (! v.isObject() || v["name"].toString().trim().isEmpty()) return std::nullopt;
+        auto* slots = v["slots"].getDynamicObject();
+        if (slots == nullptr || slots->getProperties().isEmpty()) return std::nullopt;
+
+        Sound s;
+        s.name = v["name"].toString().trim();
+        s.instrument = "Groove Grabber";
+        s.source = "Groove Grabber";
+        s.kind = Kind::drums;
+        s.detail = "Drum Kit";
+        s.yours = true;
+        s.location = f.getFullPathName();
+        if (const auto g = genreFromId (v["genre"].toString()))
+        {
+            s.styles.add (genreName (*g));
+            s.library = genreName (*g) + " kits";
+        }
+        else
+            s.library = "My kits";
+        if (auto* st = styleById (v["style"].toString()); st != nullptr && ! st->isGeneral())
+            s.styles.add (st->name);
+        if (const int era = (int) v["era"]; v.hasProperty ("era") && era >= 0 && era < numEras)
+            s.styles.add (eraName (era));
+        s.character = characterWords (v["target"]);
+        const auto eight = slots->getProperty ("808");
+        if (eight.isObject() && eight["path"].toString().isNotEmpty()) s.character.add ("808");
+        s.description = v["blurb"].toString();
+        if (const int key = (int) v["key"]; v.hasProperty ("key") && key >= 0 && key < 24)
+            s.description << (s.description.isEmpty() ? "" : " ") << "Tuned to " << keyName (key) << ".";
+        s.rating = (bool) v["favorite"] ? 4 : 0;
+        prepareForSearch (s);
+        if (songDescription != nullptr) *songDescription = v["description"].toString();   // the song it was built for
+        return s;
+    }
+
     std::vector<Sound> readGrooveGrabberKits (const juce::File& kitsFolder)
     {
         std::vector<Sound> out;
@@ -116,45 +156,112 @@ namespace ss
         std::set<juce::String> seen;
         walkFiles (kitsFolder, { 3, 5000, 20.0 }, [&] (const juce::File& f, int)
         {
-            if (! f.hasFileExtension (".ggkit") || f.getSize() > 2 * 1024 * 1024) return true;
-            const auto v = juce::JSON::parse (f);
-            if (! v.isObject() || v["name"].toString().trim().isEmpty()) return true;
-            auto* slots = v["slots"].getDynamicObject();
-            if (slots == nullptr || slots->getProperties().isEmpty()) return true;
-
-            Sound s;
-            s.name = v["name"].toString().trim();
-            s.instrument = "Groove Grabber";
-            s.source = "Groove Grabber";
-            s.kind = Kind::drums;
-            s.detail = "Drum Kit";
-            s.yours = true;
-            s.location = f.getFullPathName();
-            if (const auto g = genreFromId (v["genre"].toString()))
-            {
-                s.styles.add (genreName (*g));
-                s.library = genreName (*g) + " kits";
-            }
-            else
-                s.library = "My kits";
-            if (auto* st = styleById (v["style"].toString()); st != nullptr && ! st->isGeneral())
-                s.styles.add (st->name);
-            if (const int era = (int) v["era"]; v.hasProperty ("era") && era >= 0 && era < numEras)
-                s.styles.add (eraName (era));
-            s.character = characterWords (v["target"]);
-            const auto eight = slots->getProperty ("808");
-            if (eight.isObject() && eight["path"].toString().isNotEmpty()) s.character.add ("808");
-            s.description = v["blurb"].toString();
-            if (const int key = (int) v["key"]; v.hasProperty ("key") && key >= 0 && key < 24)
-                s.description << (s.description.isEmpty() ? "" : " ") << "Tuned to " << keyName (key) << ".";
-            s.rating = (bool) v["favorite"] ? 4 : 0;
-            // the same kit saved twice (in two genre folders): once is enough
-            if (! seen.insert (s.name + "|" + s.library).second) return true;
-            prepareForSearch (s);
-            out.push_back (std::move (s));
+            if (auto s = grooveGrabberKitFromFile (f))
+                if (seen.insert (s->name + "|" + s->library).second)   // the same kit saved twice: once is enough
+                    out.push_back (std::move (*s));
             return true;
         });
         return out;
+    }
+
+    //==============================================================================
+    juce::StringArray grooveGrabberKitFiles (const juce::File& kitsFolder)
+    {
+        juce::StringArray out;
+        if (! kitsFolder.isDirectory()) return out;
+        walkFiles (kitsFolder, { 3, 5000, 5.0 }, [&] (const juce::File& f, int)
+        {
+            if (f.hasFileExtension (".ggkit"))
+                out.add (f.getFullPathName() + "|" + juce::String (f.getLastModificationTime().toMilliseconds()));
+            return true;
+        });
+        out.sort (false);
+        return out;
+    }
+
+    Catalog withGrooveGrabberKits (const Catalog& c, const juce::File& kitsFolder)
+    {
+        Catalog out;
+        out.built = c.built;
+        out.seconds = c.seconds;
+        out.sources = c.sources;
+        out.sounds.reserve (c.sounds.size() + 8);
+        for (auto& s : c.sounds)
+            if (! isGrooveGrabberKit (s)) out.sounds.push_back (s);
+        auto kits = readGrooveGrabberKits (kitsFolder);
+        bool listed = false;
+        for (auto& src : out.sources)
+            if (src.name == "Groove Grabber kits") { src.sounds = (int) kits.size(); listed = true; }
+        if (! listed && ! kits.empty())
+            out.sources.push_back ({ "Groove Grabber kits", kitsFolder, (int) kits.size(), 0, 0, {} });
+        for (auto& k : kits) out.sounds.push_back (std::move (k));
+
+        // the catalog's order: by kind, then name
+        std::map<Kind, int> order;
+        for (size_t i = 0; i < allKinds().size(); ++i) order[allKinds()[i]] = (int) i;
+        std::stable_sort (out.sounds.begin(), out.sounds.end(), [&] (const Sound& a, const Sound& b)
+        {
+            if (a.kind != b.kind) return order[a.kind] < order[b.kind];
+            return a.name.compareNatural (b.name) < 0;
+        });
+        return out;
+    }
+
+    juce::String newKitForSong (const juce::File& kitsFolder, const juce::StringArray& before, const SongSession& song, juce::Time sentAt)
+    {
+        // the newest kit saved since the last look that was built for this song: Groove Grabber keeps the song's
+        // description with each kit; or, if you sent this song to Groove Grabber, a kit saved after that
+        // (file times can be whole seconds, so "after" allows one)
+        const auto wanted = song.form.description.trim().toLowerCase();
+        juce::String best;
+        juce::int64 bestTime = -1;
+        for (auto& entry : grooveGrabberKitFiles (kitsFolder))
+        {
+            if (before.contains (entry)) continue;
+            const juce::File f (entry.upToLastOccurrenceOf ("|", false, false));
+            const auto t = entry.fromLastOccurrenceOf ("|", false, false).getLargeIntValue();
+            if (t < bestTime) continue;
+            juce::String description;
+            if (auto s = grooveGrabberKitFromFile (f, &description))
+            {
+                const bool sameWords = wanted.isNotEmpty() && description.trim().toLowerCase() == wanted;
+                const bool afterSending = sentAt.toMilliseconds() > 0 && t + 1000 >= sentAt.toMilliseconds();
+                if (sameWords || afterSending)
+                {
+                    best = soundKey (*s);
+                    bestTime = t;
+                }
+            }
+        }
+        return best;
+    }
+
+    int putOnDrumCard (SongSession& song, const Catalog& c, const juce::String& key)
+    {
+        const int idx = findSoundByKey (c, key);
+        if (idx < 0) return 0;
+        const auto brief = song.makeBrief();
+        int changed = 0;
+        for (auto& pal : song.palettes)
+            for (auto& slot : pal.slots)
+            {
+                if (partTypeFor (slot.part) != PartType::drums) continue;
+                int choice = -1;
+                if (slot.pick.sound == idx) choice = 0;
+                for (size_t i = 0; i < slot.alternatives.size() && choice < 0; ++i)
+                    if (slot.alternatives[i].sound == idx) choice = (int) i + 1;
+                if (choice < 0)
+                {
+                    juce::StringArray why;
+                    slot.alternatives.insert (slot.alternatives.begin(), { idx, scoreSound (c.sounds[(size_t) idx], slot.part, brief, &why), why });
+                    choice = 1;
+                }
+                slot.choice = choice;
+                slot.locked = true;          // it stays when you make new palettes
+                slot.keepKey = key;
+                ++changed;
+            }
+        return changed;
     }
 
     bool isGrooveGrabberKit (const Sound& s)   { return s.source == "Groove Grabber"; }

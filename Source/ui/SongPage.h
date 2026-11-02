@@ -58,6 +58,9 @@ namespace ss::ui
         void setDescription (const juce::String&);    // tests
         juce::File writeStarterParts (int card = -1); // one card's part, or all of them (-1): the MIDI file to drag
         juce::File sendToGrooveGrabber();             // SEND TO GROOVE GRABBER (also the tests): the song file written
+        // A kit you just saved in Groove Grabber: read into the library, and the one built for this song goes on the
+        // drum card (checked every few seconds; also the tests). True when a kit went on the card.
+        bool checkGrooveGrabberKits();
         void showForm();                              // shows the song's form again (after the Masterclass changed it)
 
     private:
@@ -74,6 +77,11 @@ namespace ss::ui
         SongSavantProcessor& proc;
         std::shared_ptr<const Catalog> catalog;
         int seenGeneration = -1;
+        int kitTicks = 0;
+        juce::File ggKits;                            // Groove Grabber's Kits folder
+        juce::StringArray ggKitFiles;                 // what was in it at the last look
+        bool lookedAtKits = false, kitsStale = false;
+        juce::Time sentAt;                            // when this song was sent to Groove Grabber
         juce::String selectedRole, copiedNote, status;
 
         juce::TextEditor describeBox, bpmBox;

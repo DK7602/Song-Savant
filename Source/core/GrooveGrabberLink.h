@@ -19,4 +19,15 @@ namespace ss
 
     // ---- kits saved in Groove Grabber (readGrooveGrabberKits and isGrooveGrabberKit are in Catalog.h)
     DrumNotes grooveGrabberDrums();
+    // one kit file; songDescription: the description of the song Groove Grabber built it for
+    std::optional<Sound> grooveGrabberKitFromFile (const juce::File&, juce::String* songDescription = nullptr);
+
+    // ---- a kit you just saved comes back by itself
+    juce::StringArray grooveGrabberKitFiles (const juce::File& kitsFolder);   // "path|saved": changes when a kit is saved or deleted
+    Catalog withGrooveGrabberKits (const Catalog&, const juce::File& kitsFolder);   // the catalog with the kits read again
+    // The newest kit saved since the last look (`before`) that was built for this song (same description, or saved
+    // after the song was sent): its soundKey, or empty
+    juce::String newKitForSong (const juce::File& kitsFolder, const juce::StringArray& before, const SongSession&, juce::Time sentAt = {});
+    // Puts that kit on the drum card of every palette, locked; returns how many cards changed
+    int putOnDrumCard (SongSession&, const Catalog&, const juce::String& key);
 }
