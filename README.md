@@ -6,7 +6,8 @@
 through the instruments and presets you already own, then suggests a complete sound palette: rhythm, bass,
 leads, pads and drums, each with alternatives, plus starter MIDI parts to get the song moving.
 
-> **Status: Phase 2, version 0.9.0.** New: the **ARRANGE** page (your song's shape, which parts play where, and the
+> **Status: Phase 2, version 0.10.0.** New: **SEND TO GROOVE GRABBER** on the drum card (Groove Grabber 1.0.12 builds
+> kits for your song, tuned to its key, and the kits you save there become drum choices here), the **ARRANGE** page (your song's shape, which parts play where, and the
 > whole song dragged into your DAW with a marker per section), **starter MIDI parts** (drag a card's part, or all of them, into your
 > DAW, in your key and tempo), the **MASTERCLASS** page (learn any genre or style: its sounds, drums, bass, chords in
 > your key, arrangement, mix and artists, plus the best matches in your own library), and the **DRUM MAPS** page

@@ -418,6 +418,11 @@ namespace ss
             add ("Cymatics", loc.cymaticsRoots.getFirst(), readCymatics (loc.cymaticsRoots), {});
         if (cancel.load()) return c;
 
+        // the kits you saved in Groove Grabber (built from your own samples)
+        if (loc.grooveGrabberKits.isDirectory())
+            add ("Groove Grabber kits", loc.grooveGrabberKits, readGrooveGrabberKits (loc.grooveGrabberKits), {});
+        if (cancel.load()) return c;
+
         // instruments whose presets Song Savant can't read: suggest the plug-in itself
         {
             auto plugins = installedPlugins (loc, &cancel);
@@ -501,10 +506,13 @@ namespace ss
         else if (s.source == "Cymatics")
             text = "MediaBay doesn't list Cymatics sounds. Load " + s.instrument + " on an instrument track and choose " + q + " from its preset list"
                  + (s.library.isNotEmpty() ? " (" + s.library + ")." : juce::String ("."));
+        else if (isGrooveGrabberKit (s))
+            text = "Your kit from Groove Grabber. Load Groove Grabber on an instrument track, open MY KITS and click LOAD on " + q
+                 + ": it plays the kit itself, and the starter drum parts already use its pads. Or EXPORT it there for Groove Agent.";
         else
             text = "Load " + s.instrument + " and open its preset " + q + " (in your VST3 Presets folder).";
         if (! s.owned) text = "Not owned: Analog Lab shows a buy button for this one. " + text;
-        if (s.kind == Kind::drums && s.source != "Plug-in" && ! s.instrument.containsIgnoreCase ("Groove Agent"))
+        if (s.kind == Kind::drums && s.source != "Plug-in" && ! s.instrument.containsIgnoreCase ("Groove Agent") && ! isGrooveGrabberKit (s))
             text << " No pad names in Cubase's drum editor? Save the kit as a preset and map it on the DRUM MAPS page.";
         return text;
     }
@@ -516,6 +524,7 @@ namespace ss
         if (s.source == "MediaBay") return "Paste it into MediaBay's search (with All Media selected).";
         if (s.source == "Arturia")  return "Paste it into Analog Lab's search box. (MediaBay doesn't list Analog Lab sounds.)";
         if (s.source == "Cymatics") return "Find it in " + s.instrument + "'s preset list. (MediaBay doesn't list Cymatics sounds.)";
+        if (isGrooveGrabberKit (s)) return "Paste it into the search on Groove Grabber's MY KITS page.";
         if (s.source == "Plug-in")  return "Find it in your DAW's instrument list, load it on an instrument track and pick a sound in it.";
         return "Find it in " + s.instrument + "'s preset browser.";
     }

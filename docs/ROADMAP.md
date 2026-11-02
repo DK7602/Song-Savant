@@ -129,11 +129,25 @@ Tags guessed from a preset's name or category are shown as guesses.
   the low end to mud. Two deep subs always stay among the alternatives, with a note to play the same notes as the
   808 or use one instead of it. (`PartSpec::note`, `alsoOffer`, `alsoOfferNote`.) Phase 2's starter parts should
   write the 808 and bass lines on the same notes, and Groove Grabber's kit should get the song's key to tune the 808.
-- The drum slot hands the song (genre, style, key, BPM, reference artist) to **Groove Grabber**, which builds the
-  kits. Saved Groove Grabber kits (`Documents/Groove Grabber/Kits/<genre>/*.ggkit`, JSON) show up in Song Savant.
+- **The Groove Grabber hand-off** *(built in 0.10.0 with Groove Grabber 1.0.12; the owner approved changing Groove
+  Grabber for it)*. Selecting the drum card shows **SEND TO GROOVE GRABBER** next to COPY NAME (just "TO GROOVE
+  GRABBER" when the window is narrow). It writes the song to `Documents/Song Savant/Songs/<name>.sssong` (JSON:
+  `app` "Song Savant", `format` 1, `name`, `description`, `genre` and `style` ids (the shared ones), `era`, `key`
+  0..23 and `bpm` (the ones the starter parts use, so the 808 matches them even when Song Savant picked the key),
+  `sections` (the arrangement's names and bars), `drums`, `sent`). The name is the Key Compass song's, or the first
+  words of the description. Groove Grabber offers a song sent in the last day under its description ("Song Savant
+  sent ...: USE IT", with an X to hide it) and lists the newest eight in its KEY COMPASS menu; using one sets the
+  description, genre, style, era, key and tempo and builds four kits, tuned to the key. Groove Grabber doesn't use
+  the sections yet (it builds kits, not songs).
+- **Saved Groove Grabber kits are drum choices** (`Documents/Groove Grabber/Kits/<genre>/*.ggkit`): a kit, tagged
+  with its genre, style and decade, its character from Groove Grabber's sliders (punchy, warm, dry, live,
+  electronic...) and "808" when it has one. Your kit made for the song's style scores +4 more than another kit
+  (+1, and +3 for the style), and one made for another genre -3. The Groove Grabber plug-in itself stays among the
+  choices (to build new kits). How to load it: Groove Grabber's MY KITS, LOAD (it plays the kit itself), or EXPORT
+  for Groove Agent. With a Groove Grabber kit (or the plug-in) on the drum card, the starter drum parts play its pads
+  (General MIDI drums on 36..51, toms on 43/47/50, the 808 on 52, percussion on 53..55), and in styles built on the
+  808 the kit's 808 plays with the kick. Code: `Source/core/GrooveGrabberLink.*`.
   Groove Agent kits, SSD Sampler 5, MT-PowerDrumKit and other drum instruments appear as alternatives.
-- **The owner has approved changing Groove Grabber** so it can receive a song from Song Savant (Phase 2). That
-  work happens in the Groove Grabber repo.
 - Song Savant reads **Key Compass** songs the same way Groove Grabber does
   (`%APPDATA%/KeyCompass/Songs/*.kcsong`, XML: `KeyCompassSong` > `SongMap` with `bpm`, `keyOverride` /
   `lastSetKey` and `Section` elements with `name` and `chords`). Key, tempo, sections and **chords** fill in
@@ -340,7 +354,7 @@ Built in steps, each one a build the owner can try:
   place, a marker per section. The song keeps its map (`Source/core/Arrangement.*`, `Source/ui/ArrangePage.*`).
   The header's SETUP CHECK became a small icon next to the light/dark switch (it's a one-off tool now), to make
   room.
-- **Groove Grabber hand-off** for drums (and the matching change in Groove Grabber).
+- **Groove Grabber hand-off** for drums *(built in 0.10.0, with Groove Grabber 1.0.12; see decision 5)*.
 - Plugin: follows DAW tempo, plays parts in sync, saves the palette with the project.
 - Release 1.0.
 

@@ -133,6 +133,8 @@ namespace ss
             Writer w;
             const auto& g = p.guide.groove;
             juce::Random rng ((juce::int64) p.seed * 7919 + 1);
+            // a kit with its own 808 pad (Groove Grabber's), in a style built on the 808: it plays with the kick
+            const int pad808 = p.guide.bassStyle.startsWith ("808") ? dn.note ("808") : -1;
             for (int bar = 0; bar < p.bars; ++bar)
             {
                 const bool last = bar == p.bars - 1;
@@ -149,10 +151,13 @@ namespace ss
                     }
                     const int noteNum = dn.note (lane);
                     if (noteNum < 0) continue;
+                    const int with808 = lane == "kick" ? pad808 : -1;
                     for (int step = 0; step < 16 && step < pat.length(); ++step)
                     {
                         const auto c = pat[step];
                         const double t = stepTick (bar, step, g.swing);
+                        if (with808 >= 0 && (c == 'X' || c == 'x' || c == 'o'))
+                            w.note (with808, t, 240, c == 'X' ? 112 : c == 'x' ? 98 : 76);
                         switch (c)
                         {
                             case 'X': w.note (noteNum, t, 60, 122); break;
@@ -843,6 +848,8 @@ namespace ss
                 if (p.guide.groove.swing > 52) s << " with swing";
                 s << " (" << drums.source << " notes: kick " << noteName (drums.note ("kick")) << ", snare " << noteName (drums.note ("snare"))
                   << ", hat " << noteName (drums.note ("hat")) << ")";
+                if (drums.note ("808") >= 0 && p.guide.bassStyle.startsWith ("808"))
+                    s << ". The kit's 808 (" << noteName (drums.note ("808")) << ") plays with the kick";
                 return s;
             }
             case PartType::bass:

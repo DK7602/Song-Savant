@@ -3,6 +3,7 @@
 #include "core/Siblings.h"
 #include "core/Paths.h"
 #include "core/KitMap.h"
+#include "core/GrooveGrabberLink.h"
 
 namespace ss::ui
 {
@@ -252,6 +253,10 @@ namespace ss::ui
         addAndMakeVisible (choices);
         copyBtn.onClick = [this] { copySelected(); };
         addAndMakeVisible (copyBtn);
+        sendBtn.setTooltip ("Send your song (style, key, tempo and sections) to Groove Grabber. It builds four kits for it from your own samples, "
+                            "with the 808 tuned to the key. The kits you save there show up here as drum choices.");
+        sendBtn.onClick = [this] { sendToGrooveGrabber(); };
+        addChildComponent (sendBtn);
 
         showForm();          // the form as it was saved
         timerCallback();
@@ -431,6 +436,24 @@ namespace ss::ui
         return nullptr;
     }
 
+    juce::File SongPage::sendToGrooveGrabber()
+    {
+        auto* s = selectedSlot();
+        juce::String drums;
+        if (s != nullptr && catalog != nullptr && s->current().isValid() && s->current().sound < (int) catalog->sounds.size())
+            drums = catalog->sounds[(size_t) s->current().sound].name;
+        const auto file = ss::sendToGrooveGrabber (proc.song, drums);
+        const auto name = songNameFor (proc.song);
+        if (file == juce::File())
+            copiedNote = "Couldn't save the song for Groove Grabber in " + grooveGrabberSongsFolder().getFullPathName() + ".";
+        else if (! grooveGrabberInstalled())
+            copiedNote = "Saved \"" + name + "\" for Groove Grabber. It isn't installed on this computer yet: once it is, the song is in its KEY COMPASS menu.";
+        else
+            copiedNote = "Sent \"" + name + "\". In Groove Grabber click USE IT on the BUILD page (or pick it in the KEY COMPASS menu): it builds 4 kits for it.";
+        repaint();
+        return file;
+    }
+
     void SongPage::copySelected()
     {
         auto* s = selectedSlot();
@@ -483,6 +506,7 @@ namespace ss::ui
         choices.show (sel, catalog.get());
         copyBtn.setVisible (sel != nullptr);
         copyBtn.setEnabled (sel != nullptr && sel->current().isValid());
+        sendBtn.setVisible (sel != nullptr && partTypeFor (sel->part) == PartType::drums);
         resized();
         repaint();
     }
@@ -631,8 +655,8 @@ namespace ss::ui
         {
             g.setColour (p.good);
             g.setFont (sans (12.5f));
-            g.drawFittedText (copiedNote, copyBtn.getBounds().translated (0, copyBtn.getHeight() + 2).withHeight (32).toFloat().toNearestInt(),
-                              juce::Justification::centredLeft, 2);
+            const auto row = sendBtn.isVisible() ? copyBtn.getBounds().getUnion (sendBtn.getBounds()) : copyBtn.getBounds();
+            g.drawFittedText (copiedNote, row.translated (0, row.getHeight() + 2).withHeight (32), juce::Justification::centredLeft, 2);
         }
     }
 
@@ -701,7 +725,17 @@ namespace ss::ui
             choices.setBounds (mid.toNearestInt());
             in.removeFromLeft (24.0f);
             howArea = in.withTrimmedBottom (96.0f);
-            copyBtn.setBounds (in.removeFromBottom (80.0f).removeFromTop (44.0f).toNearestInt());
+            auto buttons = in.removeFromBottom (80.0f).removeFromTop (44.0f);
+            if (sendBtn.isVisible())
+            {
+                // the drums: COPY NAME and SEND TO GROOVE GRABBER side by side
+                auto send = buttons.removeFromRight (buttons.getWidth() * 0.62f);
+                buttons.removeFromRight (8.0f);
+                sendBtn.setBounds (send.toNearestInt());
+                const float full = juce::GlyphArrangement::getStringWidth (sans (15.0f, true), "SEND TO GROOVE GRABBER") + 30.0f;
+                sendBtn.setButtonText (send.getWidth() >= full ? "SEND TO GROOVE GRABBER" : "TO GROOVE GRABBER");
+            }
+            copyBtn.setBounds (buttons.toNearestInt());
         }
     }
 }

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 # Windows: link the C++ runtime into the plug-in itself, so a DAW's plug-in scanner never trips over missing runtime DLLs
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-project(SongSavant VERSION 0.9.0 LANGUAGES C CXX)
+project(SongSavant VERSION 0.10.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -115,6 +115,7 @@ set(SS_CORE_SOURCES
     Source/core/StyleGuide.cpp
     Source/core/StarterParts.cpp
     Source/core/Arrangement.cpp
+    Source/core/GrooveGrabberLink.cpp
     Source/core/ScanJob.cpp)
 
 set(SS_UI_SOURCES

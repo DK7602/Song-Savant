@@ -223,7 +223,10 @@ namespace sstest
                "<KeyCompassSong name=\"Back Roads\" modified=\"1730000000000\"><SongMap bpm=\"92\" keyOverride=\"21\">"
                "<Section name=\"Verse\" chords=\"Am F C G\"/><Section name=\"Chorus\" chords=\"F G Am\"/></SongMap></KeyCompassSong>");
         write (docs.getChildFile ("Groove Grabber/Kits/Country/Nashville Knock.ggkit"),
-               "{\"format\":\"groove-grabber-kit\",\"version\":1,\"name\":\"Nashville Knock\",\"genre\":\"country\",\"key\":9,\"bpm\":92}");
+               "{\"format\":\"groove-grabber-kit\",\"version\":1,\"name\":\"Nashville Knock\",\"blurb\":\"Tight and warm, for modern country.\","
+               "\"genre\":\"country\",\"style\":\"country.modern\",\"era\":6,\"target\":[0.7,0.72,0.5,0.3,0.4,0.5,0.7],"
+               "\"key\":9,\"bpm\":92,\"favorite\":true,\"slots\":{\"kick\":{\"path\":\"D:/Samples/Kick 1.wav\"},"
+               "\"snare\":{\"path\":\"D:/Samples/Snare 1.wav\"},\"808\":{\"path\":\"D:/Samples/808 Long.wav\"}}}");
         write (docs.getChildFile ("Sample Snagger/Samples/vocal chop.wav"), "RIFF");
 
         root.getChildFile ("Users/Public/Documents").createDirectory();

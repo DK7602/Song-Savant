@@ -57,6 +57,7 @@ namespace ss::ui
         void themeChanged();
         void setDescription (const juce::String&);    // tests
         juce::File writeStarterParts (int card = -1); // one card's part, or all of them (-1): the MIDI file to drag
+        juce::File sendToGrooveGrabber();             // SEND TO GROOVE GRABBER (also the tests): the song file written
         void showForm();                              // shows the song's form again (after the Masterclass changed it)
 
     private:
@@ -81,7 +82,8 @@ namespace ss::ui
                    keyCompassBtn { "KEY COMPASS", PillButton::Style::outline },
                    newBtn { "NEW PALETTES", PillButton::Style::outline },
                    copyBtn { "COPY NAME", PillButton::Style::gold },
-                   ideaBtn { "NEW IDEA", PillButton::Style::outline };
+                   ideaBtn { "NEW IDEA", PillButton::Style::outline },
+                   sendBtn { "SEND TO GROOVE GRABBER", PillButton::Style::outline };
         DragChip allParts { "ALL PARTS", DragChip::Kind::midi };
         juce::OwnedArray<PillButton> tabs;
         juce::OwnedArray<PartCard> cards;

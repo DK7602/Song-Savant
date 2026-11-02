@@ -22,6 +22,7 @@
 #include "core/StyleGuide.h"
 #include "core/StarterParts.h"
 #include "core/Arrangement.h"
+#include "core/GrooveGrabberLink.h"
 #include "core/SongSession.h"
 #include <map>
 #include <algorithm>
@@ -333,7 +334,8 @@ namespace
         auto cat = ss::buildCatalog (fc.loc, cancel);
         // + plug-ins: Groove Grabber and SSD Sampler (drums), FM8 (6 kinds), Mystery Keys (piano, from its own categories),
         //   Retrologue (synth: none of its presets are in this library)
-        check (cat.sources.size() == 4 && cat.sounds.size() == 51 + 5 + 3 + 10, "catalog: 4 sources, 69 sounds, got " + juce::String ((int) cat.sounds.size()));
+        check (cat.sources.size() == 5 && cat.sounds.size() == 51 + 5 + 3 + 10 + 1, "catalog: 5 sources, 70 sounds (one a Groove Grabber kit), got "
+               + juce::String ((int) cat.sounds.size()));
         check (cat.sounds.front().kind == ss::Kind::keys || cat.sounds.front().kind == ss::Kind::piano, "sorted by kind");
         check (cat.instruments().contains ("Analog Lab V") && cat.instruments().contains ("HALion Sonic") && cat.instruments().contains ("Cymatics Plinko"), "instruments");
 
@@ -355,7 +357,7 @@ namespace
         check (ss::findSounds (cat, f).size() == 1, "filter by instrument");
         f = {};
         f.yoursOnly = true;
-        check (ss::findSounds (cat, f).size() == 3, "your own presets");
+        check (ss::findSounds (cat, f).size() == 4, "your own presets and kits");
 
         check (ss::howToLoad (*keys0).contains ("All Media") && ss::howToLoad (*pad).contains ("Analog Lab V")
                && ss::howToLoad (*byName["Jupiter Brass"]).startsWith ("Not owned"), "how to load");
@@ -1038,6 +1040,109 @@ namespace
         check (restored.arrangement.sections.size() == 8 && restored.arrangement.signature == session.arrangement.signature, "saved and restored with the song");
     }
 
+    void testGrooveGrabberLink (const sstest::FakeComputer& fc)
+    {
+        section ("Groove Grabber hand-off");
+        std::atomic<bool> cancel { false };
+        const auto cat = ss::buildCatalog (fc.loc, cancel);
+
+        // the kits you saved in Groove Grabber are drum kits here
+        const ss::Sound* kit = nullptr;
+        for (auto& snd : cat.sounds) if (ss::isGrooveGrabberKit (snd)) kit = &snd;
+        check (kit != nullptr && kit->name == "Nashville Knock" && kit->kind == ss::Kind::drums && kit->instrument == "Groove Grabber"
+               && kit->library == "Country kits" && kit->yours, "a saved Groove Grabber kit is in the library");
+        if (kit != nullptr)
+        {
+            check (kit->styles.contains ("Country") && kit->styles.contains ("Modern Nashville") && kit->styles.contains ("Today"), "its genre, style and era");
+            check (kit->character.contains ("Punchy") && kit->character.contains ("Warm") && kit->character.contains ("Dry")
+                   && kit->character.contains ("Live") && kit->character.contains ("808"), "its character, from Groove Grabber's sliders: "
+                   + kit->character.joinIntoString (", "));
+            check (ss::drumForm (*kit) == ss::DrumForm::kit && kit->description.contains ("A Major"), "a kit, tuned to its key");
+            check (ss::howToLoad (*kit).contains ("MY KITS") && ss::whereToPaste (*kit).contains ("MY KITS"), "how to load it: Groove Grabber's MY KITS");
+
+            // made for this very style, your own kit is the drums pick
+            const auto brief = ss::readBrief ("modern country, warm", ss::Genre::country, "country.modern");
+            const auto pals = ss::makePalettes (cat, brief);
+            juce::String drumsPick;
+            for (auto& slot : pals[0].slots)
+                if (ss::partTypeFor (slot.part) == ss::PartType::drums && slot.current().isValid())
+                    drumsPick = cat.sounds[(size_t) slot.current().sound].name;
+            check (drumsPick == "Nashville Knock", "your Groove Grabber kit for the style is the drums pick, got " + drumsPick);
+            check (ss::drumNotesFor (pals[0], &cat).source == "Groove Grabber's pads", "the starter drums play Groove Grabber's pads");
+            ss::PartSpec drumPart;
+            drumPart.role = "Drums";
+            drumPart.kinds = { ss::Kind::drums };
+            check (ss::scoreSound (*kit, drumPart, ss::readBrief ("pop")) + 6.0f < ss::scoreSound (*kit, drumPart, brief),
+                   "a kit made for another genre counts for much less");
+            for (auto& slot : pals[0].slots)
+                if (ss::partTypeFor (slot.part) == ss::PartType::drums)
+                    check (ss::whyItWorksPoints (cat, slot).joinIntoString ("|").contains ("Your own kit, built in Groove Grabber from your samples (made for Country)"),
+                           "why it works: your own kit from Groove Grabber");
+        }
+        {
+            const auto dir = ss::paths::tempDir().getChildFile ("gg kits");
+            dir.getChildFile ("Rock/Empty.ggkit").create();
+            dir.getChildFile ("Rock/Empty.ggkit").replaceWithText (R"({"name": "Empty", "genre": "rock", "slots": {}})");
+            dir.getChildFile ("Rock/Broken.ggkit").replaceWithText ("{ not json");
+            check (ss::readGrooveGrabberKits (dir).empty(), "an empty or damaged kit file is left out");
+            dir.deleteRecursively();
+        }
+
+        // Groove Grabber's pads: the 808 plays with the kick in a style built on the 808
+        {
+            const auto gg = ss::grooveGrabberDrums();
+            check (gg.note ("kick") == 36 && gg.note ("snare") == 38 && gg.note ("hat") == 42 && gg.note ("808") == 52 && gg.note ("tomlow") == 43,
+                   "Groove Grabber's pad layout");
+            const auto trap = ss::planParts (ss::readBrief ("trap 140 BPM in A minor"));
+            int kicks = 0, eights = 0;
+            for (auto* e : ss::makePart (trap, ss::PartType::drums, gg))
+                if (e->message.isNoteOn()) { kicks += e->message.getNoteNumber() == 36; eights += e->message.getNoteNumber() == 52; }
+            check (eights > 0 && eights <= kicks, "trap: the kit's 808 plays with the kick (" + juce::String (eights) + " of " + juce::String (kicks) + ")");
+            check (ss::describePart (trap, ss::PartType::drums, gg).contains ("808 (E2)"), "and the part says so: " + ss::describePart (trap, ss::PartType::drums, gg));
+            const auto rock = ss::planParts (ss::readBrief ("classic rock"));
+            int rock808 = 0;
+            for (auto* e : ss::makePart (rock, ss::PartType::drums, gg)) rock808 += e->message.isNoteOn() && e->message.getNoteNumber() == 52;
+            check (rock808 == 0, "rock: no 808");
+        }
+
+        // SEND TO GROOVE GRABBER: the song as a file Groove Grabber reads
+        {
+            ss::SongSession song;
+            song.form.description = "modern country like Morgan Wallen, warm";
+            song.form.genre = (int) ss::Genre::country;
+            song.form.styleId = "country.modern";
+            song.form.key = 21;
+            song.form.bpm = 92;
+            check (ss::songNameFor (song) == "Modern Country Like Morgan Wallen", "a song name from the description: " + ss::songNameFor (song));
+            song.form.fromSong = "Back Roads";
+            check (ss::songNameFor (song) == "Back Roads", "or the Key Compass song's name");
+            std::vector<ss::ArrangementPart> parts { { "Drums", "Drums - Nashville Knock", ss::PartType::drums, ss::Kind::drums, false } };
+            song.updateArrangement (parts);
+
+            const auto f = ss::sendToGrooveGrabber (song, "Nashville Knock");
+            check (f.existsAsFile() && f.getParentDirectory() == ss::grooveGrabberSongsFolder() && f.getFileName() == "Back Roads.sssong"
+                   && ss::grooveGrabberSongsFolder().getParentDirectory() == ss::paths::documentsDir(), "written to Documents/Song Savant/Songs");
+            const auto v = juce::JSON::parse (f);
+            check (v["app"] == "Song Savant" && v["name"] == "Back Roads" && v["genre"] == "country" && v["style"] == "country.modern"
+                   && (int) v["key"] == 21 && (int) v["bpm"] == 92 && v["drums"] == "Nashville Knock", "the song: genre, style, key, tempo, drums");
+            check (v["description"].toString().contains ("Morgan Wallen") && juce::Time::fromISO8601 (v["sent"].toString()).toMilliseconds() > 0,
+                   "its description and when it was sent");
+            auto* secs = v["sections"].getArray();
+            check (secs != nullptr && secs->size() == (int) song.arrangement.sections.size() && secs->size() > 2
+                   && (*secs)[0]["name"] == song.arrangement.sections[0].name && (int) (*secs)[0]["bars"] > 0, "the arrangement's sections");
+
+            // no key given: the key the starter parts were made in
+            song.form.key = -1;
+            song.form.description = "worship";
+            song.form.genre = -1;
+            song.form.styleId = {};
+            song.form.fromSong = {};
+            const auto v2 = juce::JSON::parse (ss::sendToGrooveGrabber (song, {}));
+            check ((int) v2["key"] == song.partsPlan().key && v2["genre"] == "worship" && v2["style"] == "" && v2["name"] == "Worship",
+                   "without a key: the starter parts' key (" + v2["keyName"].toString() + ")");
+        }
+    }
+
     void testMusic()
     {
         section ("Music knowledge");
@@ -1229,7 +1334,10 @@ namespace
     {
         section ("Palettes");
         std::atomic<bool> cancel { false };
-        const auto cat = ss::buildCatalog (fc.loc, cancel);
+        auto cat = ss::buildCatalog (fc.loc, cancel);
+        // (the Groove Grabber kit is tested on its own: here the library has no drum presets)
+        cat.sounds.erase (std::remove_if (cat.sounds.begin(), cat.sounds.end(), [] (const ss::Sound& x) { return ss::isGrooveGrabberKit (x); }),
+                          cat.sounds.end());
         testBassAbove808 (cat);
         testDrumKits (cat);
         const auto brief = ss::readBrief ("warm worship");
@@ -1516,6 +1624,7 @@ int main (int argc, char** argv)
     testStyleGuide();
     testStarterParts();
     testArrangement (fc);
+    testGrooveGrabberLink (fc);
     testPalettes (fc);
     testCancelAndJob (fc);
 

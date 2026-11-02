@@ -49,6 +49,7 @@ namespace ss
         if (s.kind != Kind::drums) return DrumForm::unknown;
         // Groove Agent and Drum Machine presets are always kits
         if (s.instrument.containsIgnoreCase ("Groove Agent") || s.instrument.containsIgnoreCase ("Drum Machine")) return DrumForm::kit;
+        if (isGrooveGrabberKit (s)) return DrumForm::kit;
         const auto d = s.detail.toLowerCase();
         if (d.contains ("beats") || d.contains ("loop") || s.character.contains ("Loop", true) || has (s, "loop") || has (s, "loops"))
             return DrumForm::loop;
@@ -89,13 +90,26 @@ namespace ss
         for (auto& w : part.avoid)
             if (has (s, w)) score -= 4.0f;
 
+        bool genreTagged = false;
         for (auto& tag : genreTags (brief.genre))
             if (s.stylesText.contains (tag))
             {
                 score += 3.0f;
+                genreTagged = true;
                 if (reasons != nullptr) reasons->add ("tagged " + tag);
                 break;
             }
+        if (isGrooveGrabberKit (s))
+        {
+            // a kit you built in Groove Grabber from your own samples: made for this very style, it's the one to use;
+            // made for another genre, it's a long shot
+            score += genreTagged ? 1.0f : -3.0f;
+            if (auto* st = brief.style(); st != nullptr && ! st->isGeneral() && s.styles.contains (st->name, true))
+            {
+                score += 3.0f;
+                if (reasons != nullptr) reasons->add ("tagged " + st->name);
+            }
+        }
         if (s.source == "Plug-in") score -= 3.0f;    // a plug-in to explore is less specific than an actual preset
         score += 0.4f * (float) s.rating;
         if (s.yours) score += 0.5f;
@@ -247,7 +261,8 @@ namespace ss
         if (! words.isEmpty()) text << ": " << words.joinIntoString (", ");
         text << ".";
         if (! tags.isEmpty()) text << " Tagged " << tags.joinIntoString (", ") << " in your library.";
-        if (s.yours) text << " One of your own presets.";
+        if (isGrooveGrabberKit (s)) text << " Your own kit from Groove Grabber.";
+        else if (s.yours) text << " One of your own presets.";
         if (s.guessed) text << " (Its kind is a guess from its name.)";
         if (slot.locked) text << " Locked: it stays when you make new palettes.";
         return text;
@@ -284,7 +299,9 @@ namespace ss
             if (s.description.isNotEmpty()) out.add (s.description);
             out.add (s.detail);
         }
-        if (s.yours) out.add ("One of your own presets");
+        if (isGrooveGrabberKit (s))
+            out.add ("Your own kit, built in Groove Grabber from your samples" + (s.styles.isEmpty() ? juce::String() : " (made for " + s.styles[0] + ")"));
+        else if (s.yours) out.add ("One of your own presets");
         if (s.guessed) out.add ("Its kind is a guess from its name");
         if (slot.locked) out.add ("Locked: it stays when you make new palettes");
         return out;

@@ -1,5 +1,6 @@
 #include "Arrangement.h"
 #include "KitMap.h"
+#include "GrooveGrabberLink.h"
 
 namespace ss
 {
@@ -109,6 +110,7 @@ namespace ss
             if (partTypeFor (slot.part) == PartType::drums && cat != nullptr && slot.current().isValid() && slot.current().sound < (int) cat->sounds.size())
             {
                 const auto& snd = cat->sounds[(size_t) slot.current().sound];
+                if (isGrooveGrabberKit (snd) || snd.instrument == "Groove Grabber") return grooveGrabberDrums();
                 const auto drm = drumMapsFolder().getChildFile (juce::File::createLegalFileName (snd.name).trim() + ".drm");
                 if (drm.existsAsFile())
                     if (auto mapped = drumNotesFromMap (drm)) return *mapped;

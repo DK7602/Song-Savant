@@ -124,7 +124,9 @@ namespace ss
     std::vector<Sound> pluginLevelSounds (const std::vector<PluginInfo>& installed, const std::vector<Sound>& alreadyRead)
     {
         std::set<juce::String> covered;          // instruments whose presets are already in the catalog
-        for (auto& s : alreadyRead) covered.insert (normaliseName (s.instrument));
+        for (auto& s : alreadyRead)
+            if (s.source != "Groove Grabber")      // your saved Groove Grabber kits: it's still offered, to build new ones
+                covered.insert (normaliseName (s.instrument));
         auto isCovered = [&covered] (const juce::String& n)    // "HALion" covers "HALion 7"
         {
             for (auto& c : covered)
