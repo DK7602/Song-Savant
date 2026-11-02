@@ -93,6 +93,17 @@ namespace ss::ui
                               : juce::ImageCache::getFromMemory (SSBinary::wordmark_png, SSBinary::wordmark_pngSize);
     }
 
+    juce::Rectangle<float> owlContent()
+    {
+        return isLightTheme() ? juce::Rectangle<float> (39.0f, 4.0f, 266.0f, 296.0f)      // owl-light.png, 307 x 300
+                              : juce::Rectangle<float> (18.0f, 27.0f, 235.0f, 270.0f);    // owl.png, 276 x 300
+    }
+    juce::Rectangle<float> wordmarkContent()
+    {
+        return isLightTheme() ? juce::Rectangle<float> (2.0f, 1.0f, 616.0f, 166.0f)       // wordmark-light.png, 620 x 180
+                              : juce::Rectangle<float> (4.0f, 3.0f, 556.0f, 127.0f);      // wordmark.png, 564 x 180
+    }
+
     void drawBackground (juce::Graphics& g, juce::Rectangle<float> r)
     {
         const auto& p = pal();

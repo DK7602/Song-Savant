@@ -360,6 +360,11 @@ Built in steps, each one a build the owner can try:
   The header's SETUP CHECK became a small icon next to the light/dark switch (it's a one-off tool now), to make
   room.
 - **Groove Grabber hand-off** for drums *(built in 0.10.0, with Groove Grabber 1.0.12; see decision 5)*.
+- **The manual** *(0.10.2; the owner asked for one, November 2026)*: `Resources/Manual.md`, read inside the app and the
+  plug-in like Groove Grabber's (the **?** button left of the light/dark switch, or **F1**): contents on the left, a
+  search box that highlights every match, Esc or CLOSE to leave (`Source/ui/HelpPanel.*`, adapted from Groove Grabber's
+  viewer). Plain language, one chapter per page plus drums and the 808, Groove Grabber, Key Compass, the plug-in, where
+  files live, troubleshooting and a quick reference card. **Update it in the same commit whenever behaviour changes.**
 - Plugin: follows DAW tempo, plays parts in sync, saves the palette with the project.
 - Release 1.0.
 

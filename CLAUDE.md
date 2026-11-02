@@ -6,6 +6,8 @@
   one codebase for the standalone app and the plug-in, `Source/core` (no UI) and `Source/ui`, a headless test
   runner (`SSTests`), GitHub Actions building Windows / macOS / Linux with installers.
 - Maker label "Grabber Audio", manufacturer code `Grbr`, plug-in code `SgSv`: never change the codes.
+- **The in-app manual** is `Resources/Manual.md` (the ? button / F1, `Source/ui/HelpPanel.*`): update it in the same
+  commit whenever behaviour, a button's name or a step changes. `{VERSION}` is filled in at run time.
 - Build and test (Linux needs the JUCE dependencies listed in `.github/workflows/build.yml`):
   `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build && ./build/SSTests_artefacts/Release/SSTests`
   Add `--shots DIR` (under `xvfb-run` on a headless machine) to render the screens to PNGs.

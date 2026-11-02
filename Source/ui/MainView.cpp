@@ -22,6 +22,9 @@ namespace ss::ui
         setupBtn.setTooltip ("Setup check: what Song Savant found on this computer, and the drag tests");
         setupBtn.onClick = [this] { showPage (setupCheck); };
         addAndMakeVisible (setupBtn);
+        helpBtn.setTooltip ("The manual (F1)");
+        helpBtn.onClick = [this] { showHelp(); };
+        addAndMakeVisible (helpBtn);
         arrangeTab.onClick = [this] { showPage (arrange); };
         drumMapsTab.onClick = [this] { showPage (drumMaps); };
         masterclassTab.onClick = [this] { showPage (masterclass); };
@@ -32,10 +35,42 @@ namespace ss::ui
         addChildComponent (drumMapsPage);
         addChildComponent (masterclassPage);
         addChildComponent (arrangePage);
+        addChildComponent (help);              // over everything, when it's open
         showPage (proc.page);
     }
 
-    MainView::~MainView()   { setLookAndFeel (nullptr); }
+    MainView::~MainView()
+    {
+        if (listeningTo != nullptr) listeningTo->removeKeyListener (this);
+        setLookAndFeel (nullptr);
+    }
+
+    void MainView::showHelp()
+    {
+        help.setBounds (getLocalBounds());
+        help.show();
+    }
+
+    void MainView::parentHierarchyChanged()
+    {
+        // F1 opens the manual wherever the keyboard focus is: listen at the window's top
+        auto* top = getTopLevelComponent();
+        if (top == listeningTo.getComponent()) return;
+        if (listeningTo != nullptr) listeningTo->removeKeyListener (this);
+        listeningTo = top;
+        if (top != nullptr) top->addKeyListener (this);
+    }
+
+    bool MainView::keyPressed (const juce::KeyPress& k, juce::Component*)
+    {
+        if (k.getKeyCode() == juce::KeyPress::F1Key)
+        {
+            if (help.isVisible()) help.setVisible (false);
+            else showHelp();
+            return true;
+        }
+        return false;
+    }
 
     void MainView::applyTheme()
     {
@@ -48,6 +83,7 @@ namespace ss::ui
         drumMapsPage.themeChanged();
         masterclassPage.themeChanged();
         arrangePage.themeChanged();
+        help.themeChanged();
         repaint();
     }
 
@@ -75,21 +111,30 @@ namespace ss::ui
         const auto& p = pal();
         drawBackground (g, getLocalBounds().toFloat());
 
-        // the owl and the name, smaller when the window is narrow so the tabs fit
-        auto h = headerArea;
+        // the owl and the name, the same size in both themes (the two sets of pictures are drawn differently, so they're
+        // sized by their solid parts: the owl's body, the title's letters), smaller when the window is narrow
+        const auto h = headerArea;
         if (owl.isValid() && wordmark.isValid())
         {
-            const float owlRatio = (float) owl.getWidth() / (float) owl.getHeight();
-            const float wordRatio = (float) wordmark.getWidth() / (float) wordmark.getHeight();
-            const float natural = h.getHeight() * owlRatio + 10.0f + h.getHeight() * 0.86f * wordRatio;
-            const float scale = juce::jmin (1.0f, h.getWidth() / natural);
-            h = h.withSizeKeepingCentre (h.getWidth(), h.getHeight() * scale).withX (headerArea.getX());
-            auto o = h.removeFromLeft (h.getHeight() * owlRatio);
-            g.drawImage (owl, o, juce::RectanglePlacement::centred);
-            h.removeFromLeft (10.0f * scale);
-            const float wh = h.getHeight() * 0.86f;
-            const float ww = wh * wordRatio;
-            g.drawImage (wordmark, h.removeFromLeft (ww).withSizeKeepingCentre (ww, wh), juce::RectanglePlacement::centred);
+            const auto oc = owlContent(), wc = wordmarkContent();
+            const float H = h.getHeight();
+            // the dark design's proportions: the owl's body 0.9 of the header's height, the letters about 0.61 x 2.66 of it
+            // (the light title's letters are taller and narrower: they get the same area)
+            float so = 0.9f * H / oc.getHeight();
+            float sw = std::sqrt (0.607f * H * 2.656f * H / (wc.getWidth() * wc.getHeight()));
+            const float gap = 12.0f;
+            const float natural = oc.getWidth() * so + gap + wc.getWidth() * sw;
+            const float fit = juce::jmin (1.0f, h.getWidth() / natural);
+            so *= fit;
+            sw *= fit;
+            const float cy = h.getCentreY();
+            const float ox = h.getX();
+            g.drawImage (owl, { ox - oc.getX() * so, cy - (float) owl.getHeight() * so * 0.5f, (float) owl.getWidth() * so, (float) owl.getHeight() * so },
+                         juce::RectanglePlacement::stretchToFit);
+            const float wx = ox + oc.getWidth() * so + gap * fit;
+            g.drawImage (wordmark, { wx - wc.getX() * sw, cy - (float) wordmark.getHeight() * sw * 0.5f,
+                                     (float) wordmark.getWidth() * sw, (float) wordmark.getHeight() * sw },
+                         juce::RectanglePlacement::stretchToFit);
         }
         g.setColour (p.muted);
         g.setFont (sans (13.0f));
@@ -104,7 +149,7 @@ namespace ss::ui
         const auto font = sans (14.0f, true);
         auto tabWidth = [&font] (PillButton& b) { return (int) juce::GlyphArrangement::getStringWidth (font, b.getButtonText()) + 40; };
         const int gapW = 8;
-        int total = 40 + 8 + 40 + 12;
+        int total = 40 + 8 + 40 + 8 + 40 + 12;
         for (auto* t : { &songTab, &arrangeTab, &masterclassTab, &libraryTab, &drumMapsTab }) total += tabWidth (*t) + gapW;
         auto tabs = header.removeFromRight (total).withSizeKeepingCentre (total, 40).translated (0, -8);
         for (auto* t : { &drumMapsTab, &libraryTab, &masterclassTab, &arrangeTab, &songTab })
@@ -116,6 +161,8 @@ namespace ss::ui
         setupBtn.setBounds (tabs.removeFromRight (40));
         tabs.removeFromRight (8);
         themeBtn.setBounds (tabs.removeFromRight (40));
+        tabs.removeFromRight (8);
+        helpBtn.setBounds (tabs.removeFromRight (40));
         headerArea = header.withTrimmedRight (16).toFloat();
         subtitleArea = juce::Rectangle<float> ((float) drumMapsTab.getRight() - 300.0f, (float) drumMapsTab.getBottom() + 4.0f, 300.0f, 18.0f);
         songPage.setBounds (r);
@@ -124,5 +171,6 @@ namespace ss::ui
         drumMapsPage.setBounds (r);
         masterclassPage.setBounds (r);
         arrangePage.setBounds (r);
+        help.setBounds (getLocalBounds());
     }
 }

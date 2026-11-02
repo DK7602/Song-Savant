@@ -32,6 +32,14 @@ namespace ss::ui
         void paintButton (juce::Graphics&, bool over, bool down) override;
     };
 
+    // The manual's button in the header: a question mark in a gold circle
+    class HelpButton : public juce::Button
+    {
+    public:
+        HelpButton() : juce::Button ("manual")   { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+        void paintButton (juce::Graphics&, bool over, bool down) override;
+    };
+
     // Something the user drags out of Song Savant into their DAW (a preset file, a MIDI clip)
     class DragChip : public juce::Component, public juce::SettableTooltipClient
     {

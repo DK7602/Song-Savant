@@ -40,6 +40,11 @@ namespace ss::ui
 
     juce::Image owlImage();
     juce::Image wordmarkImage();
+    // The solid part of each logo picture, in the picture's own pixels: the owl's body (not its glow) and the title's
+    // letters (not the dark title's underline flourish). The header sizes the pictures by these, so the logo is the same
+    // size in both themes. Measured from the artwork in Resources: measure again if the artwork changes.
+    juce::Rectangle<float> owlContent();
+    juce::Rectangle<float> wordmarkContent();
 
     void drawBackground (juce::Graphics&, juce::Rectangle<float> area);
     void drawPanel (juce::Graphics&, juce::Rectangle<float> area, float radius = 18.0f);

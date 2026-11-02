@@ -1630,6 +1630,29 @@ namespace
                         kitFile.getParentDirectory().deleteRecursively();
                     }
                 }
+                if (name.startsWith ("manual"))
+                {
+                    auto& v = e->getView();
+                    v.showHelp();
+                    auto& man = v.getHelp().getManual();
+                    juce::StringArray titles;
+                    for (auto& sec : man.getSections()) titles.add (sec.title);
+                    check (v.getHelp().isVisible() && titles.size() >= 18 && man.numBlocks() > 120 && titles.contains ("Working with Groove Grabber")
+                           && titles.contains ("DRUM MAPS: name a kit's pads") && titles.contains ("Quick reference card"),
+                           "the manual opens with its contents: " + juce::String (titles.size()) + " chapters, " + juce::String (man.numBlocks()) + " blocks");
+                    check (man.setSearch ("drum map") >= 5 && man.getMatchY (0) > 0, "searching the manual finds every mention of a word");
+                    check (man.setSearch ("no such words here") == 0, "and nothing when nothing matches");
+                    man.setSearch ({});
+                    if (name == "manual-search")
+                    {
+                        v.getHelp().getSearch().setText ("808", true);
+                        juce::MessageManager::getInstance()->runDispatchLoopUntil (100);      // the search updates as you type
+                        check (man.setSearch ("808") >= 5, "typing in the search box highlights the matches");
+                        v.getHelp().getSearch().setText ("808", true);
+                        juce::MessageManager::getInstance()->runDispatchLoopUntil (100);
+                    }
+                    if (name == "manual-drums") v.getHelp().scrollToSection (titles.indexOf ("Working with Groove Grabber"));
+                }
             }
             auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
             auto f = dir.getChildFile (name + ".png");
@@ -1657,8 +1680,12 @@ namespace
         shoot ("setup-check-empty", false, 1140, 800, 2);
         shoot ("setup-check-results", true, 1140, 800, 2);
         shoot ("setup-check-small", true, 1060, 780, 2);
+        shoot ("manual", false, 1240, 820, 0);
+        shoot ("manual-drums", false, 1240, 820, 0);
+        shoot ("manual-search", false, 1060, 780, 0);
         ss::ui::setLightTheme (true);
         shoot ("song-light", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
+        shoot ("manual-light", false, 1240, 820, 0);
         shoot ("library-light", false, 1240, 820, 1, "warm pad");
         shoot ("setup-check-light", true, 1140, 800, 2);
         shoot ("drum-maps-kit-light", false, 1240, 820, 3);

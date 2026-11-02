@@ -7,12 +7,13 @@
 #include "DrumMapsPage.h"
 #include "MasterclassPage.h"
 #include "ArrangePage.h"
+#include "HelpPanel.h"
 
 class SongSavantProcessor;
 
 namespace ss::ui
 {
-    class MainView : public juce::Component
+    class MainView : public juce::Component, private juce::KeyListener
     {
     public:
         enum Page { song = 0, library = 1, setupCheck = 2, drumMaps = 3, masterclass = 4, arrange = 5 };
@@ -30,6 +31,9 @@ namespace ss::ui
         DrumMapsPage& getDrumMaps()      { return drumMapsPage; }
         MasterclassPage& getMasterclass() { return masterclassPage; }
         ArrangePage& getArrange()        { return arrangePage; }
+        HelpPanel& getHelp()             { return help; }
+        void showHelp();                 // the manual (the ? button, F1)
+        void parentHierarchyChanged() override;
 
     private:
         SongSavantProcessor& proc;
@@ -37,6 +41,10 @@ namespace ss::ui
         juce::Image owl, wordmark;
         ThemeButton themeBtn;
         SetupButton setupBtn;
+        HelpButton helpBtn;
+        using juce::Component::keyPressed;
+        bool keyPressed (const juce::KeyPress&, juce::Component*) override;
+        juce::Component::SafePointer<juce::Component> listeningTo;
         void applyTheme();
         PillButton songTab { "SONG", PillButton::Style::subtle },
                    arrangeTab { "ARRANGE", PillButton::Style::subtle },
@@ -49,6 +57,7 @@ namespace ss::ui
         DrumMapsPage drumMapsPage;
         MasterclassPage masterclassPage;
         ArrangePage arrangePage;
+        HelpPanel help;
         juce::TooltipWindow tooltips { this, 500 };
         juce::Rectangle<float> headerArea, subtitleArea;
         int page = song;

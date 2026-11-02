@@ -313,4 +313,17 @@ namespace ss::ui
         tick.lineTo (c.getRight() - c.getWidth() * 0.18f, c.getY() + c.getHeight() * 0.3f);
         g.strokePath (tick, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
+
+    void HelpButton::paintButton (juce::Graphics& g, bool over, bool)
+    {
+        const auto& p = pal();
+        auto r = getLocalBounds().toFloat().reduced (2.0f);
+        const bool on = getToggleState();
+        g.setColour ((on ? p.gold.withAlpha (0.25f) : p.panelHi).withAlpha (over || on ? 1.0f : 0.7f));
+        g.fillEllipse (r);
+        g.setColour (p.gold.withAlpha (over || on ? 1.0f : 0.8f));
+        g.drawEllipse (r, on ? 1.8f : 1.2f);
+        g.setFont (serif (r.getHeight() * 0.58f, true));
+        g.drawText ("?", r.translated (0.0f, 0.5f), juce::Justification::centred, false);
+    }
 }
