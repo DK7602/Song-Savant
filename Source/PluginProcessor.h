@@ -1,5 +1,5 @@
-// Song Savant - the plug-in / app. Phase 0: it holds the setup scan and the drag-test answers, and makes no
-// sound yet (later it plays the palette preview and the starter MIDI parts in time with the DAW).
+// Song Savant - the plug-in / app: the setup scan, the library, the song, and the sketch player that plays the
+// starter parts (or the whole song) with simple built-in sounds, in time with the DAW when it runs inside one.
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -8,6 +8,7 @@
 #include "core/SongSession.h"
 #include "core/KitMapJob.h"
 #include "core/Report.h"
+#include "core/SketchPlayer.h"
 
 class SongSavantProcessor : public juce::AudioProcessor
 {
@@ -37,8 +38,18 @@ public:
     juce::File saveReport();                 // writes Documents/Song Savant/Setup Report.txt (if there's a result)
     juce::String reportText() const;
 
+    // hearing the parts: PLAY on the Song page (the starter parts, looped) and on the Arrange page (the whole song)
+    ss::SketchPlayer sketch;
+    enum class SketchMode { loop, song };
+    void playSketch (SketchMode);
+    void stopSketch()                                   { sketch.stop(); }
+    bool isSketchPlaying (SketchMode m) const           { return sketch.isPlaying() && sketchMode == m; }
+    void updateSketch (SketchMode, std::shared_ptr<const ss::SketchSong>);   // the latest parts for that button
+    double getHostBpm() const                           { return hostBpm.load(); }   // the DAW's tempo; 0 in the app
+    bool isInDaw() const                                { return wrapperType != wrapperType_Standalone && wrapperType != wrapperType_Undefined; }
+
     //==============================================================================
-    void prepareToPlay (double, int) override {}
+    void prepareToPlay (double sampleRate, int) override   { sketch.prepare (sampleRate); }
     void releaseResources() override {}
     bool isBusesLayoutSupported (const BusesLayout&) const override;
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
@@ -62,5 +73,8 @@ public:
     void setStateInformation (const void*, int) override;
 
 private:
+    SketchMode sketchMode = SketchMode::loop;
+    std::shared_ptr<const ss::SketchSong> loopSketch, songSketch;
+    std::atomic<double> hostBpm { 0.0 };
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SongSavantProcessor)
 };

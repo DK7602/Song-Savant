@@ -36,7 +36,15 @@ namespace ss::ui
         addChildComponent (masterclassPage);
         addChildComponent (arrangePage);
         addChildComponent (help);              // over everything, when it's open
+        welcome.onManual = [this] { showHelp(); };
+        addChildComponent (welcome);
         showPage (proc.page);
+        // the very first time Song Savant opens: what it does, in three steps
+        if (! readFlag (WelcomePanel::seenKey))
+            juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<MainView> (this)]
+            {
+                if (safe != nullptr) { safe->welcome.setBounds (safe->getLocalBounds()); safe->welcome.show(); }
+            });
     }
 
     MainView::~MainView()
@@ -199,5 +207,6 @@ namespace ss::ui
         masterclassPage.setBounds (r);
         arrangePage.setBounds (r);
         help.setBounds (getLocalBounds());
+        welcome.setBounds (getLocalBounds());
     }
 }

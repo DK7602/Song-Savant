@@ -23,8 +23,10 @@
 #include "core/StarterParts.h"
 #include "core/Arrangement.h"
 #include "core/GrooveGrabberLink.h"
+#include "core/SketchPlayer.h"
 #include "core/SongSession.h"
 #include <map>
+#include <juce_audio_formats/juce_audio_formats.h>
 #include <algorithm>
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
@@ -1202,6 +1204,122 @@ namespace
         }
     }
 
+    void testSketch()
+    {
+        section ("Hearing the parts (PLAY: the sketch player)");
+        const auto plan = ss::planParts (ss::readBrief ("trap 140 BPM in A minor"));
+        std::vector<ss::ArrangementPart> parts { { "Drums", "Drums", ss::PartType::drums, ss::Kind::drums, false },
+                                                 { "Bass", "Bass", ss::PartType::bass, ss::Kind::bass, false },
+                                                 { "Keys", "Keys", ss::PartType::chords, ss::Kind::piano, false },
+                                                 { "Pad", "Pad", ss::PartType::pad, ss::Kind::pad, false },
+                                                 { "Lead", "Lead", ss::PartType::hook, ss::Kind::lead, false } };
+        const auto loop = ss::sketchOfParts (plan, parts);
+        bool sorted = true;
+        for (size_t i = 1; i < loop.notes.size(); ++i) sorted = sorted && loop.notes[i - 1].start <= loop.notes[i].start;
+        int partsWithNotes = 0;
+        for (int p = 0; p < 5; ++p)
+            for (auto& n : loop.notes) if (n.part == p) { ++partsWithNotes; break; }
+        check (loop.loop && loop.parts.size() == 5 && partsWithNotes == 5 && sorted && std::abs (loop.lengthBeats - plan.bars * 4.0) < 1e-9
+               && std::abs (loop.bpm - 140.0) < 0.01, "the starter parts as a loop: every part, in order, " + juce::String (plan.bars) + " bars at 140 BPM");
+
+        const double sr = 48000.0, samplesPerBeat = sr * 60.0 / 140.0;
+        ss::SketchPlayer p;
+        p.prepare (sr);
+        p.setSong (std::make_shared<const ss::SketchSong> (loop));
+        juce::AudioBuffer<float> buf (2, 512);
+        const ss::SketchPlayer::Host app;                     // the app: no DAW
+        p.process (buf, app);
+        check (buf.getMagnitude (0, 512) == 0.0f && p.getPosition() < 0.0 && ! p.isPlaying(), "silent until PLAY");
+        p.play();
+        float peak = 0.0f;
+        const int blocks = (int) (samplesPerBeat * 8.0 / 512.0);           // two bars
+        for (int i = 0; i < blocks; ++i) { p.process (buf, app); peak = juce::jmax (peak, buf.getMagnitude (0, 512)); }
+        const double expected = blocks * 512.0 / samplesPerBeat;
+        check (peak > 0.05f && peak <= 1.0f, "PLAY makes sound (peak " + juce::String (peak, 2) + "), never louder than full scale");
+        check (std::abs (p.getPosition() - expected) < 0.01, "in time: " + juce::String (p.getPosition(), 3) + " beats after " + juce::String (expected, 3));
+        for (int i = 0; i < (int) (samplesPerBeat * 26.0 / 512.0); ++i) p.process (buf, app);
+        check (p.getPosition() >= 0.0 && p.getPosition() < 8.0, "the starter parts loop (back at beat " + juce::String (p.getPosition(), 2) + ")");
+        p.stop();
+        for (int i = 0; i < 100; ++i) p.process (buf, app);
+        check (! p.isPlaying() && p.getPosition() < 0.0 && buf.getMagnitude (0, 512) < 1.0e-3f, "STOP: silent again");
+
+        // inside a DAW: its tempo and position, and it stops when the DAW stops
+        ss::SketchPlayer::Host daw;
+        daw.known = true;
+        daw.playing = true;
+        daw.bpm = 90.0;
+        daw.ppq = 16.0;
+        p.play();
+        p.process (buf, daw);
+        check (std::abs (p.getPosition() - (16.0 + 512.0 * 90.0 / 60.0 / sr)) < 1.0e-6, "follows the DAW's position and tempo");
+        daw.ppq = 300.0;
+        p.process (buf, daw);
+        check (std::abs (p.getPosition() - std::fmod (300.0 + 512.0 * 90.0 / 60.0 / sr, loop.lengthBeats)) < 1.0e-6, "and its jumps (looping the parts)");
+        daw.playing = false;
+        for (int i = 0; i < 100; ++i) p.process (buf, daw);
+        check (p.getPosition() < 0.0 && buf.getMagnitude (0, 512) < 1.0e-3f, "the DAW stops: so does the sketch");
+        p.stop();
+
+        // the whole song plays once, then stops by itself
+        ss::SketchSong shortSong;
+        shortSong.loop = false;
+        shortSong.lengthBeats = 4.0;
+        shortSong.bpm = 120.0;
+        shortSong.parts.push_back ({ "Bass", ss::PartType::bass, ss::Kind::bass });
+        shortSong.notes.push_back ({ 0.0, 1.0, 45, 100, 0 });
+        p.setSong (std::make_shared<const ss::SketchSong> (shortSong));
+        p.play();
+        for (int i = 0; i < (int) (sr * 2.5 / 512.0); ++i) p.process (buf, app);
+        check (! p.isPlaying(), "the whole song plays to the end, then stops");
+
+        const auto song = ss::sketchOfSong (plan, ss::makeArrangement (plan, parts, {}, ss::SongShape::full), parts);
+        check (! song.loop && song.lengthBeats >= 32.0 && song.parts.size() == 5 && ! song.notes.empty(), "the whole song (ARRANGE): "
+               + juce::String (song.lengthBeats / 4.0, 0) + " bars, played once");
+
+        // SS_SKETCH_WAV=<file>: what PLAY sounds like, 8 bars of a few styles, to listen to
+        if (const auto wav = juce::SystemStats::getEnvironmentVariable ("SS_SKETCH_WAV", {}); wav.isNotEmpty())
+        {
+            juce::AudioBuffer<float> all (2, 0);
+            for (auto* desc : { "trap 140 BPM in A minor", "modern country 112 BPM in G", "warm worship 72 BPM in D", "90s boom bap 90 BPM in C minor" })
+            {
+                const auto pl = ss::planParts (ss::readBrief (desc));
+                std::vector<ss::ArrangementPart> ps { { "Drums", "Drums", ss::PartType::drums, ss::Kind::drums, false },
+                                                      { "Bass", "Bass", ss::PartType::bass, ss::Kind::bass, false },
+                                                      { "Rhythm", "Rhythm", ss::PartType::chords, juce::String (desc).contains ("country") ? ss::Kind::guitar : ss::Kind::piano, false },
+                                                      { "Pad", "Pad", ss::PartType::pad, ss::Kind::pad, false },
+                                                      { "Lead", "Lead", ss::PartType::hook, ss::Kind::lead, false } };
+                ss::SketchPlayer sp;
+                sp.prepare (44100.0);
+                sp.setSong (std::make_shared<const ss::SketchSong> (ss::sketchOfParts (pl, ps)));
+                sp.play();
+                const int total = (int) (44100.0 * 60.0 / pl.bpm * 4.0 * pl.bars);
+                const int start = all.getNumSamples();
+                all.setSize (2, start + total, true, true);
+                juce::AudioBuffer<float> block (2, 512);
+                for (int pos = 0; pos < total; pos += 512)
+                {
+                    sp.process (block, {});
+                    const int n = juce::jmin (512, total - pos);
+                    for (int c = 0; c < 2; ++c) all.copyFrom (c, start + pos, block, c, 0, n);
+                }
+            }
+            juce::File f (wav);
+            f.deleteFile();
+            juce::WavAudioFormat fmt;
+            if (auto out = std::unique_ptr<juce::AudioFormatWriter> (fmt.createWriterFor (new juce::FileOutputStream (f), 44100.0, 2, 16, {}, 0)))
+                out->writeFromAudioSampleBuffer (all, 0, all.getNumSamples());
+            std::cout << "  wrote " << f.getFullPathName() << std::endl;
+        }
+
+        // the song follows the DAW's tempo, unless the BPM box says otherwise
+        ss::SongSession s;
+        s.form.description = "worship";
+        s.hostBpm = 128.0;
+        check (std::abs (s.partsPlan().bpm - 128.0) < 0.01, "inside a DAW the song follows its tempo");
+        s.form.bpm = 72.0;
+        check (std::abs (s.partsPlan().bpm - 72.0) < 0.01, "unless the BPM box says otherwise");
+    }
+
     void testMusic()
     {
         section ("Music knowledge");
@@ -1540,6 +1658,7 @@ namespace
     {
         section ("Screenshots");
         dir.createDirectory();
+        ss::ui::writeFlag (ss::ui::WelcomePanel::seenKey, true);     // the welcome only where it's wanted
         ss::KitMap beatBox;          // what a mapped kit looks like
         beatBox.name = "Beat Box";
         beatBox.plugin = "Analog Lab V";
@@ -1566,8 +1685,10 @@ namespace
                 proc.scan.setResult (r, fc.loc);
                 proc.dragTests.userPreset = 1;
             }
+            if (name.startsWith ("welcome")) ss::ui::writeFlag (ss::ui::WelcomePanel::seenKey, false);   // as on the first run
             std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
             ed->setSize (w, h);
+            if (name.startsWith ("welcome")) juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
             if (auto* e = dynamic_cast<SongSavantEditor*> (ed.get()))
             {
                 e->getView().getSetupCheck().refreshFromResult();
@@ -1612,6 +1733,12 @@ namespace
                         check (read && mf.getNumTracks() >= 6 && all.getFileName().contains ("BPM"),
                                "the Song page writes all its starter parts: " + all.getFileName() + ", " + juce::String (mf.getNumTracks() - 1) + " parts");
                         check (e->getView().getSong().writeStarterParts (1).existsAsFile(), "and one card's part");
+
+                        // PLAY and STOP
+                        e->getView().getSong().togglePlay();
+                        const bool started = proc.isSketchPlaying (SongSavantProcessor::SketchMode::loop);
+                        e->getView().getSong().togglePlay();
+                        check (started && ! proc.sketch.isPlaying(), "the Song page's PLAY plays the starter parts, and STOP stops them");
 
                         // a kit saved in Groove Grabber for this song lands on the drum card by itself
                         auto& sp = e->getView().getSong();
@@ -1661,6 +1788,15 @@ namespace
             juce::PNGImageFormat png;
             check (out.openedOk() && png.writeImageToStream (img, out), "wrote " + f.getFileName());
             std::cout << "  " << f.getFullPathName() << std::endl;
+            if (name.startsWith ("welcome"))
+                if (auto* e = dynamic_cast<SongSavantEditor*> (ed.get()))
+                {
+                    auto& wp = e->getView().getWelcome();
+                    const bool shown = wp.isVisible();
+                    wp.keyPressed (juce::KeyPress (juce::KeyPress::escapeKey));
+                    check (shown && ! wp.isVisible() && ss::ui::readFlag (ss::ui::WelcomePanel::seenKey),
+                           "the first time it opens, the welcome shows; LET'S GO (or Esc) closes it for good");
+                }
             if (name == "song")
                 if (auto* e = dynamic_cast<SongSavantEditor*> (ed.get()))
                 {
@@ -1697,12 +1833,15 @@ namespace
         shoot ("setup-check-empty", false, 1140, 800, 2);
         shoot ("setup-check-results", true, 1140, 800, 2);
         shoot ("setup-check-small", true, 1060, 780, 2);
+        shoot ("welcome", false, 1240, 820, 0);
+        shoot ("welcome-small", false, 1060, 780, 0);
         shoot ("manual", false, 1240, 820, 0);
         shoot ("manual-drums", false, 1240, 820, 0);
         shoot ("manual-search", false, 1060, 780, 0);
         ss::ui::setLightTheme (true);
         shoot ("song-light", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("manual-light", false, 1240, 820, 0);
+        shoot ("welcome-light", false, 1240, 820, 0);
         shoot ("library-light", false, 1240, 820, 1, "warm pad");
         shoot ("setup-check-light", true, 1140, 800, 2);
         shoot ("drum-maps-kit-light", false, 1240, 820, 3);
@@ -1744,6 +1883,7 @@ int main (int argc, char** argv)
     testStarterParts();
     testArrangement (fc);
     testGrooveGrabberLink (fc);
+    testSketch();
     testPalettes (fc);
     testCancelAndJob (fc);
 

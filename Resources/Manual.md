@@ -29,7 +29,7 @@ Run the Windows installer (Song-Savant-...-Windows-Setup.exe). Windows may say "
 
 Pick "Standalone app + plug-in" if you're not sure. To update, run the new installer over the old one: your songs and settings stay. Close your DAW first if the plug-in is in use.
 
-**First run:** Song Savant reads your sound libraries in the background. That takes a few seconds, and the LIBRARY page shows its progress. Then it may spend a few minutes finding out what some of your plug-ins are (see "Song Savant Scanner" under LIBRARY). You can use the app while it does.
+**First run:** a welcome screen shows what Song Savant does in three steps; **LET'S GO** closes it (it won't show again), and **OPEN THE MANUAL** opens this manual. Song Savant reads your sound libraries in the background. That takes a few seconds, and the LIBRARY page shows its progress. Then it may spend a few minutes finding out what some of your plug-ins are (see "Song Savant Scanner" under LIBRARY). You can use the app while it does.
 
 **The app or the plug-in?** Use the **app** for most things: it's quick to open next to your DAW, and dragging MIDI from it into your DAW works the same. The **plug-in** (an instrument in your DAW's list, by Grabber Audio) saves your song, palettes and arrangement inside the DAW project, so they're there when you open the project again. It doesn't make any sound yet.
 
@@ -143,9 +143,24 @@ Every card that plays notes has a starter part: 8 bars in your song's key and te
 
 **NEW IDEA** writes another take: the style's next chord progression, a varied drum pattern and a new hook. Click it as often as you like.
 
+**PLAY** (next to NEW IDEA) lets you hear the starter parts before you drag them: see Hearing your song.
+
 **The key.** The line above the cards says which key the parts are in ("STARTER PARTS IN A MINOR"). If you didn't give a key, Song Savant picks one that suits the style and says "Key picked for you". With a Key Compass song, the parts follow that song's own chords.
 
 **Which drum notes?** The drum part uses General MIDI notes (kick on C1, snare on D1, closed hat on F#1), which Groove Agent and most drum instruments follow. If the drum card is a kit you mapped on the DRUM MAPS page, the part uses that kit's pads instead. If it's a Groove Grabber kit, it uses Groove Grabber's pads, and in styles built on the 808 the kit's 808 plays with the kick. Hover the drum card's MIDI tag to see which notes it uses.
+
+## Hearing your song (PLAY)
+
+You can hear your song's parts in Song Savant before dragging anything into your DAW.
+
+- **SONG page, PLAY:** plays the starter parts (all the cards that have one), looped, in your key and tempo. Click **STOP** to stop. Click **NEW IDEA** while it plays to hear another take.
+- **ARRANGE page, PLAY SONG:** plays the whole song, section by section, with only the parts you switched on in each. A gold line on the map shows where it is. It stops by itself at the end.
+
+Song Savant plays them with **simple built-in sketch sounds**: synthesised drums, a bass, keys or a guitar strum, a pad and a lead. They're there to hear the idea (the groove, the chords, the hook, how the song builds), not your real sounds. For the real thing, load the sounds on the cards in your DAW and drag the parts in.
+
+In the app, the sound comes out of your computer's speakers or audio interface. If you hear nothing, click **Options** at the top left of the window, then **Audio/MIDI Settings**, and pick your output.
+
+Inside Cubase it plays through the track Song Savant is on, in time with Cubase (see Using Song Savant as a plug-in).
 
 ## Drums and the 808
 
@@ -203,6 +218,8 @@ The ARRANGE page lays your palette's parts out across the whole song. Make your 
 Your changes stay while the song stays the same. Swapping a sound (a different drum kit, say) keeps them. Changing the style, the shape or the parts starts a fresh map.
 
 **WHOLE SONG** (top right) drags it all into your DAW: one track per part with each section's starter parts in place, the tempo and key, and a **marker for every section** (in Cubase, on the Marker track). The chip shows the length in bars and minutes.
+
+**PLAY SONG** plays the whole song with the sketch sounds, with a gold line moving across the map (see Hearing your song).
 
 The panel at the bottom explains how songs in your style are usually built.
 
@@ -293,9 +310,12 @@ The clipboard icon in the header opens the setup check: a one-off look at what's
 
 ## Using Song Savant as a plug-in
 
-In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the instrument list, made by Grabber Audio (under Tools when the list is sorted by category). Everything works the same as in the app. The plug-in saves your song (description, palettes, choices, locks and arrangement) inside your project, so it's there next time you open the project.
+In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the instrument list, made by Grabber Audio (under Tools when the list is sorted by category). Everything works the same as in the app, plus:
 
-The plug-in doesn't make sound yet. Following the DAW's tempo and playing the parts in sync are planned.
+- **It follows Cubase's tempo.** The song's tempo is your project's tempo: the starter parts, the whole song and what you send to Groove Grabber all use it. The gold "Your song" line shows it ("120 BPM (Cubase)"), and says if the style usually sits somewhere else ("the style is usually 70-80 BPM"): change Cubase's tempo to try it. To use another tempo anyway, type it in the **BPM** box.
+- **PLAY plays in time with Cubase.** Click **PLAY** (or **PLAY SONG** on ARRANGE), then press play in Cubase: the sketch plays along, from wherever Cubase is. On the SONG page the 8 bars loop along Cubase's timeline; on ARRANGE the whole song starts at bar 1 of your project, so it lines up with WHOLE SONG once you've dragged it in. When Cubase stops, the sketch stops. With Cubase stopped, PLAY plays on its own.
+- **The sound** comes out of Song Savant's track in Cubase: turn that track down or mute it whenever you like.
+- **It's saved with the project:** your song (description, palettes, choices, locks and arrangement) is there next time you open it.
 
 ## Where your files live
 
@@ -321,6 +341,7 @@ The plug-in doesn't make sound yet. Following the DAW's tempo and playing the pa
 | The drum part plays the wrong drums | Check which notes it uses (hover the drum card's MIDI tag). For Analog Lab and HALion kits, make a drum map on DRUM MAPS. |
 | Cubase freezes when you quit after using Groove Grabber | Install Groove Grabber 1.0.15 or newer. If it still happens, force-close Cubase and send Documents\Groove Grabber\Groove Grabber log.txt: its last lines show where it got stuck. |
 | Your Groove Grabber kit didn't land on the drum card | Song Savant needs to be open when you click SAVE KIT, and the kit has to be built for the song you sent. Saved kits always show up among the drum choices. |
+| PLAY makes no sound | In the app: Options (top left) > Audio/MIDI Settings, and pick your output. In Cubase: check Song Savant's track isn't muted or turned down. |
 | Dragging MIDI into Cubase made a silent track | Drop it on the lane of a track that has the instrument, or set the new MIDI track's output to that instrument. |
 | The markers didn't appear in Cubase | Cubase puts them on a Marker track; add one if your project has none (Project > Add Track > Marker). |
 | The Library is empty | Wait for "Reading your libraries..." to finish, then click REFRESH LIBRARY. Run the setup check to see what was found. |
@@ -339,6 +360,7 @@ The plug-in doesn't make sound yet. Following the DAW's tempo and playing the pa
 | One starter part into your DAW | Drag the card's MIDI tag |
 | Every starter part | Drag ALL PARTS |
 | Another take on the parts | NEW IDEA |
+| Hear the parts | PLAY on SONG (looped), PLAY SONG on ARRANGE (the whole song) |
 | Drums from your own samples | Drum card, SEND TO GROOVE GRABBER, then USE IT and SAVE KIT in Groove Grabber |
 | Start from a Key Compass song | KEY COMPASS on the SONG page |
 | Change who plays where | ARRANGE: click boxes; click a section's name for its menu |

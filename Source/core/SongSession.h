@@ -31,6 +31,7 @@ namespace ss
         int current = 0;
         juce::uint32 seed = 1;
         juce::uint32 partsSeed = 1;                   // starter parts: each NEW IDEA is the next one
+        double hostBpm = 0.0;                         // inside a DAW, its tempo: the song follows it (not saved)
         PartsPlan partsPlan() const                   { return planParts (makeBrief(), form.chords, partsSeed); }
 
         // The arrangement map: made from the style's song shape (or the Key Compass song's sections) and then edited

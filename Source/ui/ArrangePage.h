@@ -15,6 +15,7 @@ namespace ss::ui
     {
     public:
         void show (const Arrangement*, const std::vector<ArrangementPart>*, const PartsPlan*);
+        void setPlayhead (double beats);         // where PLAY SONG is (-1: not playing)
         int layout (int width, int height);     // returns the width it needs (more than given: it scrolls)
         void paint (juce::Graphics&) override;
         void mouseMove (const juce::MouseEvent&) override;
@@ -36,6 +37,7 @@ namespace ss::ui
         const PartsPlan* plan = nullptr;
         std::vector<float> columnX, columnW;
         float rowH = 34.0f;
+        double playhead = -1.0;
         int hoverSection = -1, hoverPart = -1;
         bool hoverHeader = false;
     };
@@ -53,6 +55,7 @@ namespace ss::ui
 
         void refresh();                                      // the map for the song's current palette (also the tests)
         juce::File writeWholeSong();                         // the MIDI file to drag (also the tests)
+        void togglePlay();                                   // PLAY SONG / STOP (also the tests)
         const Arrangement& getArrangement() const;
 
     private:
@@ -62,7 +65,8 @@ namespace ss::ui
 
         SongSavantProcessor& proc;
         juce::ComboBox shapeBox;
-        PillButton resetBtn { "START OVER", PillButton::Style::outline };
+        PillButton resetBtn { "START OVER", PillButton::Style::outline },
+                   playBtn { "PLAY SONG", PillButton::Style::outline };
         DragChip wholeSong { "WHOLE SONG", DragChip::Kind::midi };
         juce::Viewport view;
         ArrangementGrid grid;

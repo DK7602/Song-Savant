@@ -62,10 +62,39 @@ bool SongSavantProcessor::isBusesLayoutSupported (const BusesLayout& layouts) co
     return out == juce::AudioChannelSet::stereo() || out == juce::AudioChannelSet::mono();
 }
 
-void SongSavantProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+void SongSavantProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     juce::ScopedNoDenormals noDenormals;
-    buffer.clear();
+    midi.clear();
+    // inside a DAW: its tempo, and whether it's playing and where
+    ss::SketchPlayer::Host host;
+    if (isInDaw())
+        if (auto* ph = getPlayHead())
+            if (const auto pos = ph->getPosition())
+            {
+                if (const auto bpm = pos->getBpm())
+                {
+                    host.known = true;
+                    host.bpm = *bpm;
+                    hostBpm = *bpm;
+                }
+                if (const auto ppq = pos->getPpqPosition()) host.ppq = *ppq;
+                host.playing = pos->getIsPlaying() && pos->getPpqPosition().hasValue();
+            }
+    sketch.process (buffer, host);
+}
+
+void SongSavantProcessor::playSketch (SketchMode m)
+{
+    sketchMode = m;
+    sketch.setSong (m == SketchMode::loop ? loopSketch : songSketch);
+    sketch.play();
+}
+
+void SongSavantProcessor::updateSketch (SketchMode m, std::shared_ptr<const ss::SketchSong> s)
+{
+    (m == SketchMode::loop ? loopSketch : songSketch) = s;
+    if (m == sketchMode) sketch.setSong (std::move (s));
 }
 
 juce::AudioProcessorEditor* SongSavantProcessor::createEditor()   { return new SongSavantEditor (*this); }
@@ -91,7 +120,7 @@ void SongSavantProcessor::setStateInformation (const void* data, int size)
 {
     auto x = getXmlFromBinary (data, size);
     if (x == nullptr || ! x->hasTagName ("SongSavant")) return;
-    page = juce::jlimit (0, 2, x->getIntAttribute ("page", 0));
+    page = juce::jlimit (0, 5, x->getIntAttribute ("page", 0));
     if (auto* s = x->getChildByName ("Song")) song.fromXml (*s);
     if (auto* d = x->getChildByName ("DragTests"))
     {

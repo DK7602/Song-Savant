@@ -32,6 +32,10 @@ namespace ss::ui
     bool isLightTheme();
     void setLightTheme (bool);
 
+    // Small settings kept between runs (settings.xml in Song Savant's settings folder)
+    bool readFlag (const juce::String& key, bool fallback = false);
+    void writeFlag (const juce::String& key, bool);
+
     juce::Font sans (float height, bool bold = false);
     juce::Font serif (float height, bool bold = false);   // headings
 

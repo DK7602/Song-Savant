@@ -58,6 +58,7 @@ namespace ss::ui
         void setDescription (const juce::String&);    // tests
         juce::File writeStarterParts (int card = -1); // one card's part, or all of them (-1): the MIDI file to drag
         juce::File sendToGrooveGrabber();             // SEND TO GROOVE GRABBER (also the tests): the song file written
+        void togglePlay();                            // PLAY / STOP: the starter parts with the sketch sounds (also the tests)
         // A kit you just saved in Groove Grabber: read into the library, and the one built for this song goes on the
         // drum card (checked every few seconds; also the tests). True when a kit went on the card.
         bool checkGrooveGrabberKits();
@@ -91,6 +92,7 @@ namespace ss::ui
                    newBtn { "NEW PALETTES", PillButton::Style::outline },
                    copyBtn { "COPY NAME", PillButton::Style::gold },
                    ideaBtn { "NEW IDEA", PillButton::Style::outline },
+                   playBtn { "PLAY", PillButton::Style::outline },
                    sendBtn { "SEND TO GROOVE GRABBER", PillButton::Style::outline };
         DragChip allParts { "ALL PARTS", DragChip::Kind::midi };
         juce::OwnedArray<PillButton> tabs;

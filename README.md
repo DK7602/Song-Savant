@@ -6,7 +6,7 @@
 through the instruments and presets you already own, then suggests a complete sound palette: rhythm, bass,
 leads, pads and drums, each with alternatives, plus starter MIDI parts to get the song moving.
 
-> **Status: Phase 2, version 0.10.4.** New: **the manual** inside the app (the **?** button or F1). **SEND TO GROOVE GRABBER** on the drum card (Groove Grabber builds kits
+> **Version 1.0.0.** New in 1.0: **PLAY** your starter parts and **PLAY SONG** on the Arrange page (simple built-in sketch sounds; inside Cubase it follows the project's tempo and plays along with Cubase), and a **welcome screen**. Also: **the manual** inside the app (the **?** button or F1). **SEND TO GROOVE GRABBER** on the drum card (Groove Grabber builds kits
 > for your song, tuned to its key, and the kit you save there lands on the drum card by itself), the **ARRANGE** page (your song's shape, which parts play where, and the
 > whole song dragged into your DAW with a marker per section), **starter MIDI parts** (drag a card's part, or all of them, into your
 > DAW, in your key and tempo), the **MASTERCLASS** page (learn any genre or style: its sounds, drums, bass, chords in
@@ -27,17 +27,22 @@ leads, pads and drums, each with alternatives, plus starter MIDI parts to get th
 | **AU** | Logic Pro, GarageBand (Mac) |
 | **Standalone app** | Windows, Mac, Linux |
 
-## Phase 0: run the setup check
+## Install
 
-1. Download the Windows build: on GitHub open **Actions**, click the newest **Build Song Savant** run, and
-   download **Song-Savant-Windows** under *Artifacts*. Unzip it and run `Song-Savant-...-Windows-Setup.exe`.
-   (Windows may say "Windows protected your PC" because the app isn't signed yet: click **More info > Run anyway**.)
-2. Open **Song Savant** from the Start menu and click **SCAN MY SETUP**. It only reads; it never changes or moves
-   your files. It takes a minute or two.
+1. Download the Windows installer: on GitHub open **Releases** and download `Song-Savant-...-Windows-Setup.exe`
+   from the newest release (or, for a test build: **Actions**, the newest **Build Song Savant** run,
+   **Song-Savant-Windows** under *Artifacts*). Run it. (Windows may say "Windows protected your PC" because the app
+   isn't signed yet: click **More info > Run anyway**.)
+2. Open **Song Savant** from the Start menu. The welcome screen and the manual (the **?** button) take it from there.
+
+## The setup check (the first build's test)
+
+1. In Song Savant, click the clipboard icon in the header.
+2. Click **SCAN MY SETUP**. It only reads; it never changes or moves your files. It takes a minute or two.
 3. Try the **drag tests** with a Cubase project open: drag each card **from Song Savant into Cubase** (onto the
    empty area under your tracks), then click *Worked* or *Didn't work* for each. You can also drag things from
    Cubase onto Song Savant: it notes what arrives.
-4. Click **SAVE REPORT**. The report is saved as `Documents/Song Savant/Setup Report.txt`. Send that file back.
+4. The report is saved by itself as `Documents/Song Savant/Setup Report.txt` (**OPEN REPORT**, **SHOW FILE**). Send that file back.
 
 ## Building
 

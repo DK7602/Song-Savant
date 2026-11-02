@@ -218,7 +218,7 @@ Windows, **Cubase Artist 14** (also has Artist 12/13, Elements 12/13 licences).
 
 ## Phases
 
-### Phase 0: Setup and reality check *(current)*
+### Phase 0: Setup and reality check *(done)*
 - [x] Project set up like Groove Grabber: JUCE app + plugin, tests, GitHub Actions, Windows installer.
 - [x] This roadmap.
 - [x] **Setup scanner**: a test build the owner runs on their PC. It reports:
@@ -236,7 +236,7 @@ Windows, **Cubase Artist 14** (also has Artist 12/13, Elements 12/13 licences).
 - [x] 0.3.0: privacy fixes (user name in `file://` links; private-looking names skipped), Arturia ownership counts.
 - [x] Settled which Arturia presets are playable, and confirmed the MediaBay search-and-drag flow. **Phase 0 done.**
 
-### Phase 1: Sounds *(current)*
+### Phase 1: Sounds *(done)*
 Built in steps, each one a build the owner can try:
 - **1a Library:** the catalog (below) and a sound browser: search, filter by kind of sound and instrument,
   details, copy name, how to load it. *(Built in 0.4.0: owner to try it on the real libraries.)*
@@ -283,7 +283,7 @@ Built in steps, each one a build the owner can try:
 - Save and recall palettes.
 - Light and dark themes.
 
-### Phase 2: Coach, then **version 1.0**
+### Phase 2: Coach, then **version 1.0** *(1.0.0 released November 2026)*
 - **Style knowledge** (`Resources/StyleGuide.json`, `Source/core/StyleGuide.*`): for each of the 10 genres and the
   40 styles, what it is, tempo and feel, keys, typical sounds and instruments, drums, bass, harmony (with chord
   progressions written as Roman numerals), arrangement, mix and tips, plus the rules the starter parts follow (drum
@@ -372,8 +372,23 @@ Built in steps, each one a build the owner can try:
   search box that highlights every match, Esc or CLOSE to leave (`Source/ui/HelpPanel.*`, adapted from Groove Grabber's
   viewer). Plain language, one chapter per page plus drums and the 808, Groove Grabber, Key Compass, the plug-in, where
   files live, troubleshooting and a quick reference card. **Update it in the same commit whenever behaviour changes.**
-- Plugin: follows DAW tempo, plays parts in sync, saves the palette with the project.
-- Release 1.0.
+- **Hearing the parts, and Song Savant inside the DAW** *(1.0.0; the owner asked for it with the 1.0 release)*:
+  **PLAY** on the Song page (the starter parts, looped: what ALL PARTS drags) and **PLAY SONG** on the Arrange page (the
+  whole song, with a gold playhead on the map: what WHOLE SONG drags) play the parts with simple built-in **sketch
+  sounds** (`Source/core/SketchPlayer.*`: synthesised drums on the General MIDI notes, a bass, keys / a guitar strum /
+  an organ / strings by the card's kind of sound, a pad and a lead; never louder than full scale). They're for hearing
+  the idea, not the real sounds. In a DAW the plug-in **follows the DAW**: the song's tempo is the project's (unless
+  the BPM box says otherwise; the Song page says when the style usually sits elsewhere), and PLAY plays along with the
+  DAW's play button and position (the loop along the timeline; the whole song from bar 1), stops when the DAW stops,
+  and plays on its own when the DAW is stopped. The song was already saved with the project.
+  - **Not in 1.0: sending a part out as MIDI** to a real instrument in the DAW. A JUCE plug-in has one MIDI output,
+    and Cubase can't pick one channel out of it without the Input Transformer, so all the parts would land on one
+    instrument. Revisit with real-sound previews (Phase 3).
+- **Version 1.0.0** *(November 2026)*: a welcome screen the first time it opens (three steps, LET'S GO, OPEN THE
+  MANUAL; `Source/ui/WelcomePanel.*`, shown once: the `welcomeSeen` setting), the manual, and a GitHub Release
+  (push the tag `v1.0.0`: the workflow builds the installers and publishes them). **Still for the owner before
+  selling:** a code-signing certificate (so Windows stops saying "Windows protected your PC") and the installer
+  tool's commercial licence (Inno Setup prints "Non-commercial use only"); see Things to remember.
 
 ### Phase 3: Hearing it
 - Preview sounds by loading the instrument in the background and recording a short phrase. Run it in a

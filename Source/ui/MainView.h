@@ -8,6 +8,7 @@
 #include "MasterclassPage.h"
 #include "ArrangePage.h"
 #include "HelpPanel.h"
+#include "WelcomePanel.h"
 
 class SongSavantProcessor;
 
@@ -32,6 +33,7 @@ namespace ss::ui
         MasterclassPage& getMasterclass() { return masterclassPage; }
         ArrangePage& getArrange()        { return arrangePage; }
         HelpPanel& getHelp()             { return help; }
+        WelcomePanel& getWelcome()       { return welcome; }
         void showHelp();                 // the manual (the ? button, F1)
         void toggleTheme();              // light / dark (the sun / moon button, or a click on the logo)
         juce::Rectangle<float> getLogoArea() const   { return logoArea; }
@@ -63,6 +65,7 @@ namespace ss::ui
         MasterclassPage masterclassPage;
         ArrangePage arrangePage;
         HelpPanel help;
+        WelcomePanel welcome;
         juce::TooltipWindow tooltips { this, 500 };
         juce::Rectangle<float> headerArea, subtitleArea, logoArea;   // logoArea: where the owl and the name are drawn
         int page = song;

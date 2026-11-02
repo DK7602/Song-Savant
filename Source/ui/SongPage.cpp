@@ -4,6 +4,7 @@
 #include "core/Paths.h"
 #include "core/KitMap.h"
 #include "core/GrooveGrabberLink.h"
+#include "core/StyleGuide.h"
 
 namespace ss::ui
 {
@@ -239,6 +240,9 @@ namespace ss::ui
         addAndMakeVisible (ideaBtn);
         allParts.setTooltip ("Drag every starter part into Cubase: one track each");
         addAndMakeVisible (allParts);
+        playBtn.setTooltip ("Hear the starter parts, looped, with simple built-in sounds (inside Cubase: in time with Cubase's play button)");
+        playBtn.onClick = [this] { togglePlay(); };
+        addChildComponent (playBtn);
 
         choices.onChoose = [this] (int i)
         {
@@ -337,8 +341,30 @@ namespace ss::ui
         refresh();
     }
 
+    void SongPage::togglePlay()
+    {
+        if (proc.isSketchPlaying (SongSavantProcessor::SketchMode::loop)) proc.stopSketch();
+        else proc.playSketch (SongSavantProcessor::SketchMode::loop);
+        timerCallback();
+    }
+
     void SongPage::timerCallback()
     {
+        // PLAY / STOP
+        {
+            const bool playing = proc.isSketchPlaying (SongSavantProcessor::SketchMode::loop);
+            if (playBtn.getToggleState() != playing)
+            {
+                playBtn.setToggleState (playing, juce::dontSendNotification);
+                playBtn.setButtonText (playing ? "STOP" : "PLAY");
+            }
+        }
+        // inside a DAW: the song follows its tempo
+        if (proc.isInDaw() && std::abs (proc.getHostBpm() - proc.song.hostBpm) > 0.01)
+        {
+            proc.song.hostBpm = proc.getHostBpm();
+            refresh();
+        }
         if (++kitTicks >= 18)            // every 3 seconds: a kit saved in Groove Grabber?
         {
             kitTicks = 0;
@@ -543,6 +569,10 @@ namespace ss::ui
         // the starter parts, all together
         ideaBtn.setVisible (pal != nullptr);
         allParts.setVisible (pal != nullptr);
+        playBtn.setVisible (pal != nullptr);
+        if (pal != nullptr)     // what PLAY plays: the same starter parts as ALL PARTS
+            proc.updateSketch (SongSavantProcessor::SketchMode::loop,
+                               std::make_shared<const SketchSong> (sketchOfParts (plan, arrangementParts (*pal, catalog.get()))));
         if (pal != nullptr)
             allParts.setFile (writeStarterParts (-1), plan.chordLine() + "  |  " + juce::String (juce::roundToInt (plan.bpm)) + " BPM", "No parts yet");
 
@@ -573,7 +603,20 @@ namespace ss::ui
                 bits.add (genreName (b.genre));
                 if (auto* s = b.style()) if (! s->isGeneral()) bits.add (s->name);
                 for (auto& w : b.understood) if (! bits.contains (w)) bits.add (w);
-                if (b.bpm > 0 && ! bits.contains (juce::String (juce::roundToInt (b.bpm)) + " BPM")) bits.add (juce::String (juce::roundToInt (b.bpm)) + " BPM");
+                if (proc.song.hostBpm > 0 && proc.song.form.bpm <= 0)
+                {
+                    // inside a DAW the song follows its tempo; say when the style usually sits elsewhere
+                    juce::String t = juce::String (juce::roundToInt (proc.song.hostBpm)) + " BPM (" + (proc.dawName().isNotEmpty() ? proc.dawName() : juce::String ("your DAW")) + ")";
+                    const auto usual = styleGuide (b.genre, b.styleId).tempo;      // "85-100 BPM"
+                    const auto nums = juce::StringArray::fromTokens (usual.retainCharacters ("0123456789-"), "-", "");
+                    if (nums.size() >= 2 && nums[0].getIntValue() > 0)
+                    {
+                        const double lo = nums[0].getIntValue(), hi = juce::jmax (lo, (double) nums[1].getIntValue());
+                        if (proc.song.hostBpm < lo - 5 || proc.song.hostBpm > hi + 5) t << ", the style is usually " << usual;
+                    }
+                    bits.add (t);
+                }
+                else if (b.bpm > 0 && ! bits.contains (juce::String (juce::roundToInt (b.bpm)) + " BPM")) bits.add (juce::String (juce::roundToInt (b.bpm)) + " BPM");
                 if (b.key >= 0 && ! bits.contains (keyName (b.key))) bits.add (keyName (b.key));
                 u = "Your song: " + bits.joinIntoString ("  |  ");
             }
@@ -734,13 +777,16 @@ namespace ss::ui
 
         // the palette bar
         auto bar = r.removeFromTop (44.0f);
+        const float k = bar.getWidth() < 1100.0f ? 0.88f : 1.0f;       // a narrow window: everything on the bar a little smaller
         auto pills = bar.withSizeKeepingCentre (bar.getWidth(), 38.0f);
-        for (auto* t : tabs) if (t->isVisible()) { t->setBounds (pills.removeFromLeft (120.0f).toNearestInt()); pills.removeFromLeft (8.0f); }
+        for (auto* t : tabs) if (t->isVisible()) { t->setBounds (pills.removeFromLeft (120.0f * k).toNearestInt()); pills.removeFromLeft (8.0f); }
         pills.removeFromLeft (8.0f);
-        newBtn.setBounds (pills.removeFromLeft (170.0f).toNearestInt());
-        allParts.setBounds (bar.removeFromRight (250.0f).toNearestInt());
+        newBtn.setBounds (pills.removeFromLeft (170.0f * k).toNearestInt());
+        allParts.setBounds (bar.removeFromRight (250.0f * k).toNearestInt());
         bar.removeFromRight (10.0f);
-        ideaBtn.setBounds (bar.removeFromRight (120.0f).withSizeKeepingCentre (120.0f, 38.0f).toNearestInt());
+        ideaBtn.setBounds (bar.removeFromRight (120.0f * k).withSizeKeepingCentre (120.0f * k, 38.0f).toNearestInt());
+        bar.removeFromRight (8.0f);
+        playBtn.setBounds (bar.removeFromRight (100.0f * k).withSizeKeepingCentre (100.0f * k, 38.0f).toNearestInt());
         barHint = bar.withLeft (newBtn.getRight() + 16.0f).withTrimmedRight (12.0f);
         r.removeFromTop (12.0f);
 

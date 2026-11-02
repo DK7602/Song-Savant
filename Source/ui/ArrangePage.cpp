@@ -108,10 +108,40 @@ namespace ss::ui
         else if (p >= 0 && onCell) onCell (s, p);
     }
 
+    void ArrangementGrid::setPlayhead (double beats)
+    {
+        if (std::abs (beats - playhead) < 1.0e-3) return;
+        playhead = beats;
+        repaint();
+    }
+
     void ArrangementGrid::paint (juce::Graphics& g)
     {
         const auto& pl = pal();
         if (arr == nullptr || parts == nullptr || arr->empty()) return;
+        // (the playhead is drawn last, over the boxes)
+        struct Playhead
+        {
+            const ArrangementGrid& grid;
+            juce::Graphics& g;
+            ~Playhead()
+            {
+                if (grid.playhead < 0.0 || grid.arr == nullptr || grid.columnX.size() != grid.arr->sections.size()) return;
+                double bar = grid.playhead / 4.0, start = 0.0;
+                for (size_t s = 0; s < grid.arr->sections.size(); ++s)
+                {
+                    const double bars = juce::jmax (1, grid.arr->sections[s].bars);
+                    if (bar < start + bars)
+                    {
+                        const float x = grid.columnX[s] + grid.columnW[s] * (float) ((bar - start) / bars);
+                        g.setColour (pal().gold);
+                        g.fillRect (x - 1.0f, 2.0f, 2.0f, (float) grid.getHeight() - 4.0f);
+                        return;
+                    }
+                    start += bars;
+                }
+            }
+        } playheadOnTop { *this, g };
 
         // the parts, down the left
         for (size_t p = 0; p < parts->size(); ++p)
@@ -215,6 +245,9 @@ namespace ss::ui
         addAndMakeVisible (resetBtn);
         wholeSong.setTooltip ("Drag the whole song into Cubase: a track per part, a marker per section");
         addAndMakeVisible (wholeSong);
+        playBtn.setTooltip ("Hear the whole song with simple built-in sounds (inside Cubase: in time with Cubase, from bar 1)");
+        playBtn.onClick = [this] { togglePlay(); };
+        addChildComponent (playBtn);
 
         grid.onCell = [this] (int s, int part)
         {
@@ -235,7 +268,24 @@ namespace ss::ui
 
     void ArrangePage::timerCallback()
     {
-        if (isVisible()) refresh();
+        if (! isVisible()) return;
+        refresh();
+        const bool playing = proc.isSketchPlaying (SongSavantProcessor::SketchMode::song);
+        if (playBtn.getToggleState() != playing)
+        {
+            playBtn.setToggleState (playing, juce::dontSendNotification);
+            playBtn.setButtonText (playing ? "STOP" : "PLAY SONG");
+            stopTimer();
+            startTimerHz (playing ? 15 : 2);          // the playhead moves smoothly while it plays
+        }
+        grid.setPlayhead (playing ? proc.sketch.getPosition() : -1.0);
+    }
+
+    void ArrangePage::togglePlay()
+    {
+        if (proc.isSketchPlaying (SongSavantProcessor::SketchMode::song)) proc.stopSketch();
+        else proc.playSketch (SongSavantProcessor::SketchMode::song);
+        timerCallback();
     }
 
     void ArrangePage::refresh()
@@ -262,6 +312,10 @@ namespace ss::ui
         shapeBox.setVisible (hasPalette);
         resetBtn.setVisible (hasPalette);
         wholeSong.setVisible (hasPalette);
+        playBtn.setVisible (hasPalette);
+        if (hasPalette)         // what PLAY SONG plays: the same song as WHOLE SONG
+            proc.updateSketch (SongSavantProcessor::SketchMode::song,
+                               std::make_shared<const SketchSong> (sketchOfSong (plan, proc.song.arrangement, parts)));
         if (hasPalette)
         {
             const int bars = proc.song.arrangement.totalBars();
@@ -358,10 +412,12 @@ namespace ss::ui
         {
             auto in = topPanel.reduced (20.0f, 14.0f);
             wholeSong.setBounds (in.removeFromRight (280.0f).withSizeKeepingCentre (280.0f, 52.0f).toNearestInt());
-            in.removeFromRight (12.0f);
-            resetBtn.setBounds (in.removeFromRight (150.0f).withSizeKeepingCentre (150.0f, 38.0f).toNearestInt());
             in.removeFromRight (10.0f);
-            shapeBox.setBounds (in.removeFromRight (220.0f).withSizeKeepingCentre (220.0f, 36.0f).toNearestInt());
+            playBtn.setBounds (in.removeFromRight (124.0f).withSizeKeepingCentre (124.0f, 38.0f).toNearestInt());
+            in.removeFromRight (10.0f);
+            resetBtn.setBounds (in.removeFromRight (140.0f).withSizeKeepingCentre (140.0f, 38.0f).toNearestInt());
+            in.removeFromRight (10.0f);
+            shapeBox.setBounds (in.removeFromRight (200.0f).withSizeKeepingCentre (200.0f, 36.0f).toNearestInt());
             titleArea = in;
         }
         r.removeFromTop (14.0f);

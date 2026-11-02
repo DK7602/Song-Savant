@@ -9,6 +9,7 @@ namespace ss
         auto b = readBrief (form.description, g, form.styleId);
         if (form.key >= 0) b.key = form.key;
         if (form.bpm > 0) b.bpm = form.bpm;
+        else if (hostBpm > 0) b.bpm = hostBpm;          // inside a DAW: its tempo, unless the BPM box says otherwise
         return b;
     }
 

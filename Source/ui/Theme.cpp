@@ -57,6 +57,15 @@ namespace ss::ui
 
     bool isLightTheme()   { return lightFlag(); }
 
+    bool readFlag (const juce::String& key, bool fallback)   { return openSettings()->getBoolValue (key, fallback); }
+
+    void writeFlag (const juce::String& key, bool value)
+    {
+        auto file = openSettings();
+        file->setValue (key, value);
+        file->saveIfNeeded();
+    }
+
     void setLightTheme (bool on)
     {
         lightFlag() = on;
