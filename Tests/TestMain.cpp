@@ -1661,6 +1661,23 @@ namespace
             juce::PNGImageFormat png;
             check (out.openedOk() && png.writeImageToStream (img, out), "wrote " + f.getFileName());
             std::cout << "  " << f.getFullPathName() << std::endl;
+            if (name == "song")
+                if (auto* e = dynamic_cast<SongSavantEditor*> (ed.get()))
+                {
+                    // a click on the logo switches light / dark, like the sun / moon button
+                    auto& v = e->getView();
+                    const auto logo = v.getLogoArea();
+                    const bool before = ss::ui::isLightTheme();
+                    juce::ModifierKeys mods (juce::ModifierKeys::leftButtonModifier);
+                    const auto at = logo.getCentre();
+                    juce::MouseEvent click (juce::Desktop::getInstance().getMainMouseSource(), at, mods, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                                            &v, &v, juce::Time::getCurrentTime(), at, juce::Time::getCurrentTime(), 1, false);
+                    v.mouseUp (click);
+                    const bool switched = ss::ui::isLightTheme() != before;
+                    v.mouseUp (click);
+                    check (! logo.isEmpty() && logo.getX() < 60.0f && switched && ss::ui::isLightTheme() == before,
+                           "a click on the logo switches light / dark (and back)");
+                }
         };
         shoot ("song-empty", false, 1240, 820, 0);
         shoot ("song", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");

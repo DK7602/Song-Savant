@@ -179,6 +179,11 @@ Tags guessed from a preset's name or category are shown as guesses.
   owner may supply full-size originals.
 - Colors: deep navy and black, **gold**, royal blue and purple, with soft glows. Light theme: warm ivory and
   marble with the same accents.
+- **One logo drawing for both themes** (the owner, November 2026: the light theme's own owl and title looked different
+  from the dark ones). The light theme shows the dark theme's owl and title in deeper colours without the glow:
+  `Resources/owl-light.png` and `wordmark-light.png` are made from `owl.png` and `wordmark.png` by
+  `tools/make_light_logo.py`. The original light artwork stays in `docs/design/logo-light.png`. Clicking the logo
+  switches light / dark, like the owner's other apps.
 - Changes agreed for the design:
   - Add a **drum** slot.
   - **Flexible parts**: the style decides which parts a song needs (worship leans on pads and ambient guitar

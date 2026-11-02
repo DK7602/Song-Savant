@@ -41,8 +41,9 @@ Every page sits under one header. Hover over almost anything to see a tip.
 
 | Control | What it does |
 | --- | --- |
+| Logo | Click it to switch between the light and dark look (like Groove Grabber) |
 | ? | This manual (also the F1 key) |
-| Sun / moon | Light or dark look. Song Savant remembers your choice. |
+| Sun / moon | Light or dark look, the same as clicking the logo. Song Savant remembers your choice. |
 | Clipboard with a tick | The setup check: what Song Savant found on this computer |
 | SONG | Describe your song and get your palettes and starter parts |
 | ARRANGE | Your song's sections, and which parts play in each |
@@ -156,7 +157,7 @@ Every card that plays notes has a starter part: 8 bars in your song's key and te
 
 ## Working with Groove Grabber
 
-Groove Grabber builds drum kits from your own samples. The two apps work together, so your song gets kits made for it.
+Groove Grabber builds drum kits from your own samples. The two apps work together, so your song gets kits made for it. You need **Groove Grabber 1.0.12 or newer** for this, and **1.0.15 or newer** so Cubase doesn't freeze when it quits after using Groove Grabber. Groove Grabber has its own manual for everything else it does: its **?** button or F1.
 
 **The whole trip, in three clicks**
 
@@ -318,6 +319,7 @@ The plug-in doesn't make sound yet. Following the DAW's tempo and playing the pa
 | A word or artist you typed changed nothing | Check the gold "Your song" line. Use the Genre and Style boxes, or say it another way ("like Morgan Wallen"). |
 | The drum card shows loops or single drums | Your library may have few full kits for that style. Look further through the choices, send the song to Groove Grabber, or map an Analog Lab or HALion kit on DRUM MAPS. |
 | The drum part plays the wrong drums | Check which notes it uses (hover the drum card's MIDI tag). For Analog Lab and HALion kits, make a drum map on DRUM MAPS. |
+| Cubase freezes when you quit after using Groove Grabber | Install Groove Grabber 1.0.15 or newer. If it still happens, force-close Cubase and send Documents\Groove Grabber\Groove Grabber log.txt: its last lines show where it got stuck. |
 | Your Groove Grabber kit didn't land on the drum card | Song Savant needs to be open when you click SAVE KIT, and the kit has to be built for the song you sent. Saved kits always show up among the drum choices. |
 | Dragging MIDI into Cubase made a silent track | Drop it on the lane of a track that has the instrument, or set the new MIDI track's output to that instrument. |
 | The markers didn't appear in Cubase | Cubase puts them on a Marker track; add one if your project has none (Project > Add Track > Marker). |
@@ -343,4 +345,4 @@ The plug-in doesn't make sound yet. Following the DAW's tempo and playing the pa
 | The whole song into your DAW | ARRANGE: drag WHOLE SONG |
 | Learn your style | MASTERCLASS |
 | Name a kit's pads in Cubase | DRUM MAPS: drop the kit's preset, then load the .drm in MIDI > Drum Map Setup |
-| Light or dark | The sun / moon button |
+| Light or dark | Click the logo, or the sun / moon button |

@@ -13,7 +13,7 @@ class SongSavantProcessor;
 
 namespace ss::ui
 {
-    class MainView : public juce::Component, private juce::KeyListener
+    class MainView : public juce::Component, public juce::SettableTooltipClient, private juce::KeyListener
     {
     public:
         enum Page { song = 0, library = 1, setupCheck = 2, drumMaps = 3, masterclass = 4, arrange = 5 };
@@ -33,6 +33,11 @@ namespace ss::ui
         ArrangePage& getArrange()        { return arrangePage; }
         HelpPanel& getHelp()             { return help; }
         void showHelp();                 // the manual (the ? button, F1)
+        void toggleTheme();              // light / dark (the sun / moon button, or a click on the logo)
+        juce::Rectangle<float> getLogoArea() const   { return logoArea; }
+        void mouseMove (const juce::MouseEvent&) override;
+        void mouseExit (const juce::MouseEvent&) override;
+        void mouseUp (const juce::MouseEvent&) override;
         void parentHierarchyChanged() override;
 
     private:
@@ -59,7 +64,7 @@ namespace ss::ui
         ArrangePage arrangePage;
         HelpPanel help;
         juce::TooltipWindow tooltips { this, 500 };
-        juce::Rectangle<float> headerArea, subtitleArea;
+        juce::Rectangle<float> headerArea, subtitleArea, logoArea;   // logoArea: where the owl and the name are drawn
         int page = song;
     };
 }

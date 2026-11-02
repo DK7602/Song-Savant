@@ -15,7 +15,7 @@ namespace ss::ui
             addAndMakeVisible (t);
         }
         themeBtn.setTooltip ("Light or dark");
-        themeBtn.onClick = [this] { setLightTheme (! isLightTheme()); applyTheme(); };
+        themeBtn.onClick = [this] { toggleTheme(); };
         addAndMakeVisible (themeBtn);
         songTab.onClick = [this] { showPage (song); };
         libraryTab.onClick = [this] { showPage (library); };
@@ -43,6 +43,31 @@ namespace ss::ui
     {
         if (listeningTo != nullptr) listeningTo->removeKeyListener (this);
         setLookAndFeel (nullptr);
+    }
+
+    void MainView::toggleTheme()
+    {
+        setLightTheme (! isLightTheme());
+        applyTheme();
+    }
+
+    // like Groove Grabber and the other apps: a click on the logo switches light / dark
+    void MainView::mouseMove (const juce::MouseEvent& e)
+    {
+        const bool over = logoArea.contains (e.position);
+        setMouseCursor (over ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+        setTooltip (over ? "Light or dark" : juce::String());
+    }
+
+    void MainView::mouseExit (const juce::MouseEvent&)
+    {
+        setMouseCursor (juce::MouseCursor::NormalCursor);
+        setTooltip ({});
+    }
+
+    void MainView::mouseUp (const juce::MouseEvent& e)
+    {
+        if (logoArea.contains (e.position) && logoArea.contains (e.mouseDownPosition)) toggleTheme();
     }
 
     void MainView::showHelp()
@@ -129,12 +154,14 @@ namespace ss::ui
             sw *= fit;
             const float cy = h.getCentreY();
             const float ox = h.getX();
-            g.drawImage (owl, { ox - oc.getX() * so, cy - (float) owl.getHeight() * so * 0.5f, (float) owl.getWidth() * so, (float) owl.getHeight() * so },
-                         juce::RectanglePlacement::stretchToFit);
+            const juce::Rectangle<float> owlRect { ox - oc.getX() * so, cy - (float) owl.getHeight() * so * 0.5f,
+                                                   (float) owl.getWidth() * so, (float) owl.getHeight() * so };
+            g.drawImage (owl, owlRect, juce::RectanglePlacement::stretchToFit);
             const float wx = ox + oc.getWidth() * so + gap * fit;
-            g.drawImage (wordmark, { wx - wc.getX() * sw, cy - (float) wordmark.getHeight() * sw * 0.5f,
-                                     (float) wordmark.getWidth() * sw, (float) wordmark.getHeight() * sw },
-                         juce::RectanglePlacement::stretchToFit);
+            const juce::Rectangle<float> wordRect { wx - wc.getX() * sw, cy - (float) wordmark.getHeight() * sw * 0.5f,
+                                                    (float) wordmark.getWidth() * sw, (float) wordmark.getHeight() * sw };
+            g.drawImage (wordmark, wordRect, juce::RectanglePlacement::stretchToFit);
+            logoArea = owlRect.getUnion (wordRect).getIntersection (h.expanded (0.0f, 8.0f));
         }
         g.setColour (p.muted);
         g.setFont (sans (13.0f));
