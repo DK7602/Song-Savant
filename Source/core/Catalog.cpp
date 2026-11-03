@@ -143,6 +143,13 @@ namespace ss
         return list;
     }
 
+    const juce::StringArray& retiredArturiaPresets()
+    {
+        // presets Arturia's database still lists that Analog Lab V no longer offers (the owner looked, November 2026)
+        static const juce::StringArray list { "Smoker" };
+        return list;
+    }
+
     std::vector<Sound> readArturia (const juce::File& file, juce::String& problem, int* leftOut)
     {
         std::vector<Sound> out;
@@ -218,6 +225,7 @@ namespace ss
             Sound s;
             s.name = t (1);
             if (s.name.isEmpty()) return true;
+            if (retiredArturiaPresets().contains (s.name, true)) { ++left; return true; }
             s.instrument = "Analog Lab V";
             s.source = "Arturia";
             s.origin = t (2);

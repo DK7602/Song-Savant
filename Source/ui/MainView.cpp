@@ -38,6 +38,12 @@ namespace ss::ui
         addChildComponent (pianoRoll);
         pianoRoll.onDone = [this] { showPage (page); };
         songPage.onEditPart = [this] (const juce::String& role) { showPianoRoll (role, -1); };
+        songPage.onBlankSong = [this]
+        {
+            // the same sounds, an empty map: ARRANGE, to add your own sections (the full song stays, in the shape box)
+            arrangePage.setShape (SongShape::blank);
+            showPage (arrange);
+        };
         arrangePage.onEditPattern = [this] (const juce::String& role, int section) { showPianoRoll (role, section); };
         // a MIDI pattern dropped on a card or a box: that part (and section) in the piano roll, with the pattern in it
         songPage.onDropPart = [this] (const juce::String& role, const juce::File& f) { if (showPianoRoll (role, -1)) pianoRoll.dropFile (f); };

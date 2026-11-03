@@ -24,7 +24,7 @@ namespace ss::ui
         int layout (int width, int height);     // returns the width it needs (more than given: it scrolls)
         void paint (juce::Graphics&) override;
         void mouseMove (const juce::MouseEvent&) override;
-        void mouseExit (const juce::MouseEvent&) override   { hoverSection = hoverPart = -1; hoverHeader = hoverRuler = false; repaint(); }
+        void mouseExit (const juce::MouseEvent&) override   { hoverSection = hoverPart = -1; hoverHeader = hoverRuler = hoverAdd = false; repaint(); }
         void mouseDown (const juce::MouseEvent&) override;
         static bool editable (const ArrangementPart&);
         void mouseDrag (const juce::MouseEvent&) override;
@@ -51,6 +51,8 @@ namespace ss::ui
         // (the tests: a section being dragged, shown landing at `gap`; -1 for none)
         void showMove (int section, int gap, float x = -1.0f);
         int gapAt (float x) const;                                 // the place between sections nearest x
+        juce::Rectangle<float> addArea() const;                    // + ADD SECTION, after the last section
+        static constexpr float addW = 124.0f;
 
     private:
         juce::Rectangle<float> cellArea (int section, int part) const;
@@ -70,7 +72,7 @@ namespace ss::ui
         double playhead = -1.0;
         bool playheadMoving = false, onRuler = false;
         int hoverSection = -1, hoverPart = -1;
-        bool hoverHeader = false, hoverRuler = false;
+        bool hoverHeader = false, hoverRuler = false, hoverAdd = false;
     };
 
     class ArrangePage : public juce::Component, private juce::Timer
@@ -87,6 +89,7 @@ namespace ss::ui
         void refresh();                                      // the map for the song's current palette (also the tests)
         juce::File writeWholeSong();                         // the MIDI file to drag (also the tests)
         void togglePlay();                                   // PLAY / STOP (also the tests)
+        void setShape (SongShape);                           // the shape box (also the tests): a blank song keeps its own map
         std::function<void (const juce::String& role, int section)> onEditPattern;   // a box double-clicked
         std::function<void (const juce::String& role, int section, const juce::File&)> onDropPattern;   // a MIDI pattern dropped on a box
         juce::File writeBit (int section, int part);         // one box (section >= 0) or a whole part, as MIDI (also the tests)

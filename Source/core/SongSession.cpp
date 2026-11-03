@@ -36,6 +36,34 @@ namespace ss
         current = 0;
     }
 
+    void SongSession::forgetSound (const Catalog& c, const juce::String& key)
+    {
+        auto isIt = [&c, &key] (const Pick& x)
+        {
+            return x.isValid() && x.sound < (int) c.sounds.size() && soundKey (c.sounds[(size_t) x.sound]) == key;
+        };
+        for (auto& p : palettes)
+            for (auto& slot : p.slots)
+            {
+                std::vector<Pick> all;
+                if (slot.pick.isValid()) all.push_back (slot.pick);
+                for (auto& a : slot.alternatives) all.push_back (a);
+                const bool wasCurrent = isIt (slot.current());
+                std::vector<Pick> keep;
+                int choice = 0;
+                for (int i = 0; i < (int) all.size(); ++i)
+                {
+                    if (i == slot.choice) choice = (int) keep.size();     // (the one after it, when it goes)
+                    if (! isIt (all[(size_t) i])) keep.push_back (all[(size_t) i]);
+                }
+                if (keep.size() == all.size()) continue;
+                if (wasCurrent) { slot.locked = false; slot.keepKey.clear(); }
+                slot.pick = keep.empty() ? Pick() : keep.front();
+                slot.alternatives.assign (keep.empty() ? keep.end() : keep.begin() + 1, keep.end());
+                slot.choice = keep.empty() ? 0 : juce::jlimit (0, (int) keep.size() - 1, choice);
+            }
+    }
+
     void SongSession::resetArrangement (const std::vector<ArrangementPart>& parts)
     {
         auto shape = songShape;
@@ -53,6 +81,17 @@ namespace ss
     }
 
     //==============================================================================
+    void SongSession::setSongShape (SongShape shape)
+    {
+        if (shape == songShape) return;
+        if ((shape == SongShape::blank) != (songShape == SongShape::blank))
+        {
+            std::swap (patterns, patternsAside);
+            std::swap (arrangement, arrangementAside);
+        }
+        songShape = shape;
+    }
+
     bool SongSession::isMine (int section, const juce::String& role) const
     {
         if (section < 0 || section >= (int) arrangement.sections.size()) return false;
@@ -75,6 +114,7 @@ namespace ss
         }
         p.bars = s.bars;
         p.drums = part.type == PartType::drums;
+        if (arrangement.shape == SongShape::blank) return p;       // a blank song: an empty grid to write your own
         p.notes = suggestedNotes (plan, s, part, drums);
         if (p.drums) p.notes = drumsToLanes (p.notes, drums);      // drums are kept by drum, not by the kit's notes
         return p;
@@ -124,6 +164,18 @@ namespace ss
         x->setAttribute ("songShape", (int) songShape);
         if (! arrangement.empty()) x->addChildElement (arrangement.toXml().release());
         if (! patterns.empty()) x->addChildElement (patterns.toXml().release());
+        if (! arrangementAside.empty())
+        {
+            auto aside = arrangementAside.toXml();
+            aside->setTagName ("ArrangementAside");
+            x->addChildElement (aside.release());
+        }
+        if (! patternsAside.empty())
+        {
+            auto aside = patternsAside.toXml();
+            aside->setTagName ("PatternsAside");
+            x->addChildElement (aside.release());
+        }
         for (int i = 0; i < form.sections.size(); ++i)
         {
             auto* sx = x->createNewChildElement ("SongSection");
@@ -163,11 +215,15 @@ namespace ss
         form.chords = juce::StringArray::fromTokens (x.getStringAttribute ("chords"), " ", "");
         form.chords.removeEmptyStrings();
         partsSeed = (juce::uint32) juce::jmax (1, x.getIntAttribute ("partsSeed", 1));
-        songShape = (SongShape) juce::jlimit (0, 2, x.getIntAttribute ("songShape", 0));
+        songShape = (SongShape) juce::jlimit (0, 3, x.getIntAttribute ("songShape", 0));
         arrangement = {};
         if (auto* ax = x.getChildByName ("Arrangement")) arrangement = Arrangement::fromXml (*ax);
+        arrangementAside = {};
+        if (auto* ax = x.getChildByName ("ArrangementAside")) arrangementAside = Arrangement::fromXml (*ax);
         patterns.clear();
         if (auto* px = x.getChildByName ("Patterns")) patterns = PatternBook::fromXml (*px);
+        patternsAside.clear();
+        if (auto* px = x.getChildByName ("PatternsAside")) patternsAside = PatternBook::fromXml (*px);
         form.sections.clear();
         form.sectionChords.clear();
         for (auto* sx : x.getChildWithTagNameIterator ("SongSection"))

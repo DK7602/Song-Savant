@@ -1,4 +1,5 @@
 #include "LibraryPage.h"
+#include "core/HiddenSounds.h"
 #include "PluginProcessor.h"
 
 namespace ss::ui
@@ -104,6 +105,8 @@ namespace ss::ui
 
         addAndMakeVisible (copyBtn);
         copyBtn.onClick = [this] { copySelected(); };
+        addAndMakeVisible (hideBtn);
+        hideBtn.onClick = [this] { toggleHidden(); };
 
         refreshCatalog();
         startTimerHz (8);
@@ -175,7 +178,7 @@ namespace ss::ui
             if (s.name + "|" + s.instrument + "|" + s.library == beforeKey) { keep = (int) i; break; }
         }
         list.selectRow (keep);
-        copyBtn.setEnabled (selectedSound() != nullptr);
+        updateButtons();
         list.repaint();
         repaint();
     }
@@ -198,6 +201,31 @@ namespace ss::ui
     }
 
     void LibraryPage::selectRow (int row)                       { list.selectRow (row); }
+
+    void LibraryPage::updateButtons()
+    {
+        const auto* s = selectedSound();
+        copyBtn.setEnabled (s != nullptr);
+        hideBtn.setEnabled (s != nullptr);
+        const bool hid = s != nullptr && hidden::isHidden (*s);
+        hideBtn.setButtonText (hid ? "SUGGEST IT AGAIN" : "NOT IN MY LIBRARY");
+        hideBtn.setTooltip (hid ? "You said this sound isn't in your library: Song Savant will suggest it again"
+                                : "This sound isn't in your library any more (Analog Lab dropped it, say): Song Savant won't suggest it");
+    }
+
+    void LibraryPage::toggleHidden()
+    {
+        const auto* s = selectedSound();
+        if (s == nullptr) return;
+        const bool hid = hidden::isHidden (*s);
+        if (hid) hidden::show (*s);
+        else hidden::hide (*s);
+        copiedNote = hid ? "\"" + s->name + "\" can be suggested again (on the next NEW PALETTES)."
+                         : "\"" + s->name + "\" won't be suggested any more.";
+        updateButtons();
+        list.repaint();
+        repaint();
+    }
 
     void LibraryPage::themeChanged()
     {
@@ -247,10 +275,11 @@ namespace ss::ui
         g.setFont (sans (12.5f, true));
         g.drawText ((s.source == "Plug-in" ? "Plug-in: " + kindName (s.kind) : s.detail.isNotEmpty() ? s.detail : kindName (s.kind)).toUpperCase(), right.withTrimmedBottom (right.getHeight() * 0.48f),
                     juce::Justification::bottomRight, true);
-        juce::String badge = ! s.owned ? "NOT OWNED" : s.yours ? "YOURS" : juce::String();
+        const bool hid = hidden::isHidden (s);
+        juce::String badge = hid ? "NOT IN MY LIBRARY" : ! s.owned ? "NOT OWNED" : s.yours ? "YOURS" : juce::String();
         if (badge.isNotEmpty())
         {
-            g.setColour (! s.owned ? p.warn : p.good);
+            g.setColour (hid || ! s.owned ? p.warn : p.good);
             g.setFont (sans (11.5f, true));
             g.drawText (badge, right.withTrimmedTop (right.getHeight() * 0.55f), juce::Justification::topRight);
         }
@@ -359,7 +388,7 @@ namespace ss::ui
         }
 
         // how to load it, above the copy button
-        auto bottom = r.removeFromBottom (copyBtn.getHeight() + (copiedNote.isNotEmpty() ? 30.0f : 6.0f));
+        auto bottom = r.removeFromBottom (copyBtn.getHeight() + hideBtn.getHeight() + 8.0f + (copiedNote.isNotEmpty() ? 30.0f : 6.0f));
         if (copiedNote.isNotEmpty())
         {
             g.setColour (p.good);
@@ -414,7 +443,9 @@ namespace ss::ui
         {
             auto in = rightPanel.reduced (22.0f, 22.0f);
             copyBtn.setBounds (in.removeFromBottom (44.0f).toNearestInt());
-            detailsArea = in.withTrimmedBottom (-44.0f);   // the details drawing leaves room for the button itself
+            in.removeFromBottom (8.0f);
+            hideBtn.setBounds (in.removeFromBottom (32.0f).toNearestInt());
+            detailsArea = in.withTrimmedBottom (-84.0f);   // the details drawing leaves room for the buttons themselves
         }
     }
 }

@@ -106,6 +106,9 @@ Click a card to see its details in the panel at the bottom:
 | HOW TO LOAD IT | The steps to load this sound in your DAW |
 | COPY NAME | Copies the sound's name, ready to paste (see the next chapter) |
 | SEND TO GROOVE GRABBER | On the drum card only (see Working with Groove Grabber) |
+| NOT IN MY LIBRARY? | The sound isn't there when you look for it (Analog Lab dropped it, say). Pick **It isn't there: don't suggest it again**: the card moves on to its next choice, and Song Savant never suggests that sound again. Bring it back on the LIBRARY page (SUGGEST IT AGAIN). |
+
+**BLANK SONG** (next to PLAY ALL) starts a song of your own with these sounds: no sections and no notes from Song Savant, just your palette. It takes you to ARRANGE with one empty section. See **Your own blank song** in the ARRANGE chapter.
 
 **NEW PALETTES** makes three fresh palettes for the same song. Locked parts keep their sound in all of them, so you can lock what you love and keep looking for the rest.
 
@@ -257,10 +260,22 @@ The ARRANGE page lays your palette's parts out across the whole song. Make your 
     - **Delete this section**.
 - **Right-click the empty space after the last section** to add one at the end.
 - **UNDO** and **REDO** (next to the transport, or Ctrl+Z and Ctrl+Y) take back any change to the map, one at a time: a move, a section added or deleted, a box switched, a new length, even RESET MAP. They remember your changes until the map starts fresh (a new style, shape or palette).
-- **The shape box** (top) picks the song's shape: **The full song**, **A short song** (one verse and chorus fewer, shorter intro and outro), or **Key Compass: ...** (your Key Compass song's own sections and chords).
+- **The shape box** (top) picks the song's shape: **The full song**, **A short song** (one verse and chorus fewer, shorter intro and outro), **Key Compass: ...** (your Key Compass song's own sections and chords), or **A blank song** (see below).
+- **+ ADD SECTION** (after the last section) adds a section at the end of the song.
 - **RESET MAP** (it used to say START OVER) puts the map back the way it came for that shape, undoing your changes to it. It doesn't play anything. (UNDO brings your map back.)
 
 Your changes stay while the song stays the same. Swapping a sound (a different drum kit, say) keeps them. Changing the style, the shape or the parts starts a fresh map.
+
+**Your own blank song**
+
+Click **BLANK SONG** on the SONG page (or pick **A blank song** in the shape box). You keep your palette's sounds, and everything else is yours:
+
+1. **The map starts with one empty 8-bar Verse.** Add your sections with **+ ADD SECTION** or by right-clicking a section (**Add a section before / after**). Drag them into order, and use **Add bars / Remove bars** to set their lengths.
+2. **Your chords.** Double-click any box to open the piano roll for that section, then **click a chord along the top** (over each bar) and pick your own: the chords in your key (with their numbers), richer ones, or **Any chord**. Every section with that name gets it (change the Chorus once, every chorus has it).
+3. **Your notes.** Write each part in the piano roll: click notes in, or turn on **STAMP CHORDS** with **THIS BAR** and click along the bars to lay down your chords. A part comes in where you write it (its box lights up). **START FROM > Song Savant's idea for this part** gives you a starting point if you want one.
+4. **Nothing plays that you didn't write.** Song Savant doesn't fill in any part of a blank song. PLAY SONG, WHOLE SONG and the boxes' drags all use your notes.
+
+Your full song is kept while you work on the blank one: pick **The full song** in the shape box to go back to it (with your changes), and **A blank song** to come back to yours. A blank song stays when you change the style or the description. **RESET MAP** empties it again (UNDO brings it back).
 
 **WHOLE SONG** (top right) drags it all into your DAW: one track per part with each section's starter parts in place, the tempo and key, and a **marker for every section** (in Cubase, on the Marker track). The chip shows the length in bars and minutes.
 
@@ -294,7 +309,9 @@ The piano roll is where you change a part note by note, or write your own from a
 | ALONE / WITH THE BAND | Hear just this part, or with everything else in the section |
 | UNDO / REDO | Ctrl+Z / Ctrl+Y |
 
-**The grid.** The keyboard is down the left: click a key to hear it. The rows of your song's key are brighter, and in each bar the notes of that bar's chord are lit gold (the brightest is the chord's root), so you can see which notes fit. The chords run along the top. Under the notes, the **velocity** lane shows how hard each note plays.
+**The grid.** The keyboard is down the left: click a key to hear it. The rows of your song's key are brighter, and in each bar the notes of that bar's chord are lit gold (the brightest is the chord's root), so you can see which notes fit. The chords run along the top.
+
+**Your own chords.** Click a chord along the top (over a bar) to change it: the chords in your key with their numbers (I, IV, V, vi...), **Richer** ones (sus, 7ths), or **Any chord** (every root, major, minor, 7, maj7, m7, sus2, sus4, dim). Every section with this name gets it. The gold notes, STAMP CHORDS' THIS BAR and the chord chips follow your chords, and so do the parts Song Savant suggests here (your own notes stay as you wrote them). **Song Savant's chord here** puts one bar back; **All of Song Savant's chords** puts the whole section back. Under the notes, the **velocity** lane shows how hard each note plays.
 
 **Editing with the mouse**
 
@@ -407,7 +424,7 @@ The LIBRARY page lists every sound Song Savant found, from every library it can 
 | Library | What Song Savant reads |
 | --- | --- |
 | Steinberg (HALion, HALion Sonic, Retrologue, Padshop, Groove Agent, Drum Machine) | MediaBay's database: every preset with its tags (category, style, character, rating) |
-| Arturia (Analog Lab) | Arturia's preset database. Presets you'd have to buy are marked NOT OWNED and never suggested. Presets for instruments Analog Lab no longer has are left out. |
+| Arturia (Analog Lab) | Arturia's preset database. Presets you'd have to buy are marked NOT OWNED and never suggested. Presets for instruments Analog Lab no longer has are left out, and so are single presets Analog Lab V dropped (Smoker). |
 | Cymatics | The preset files in each plug-in's folder (names and folders, so the kind of sound is a guess) |
 | Your own .vstpreset files | Marked YOURS |
 | Groove Grabber | The kits you saved, as drum kits |
@@ -422,6 +439,8 @@ The LIBRARY page lists every sound Song Savant found, from every library it can 
 - **ONLY MY OWN PRESETS:** shows only presets you saved yourself.
 
 Click a sound to see where it lives and **HOW TO LOAD IT**, and click **COPY NAME** to copy its name.
+
+**NOT IN MY LIBRARY** (above COPY NAME): a sound Song Savant lists but you can't find in the instrument (Arturia's list sometimes keeps presets Analog Lab no longer has). Click it and Song Savant never suggests that sound again; the list marks it NOT IN MY LIBRARY. Click **SUGGEST IT AGAIN** to bring it back (it shows up on the next NEW PALETTES).
 
 **REFRESH LIBRARY** reads your libraries again, for example after installing a new instrument or library. Groove Grabber kits you save show up by themselves; you don't need to refresh for those.
 
@@ -532,6 +551,9 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | Take back a change to the map | ARRANGE: UNDO (Ctrl+Z); REDO (Ctrl+Y) |
 | Change a part note by note | A card's EDIT, or double-click a box on ARRANGE: the piano roll |
 | Write your own part | The piano roll: START FROM > An empty grid, then click to add notes |
+| A whole song of your own with these sounds | SONG: BLANK SONG, then add sections on ARRANGE |
+| Change a section's chords | The piano roll: click a chord along the top |
+| A sound that isn't in your library | SONG: NOT IN MY LIBRARY? (or LIBRARY: NOT IN MY LIBRARY) |
 | The same change in every chorus | Edit the Chorus pattern once (MAKE ONE DIFFERENT for one that isn't) |
 | Copy notes | The piano roll: select, Ctrl+C, then Ctrl+V (another bar, section or part) |
 | Place whole chords | The piano roll: STAMP CHORDS, pick THIS BAR (or a chord), click the grid |

@@ -32,12 +32,14 @@ namespace ss
         juce::StringArray chords;                 // from a Key Compass song, one per bar (empty: the style's progression)
         std::map<juce::String, juce::String> play;// role -> "" (silent), "on"; the drums: "light", "groove", "build", "full"
         std::map<juce::String, juce::String> patterns;   // role -> the section's own pattern, when it was made different
+        bool ownChords = false;                   // `chords` were picked by you (not a Key Compass song's)
         juce::String modeFor (const juce::String& role) const;
         juce::String patternFor (const juce::String& role) const;   // the pattern the part plays here: its own, or the section's name
     };
 
-    // The song shapes on offer: the style's full song, a short one, and the Key Compass song's own sections
-    enum class SongShape { full = 0, shortSong = 1, keyCompass = 2 };
+    // The song shapes on offer: the style's full song, a short one, the Key Compass song's own sections, and a blank song
+    // (one empty section: you add the sections and write every part yourself; nothing is suggested)
+    enum class SongShape { full = 0, shortSong = 1, keyCompass = 2, blank = 3 };
 
     struct Arrangement
     {
@@ -59,7 +61,8 @@ namespace ss
         bool empty() const                        { return sections.isEmpty(); }
     };
 
-    juce::StringArray songShapeNames (const KeyCompassShape&);       // "The full song", "A short song", "Key Compass: Back Roads"
+    juce::StringArray songShapeNames (const KeyCompassShape&);       // "The full song", "A short song", "Key Compass: Back Roads", "A blank song"
+    std::vector<SongShape> songShapes (const KeyCompassShape&);      // (the same, in the same order)
     juce::String arrangementSignature (const SongBrief&, const std::vector<ArrangementPart>&, const KeyCompassShape&, SongShape);
     Arrangement makeArrangement (const PartsPlan&, const std::vector<ArrangementPart>&, const KeyCompassShape&, SongShape);
 
@@ -81,6 +84,12 @@ namespace ss
     juce::StringArray newSectionNames (const StyleGuide&, const Arrangement&);         // kinds the song doesn't have yet
 
     std::vector<Chord> sectionChords (const PartsPlan&, const ArrangementSection&);
+    // Your own chord for a bar of a section, in every section of that name ("Chorus": every chorus). The parts Song
+    // Savant suggests there follow it; your own notes stay as they are. An empty chord puts Song Savant's back.
+    void setSectionChord (Arrangement&, const PartsPlan&, int section, int bar, const juce::String& chord);
+    void clearSectionChords (Arrangement&, int section);              // every bar back to Song Savant's (that name's sections)
+    bool hasOwnChords (const Arrangement&, int section);              // chosen by you (not a Key Compass song's own)
+    std::vector<Chord> styleChords (const PartsPlan&, const ArrangementSection&);   // what Song Savant would play there
 
     // ---- Patterns (the piano roll). A part plays one pattern per section name ("Chorus": every chorus), unless a
     // section was made different. The patterns you edited are in a PatternBook; the rest are the suggestion.

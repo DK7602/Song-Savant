@@ -220,7 +220,7 @@ namespace ss::ui
             const auto pos = e.position;
             mouseBeat = notes.contains (pos) ? xBeat (pos.x) : -1.0;
             auto shape = juce::MouseCursor::NormalCursor;
-            if (keys.contains (pos)) shape = juce::MouseCursor::PointingHandCursor;
+            if (keys.contains (pos) || ruler.contains (pos)) shape = juce::MouseCursor::PointingHandCursor;
             else if (notes.contains (pos))
             {
                 const int i = page.editor.noteAt (xBeat (pos.x), yPitch (pos.y));
@@ -255,6 +255,14 @@ namespace ss::ui
                     drag = Drag::velocity;
                     repaint();
                 }
+                return;
+            }
+            if (ruler.contains (pos) && ! e.mods.isPopupMenu())
+            {
+                // a bar's chord, along the top: pick your own
+                const int bar = (int) std::floor (xBeat (pos.x) / 4.0);
+                const auto x = (float) beatX (bar * 4.0);
+                page.showChordMenu (bar, localAreaToGlobal (juce::Rectangle<float> (x, ruler.getY(), (float) (4.0 * pxPerBeat), ruler.getHeight()).toNearestInt()));
                 return;
             }
             if (! notes.contains (pos)) return;
@@ -1191,6 +1199,87 @@ namespace ss::ui
         });
     }
 
+    //==============================================================================
+    // Your own chords: click a bar's chord along the top of the grid
+    void PianoRollPage::showChordMenu (int bar, juce::Rectangle<int> screenArea)
+    {
+        const auto& a = proc.song.arrangement;
+        if (section < 0 || section >= (int) a.sections.size()) return;
+        const auto& s = a.sections[(size_t) section];
+        if (bar < 0 || bar >= s.bars) return;
+        const auto now = sectionChords (plan, s);
+        const auto theirs = styleChords (plan, s);
+        const auto current = bar < (int) now.size() ? now[(size_t) bar].name : juce::String();
+        const int tonic = plan.tonic();
+        const bool minor = plan.minor(), flats = keyUsesFlats (plan.key);
+
+        juce::StringArray found;                         // item r: found[r - 1]
+        auto add = [&found, &current] (juce::PopupMenu& m, const Chord& c, const juce::String& label)
+        {
+            found.add (c.name);
+            m.addItem (found.size(), label, true, c.name == current);
+        };
+        juce::PopupMenu m;
+        m.addSectionHeader ("BAR " + juce::String (bar + 1) + " OF THE " + s.name.toUpperCase() + (current.isNotEmpty() ? ": " + current : juce::String()));
+        m.addSectionHeader ("In " + keyName (plan.key));
+        const juce::StringArray numerals = minor ? juce::StringArray { "i", "ii°", "III", "iv", "v", "VI", "VII" }
+                                                 : juce::StringArray { "I", "ii", "iii", "IV", "V", "vi", "vii°" };
+        for (auto& n : numerals)
+            if (auto c = chordFromRoman (n, tonic, minor, flats)) add (m, *c, c->name + "   (" + n + ")");
+        juce::PopupMenu richer, any;
+        const std::vector<std::pair<int, const char*>> richerList = minor
+            ? std::vector<std::pair<int, const char*>> { { 0, "m7" }, { 0, "sus2" }, { 5, "m7" }, { 8, "maj7" }, { 10, "7" }, { 7, "7" }, { 7, "" } }
+            : std::vector<std::pair<int, const char*>> { { 0, "sus2" }, { 0, "maj7" }, { 5, "maj7" }, { 7, "7" }, { 7, "sus4" }, { 2, "m7" }, { 9, "m7" }, { 10, "" }, { 5, "m" } };
+        for (auto& [degree, suffix] : richerList)
+            if (auto c = chordFromName (pitchName ((tonic + degree) % 12, flats) + suffix)) add (richer, *c, c->name);
+        for (int root = 0; root < 12; ++root)
+        {
+            juce::PopupMenu q;
+            for (auto* suffix : { "", "m", "7", "maj7", "m7", "sus2", "sus4", "dim" })
+                if (auto c = chordFromName (pitchName (root, flats) + suffix)) add (q, *c, c->name);
+            any.addSubMenu (pitchName (root, flats), q);
+        }
+        m.addSubMenu ("Richer", richer);
+        m.addSubMenu ("Any chord", any);
+        m.addSeparator();
+        const auto songSavants = bar < (int) theirs.size() ? theirs[(size_t) bar].name : juce::String();
+        m.addItem (9001, "Song Savant's chord here" + (songSavants.isNotEmpty() ? " (" + songSavants + ")" : juce::String()),
+                   hasOwnChords (a, section) && songSavants != current);
+        m.addItem (9002, "All of Song Savant's chords for the " + s.name, hasOwnChords (a, section));
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (screenArea),
+                         [safe = juce::Component::SafePointer<PianoRollPage> (this), found, bar] (int r)
+        {
+            if (safe == nullptr || r <= 0) return;
+            if (r == 9002) safe->resetChords();
+            else if (r == 9001) safe->pickChord (bar, {});
+            else if (r <= found.size()) safe->pickChord (bar, found[r - 1]);
+        });
+    }
+
+    void PianoRollPage::pickChord (int bar, const juce::String& chord)
+    {
+        setSectionChord (proc.song.arrangement, plan, section, bar, chord);
+        chordsChanged();
+    }
+
+    void PianoRollPage::resetChords()
+    {
+        clearSectionChords (proc.song.arrangement, section);
+        chordsChanged();
+    }
+
+    void PianoRollPage::chordsChanged()
+    {
+        // the gold chord notes, the chord chips, the other parts (Song Savant's follow the new chords) and what plays
+        stampIndex = 0;
+        buildChordChips();
+        findGhosts();
+        updateSketch();
+        resized();
+        grid->invalidate();
+        repaint();
+    }
+
     std::vector<int> PianoRollPage::voiced (const Chord& c) const
     {
         auto iv = c.intervals;
@@ -1329,6 +1418,11 @@ namespace ss::ui
             auto suggestion = suggestedNotes (plan, a.sections[(size_t) section], *p, kit);
             if (isDrums()) suggestion = drumsToLanes (suggestion, kit);
             editor.replaceAll (suggestion);
+            if (a.shape == SongShape::blank)
+            {
+                edited();                    // a blank song plays only what's yours: the idea becomes yours
+                return;
+            }
             proc.song.forgetPattern (section, role);
             seenEdits = editor.edits();
             updateSketch();
@@ -1403,7 +1497,7 @@ namespace ss::ui
     void PianoRollPage::showStartMenu()
     {
         juce::PopupMenu m;
-        m.addItem (1, "Song Savant's suggestion", true);
+        m.addItem (1, proc.song.arrangement.shape == SongShape::blank ? "Song Savant's idea for this part" : "Song Savant's suggestion", true);
         m.addItem (2, "An empty grid (make your own)", true);
         const auto& a = proc.song.arrangement;
         const auto names = patternNames (a, role);
@@ -1527,8 +1621,8 @@ namespace ss::ui
         }
         g.setColour (p.dim);
         g.setFont (sans (12.0f));
-        g.drawText ("Click: add a note  |  drag: move  |  drag its end: longer / shorter  |  double-click or right-click: delete  |  Ctrl + drag: select  |  "
-                    "Ctrl+C / V / D: copy, paste, duplicate  |  Ctrl+Z: undo  |  arrows: up / down  |  Space: play",
+        g.drawText ("Click a chord along the top: pick your own  |  click: add a note  |  drag: move  |  drag its end: longer / shorter  |  "
+                    "double-click or right-click: delete  |  Ctrl + drag: select  |  Ctrl+C / V / D  |  Ctrl+Z: undo  |  Space: play",
                     hintArea, juce::Justification::centredLeft, true);
     }
 

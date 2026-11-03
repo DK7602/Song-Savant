@@ -1,4 +1,5 @@
 #include "Palette.h"
+#include "HiddenSounds.h"
 #include <cmath>
 #include <algorithm>
 #include <map>
@@ -127,6 +128,7 @@ namespace ss
         {
             for (int i = 0; i < (int) c.sounds.size(); ++i)
             {
+                if (hidden::isHidden (c.sounds[(size_t) i])) continue;    // you said it isn't in your library
                 juce::StringArray why;
                 const float sc = scoreSound (c.sounds[(size_t) i], parts[p], brief, &why);
                 if (sc > 0.0f) ranked[p].push_back ({ i, sc, why });

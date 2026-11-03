@@ -60,6 +60,10 @@ namespace ss::ui
         int numStampChords() const                       { return (int) stampChords.size(); }
         void togglePlay();
         juce::File writeMidi();                          // what the drag chip drags
+        // your own chords: a bar's chord (in every section of this name; empty: Song Savant's again), or all back
+        void pickChord (int bar, const juce::String& chord);
+        void resetChords();
+        void showChordMenu (int bar, juce::Rectangle<int> screenArea);   // a chord along the top, clicked
         juce::Rectangle<int> gridBounds() const;
 
     private:
@@ -83,6 +87,7 @@ namespace ss::ui
         void preview (int note);                         // hear a note straight away
         juce::String patternName() const;
         void findGhosts();                               // the other parts in this section (worked out once, not at every repaint)
+        void chordsChanged();
         std::vector<PatternNote> ghostNotes;
         std::vector<juce::Colour> ghostColours;
         DrumNotes kit;                                   // the drum card's own notes (its drum map, or Groove Grabber's pads)

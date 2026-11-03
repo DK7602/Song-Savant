@@ -46,7 +46,9 @@ namespace ss::ui
         void timerCallback() override;
         int getNumRows() override                       { return (int) rows.size(); }
         void paintListBoxItem (int row, juce::Graphics&, int w, int h, bool selected) override;
-        void selectedRowsChanged (int) override         { copiedNote.clear(); copyBtn.setEnabled (selectedSound() != nullptr); repaint(); }
+        void selectedRowsChanged (int) override         { copiedNote.clear(); updateButtons(); repaint(); }
+        void updateButtons();
+        void toggleHidden();
         void listBoxItemDoubleClicked (int, const juce::MouseEvent&) override   { copySelected(); }
 
         void applyFilter();
@@ -67,7 +69,8 @@ namespace ss::ui
         PillButton ownedToggle { "ONLY SOUNDS I OWN", PillButton::Style::subtle },
                    yoursToggle { "ONLY MY OWN PRESETS", PillButton::Style::subtle },
                    refreshBtn { "REFRESH LIBRARY", PillButton::Style::outline },
-                   copyBtn { "COPY NAME", PillButton::Style::gold };
+                   copyBtn { "COPY NAME", PillButton::Style::gold },
+                   hideBtn { "NOT IN MY LIBRARY", PillButton::Style::subtle };   // or SUGGEST IT AGAIN, for one you hid
         juce::TextEditor searchBox;
         juce::ListBox list { "sounds", this };
         juce::String copiedNote;

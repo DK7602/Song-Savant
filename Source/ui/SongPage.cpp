@@ -1,4 +1,5 @@
 #include "SongPage.h"
+#include "core/HiddenSounds.h"
 #include "PluginProcessor.h"
 #include "core/Siblings.h"
 #include "core/Paths.h"
@@ -360,6 +361,27 @@ namespace ss::ui
         };
         addAndMakeVisible (choices);
         copyBtn.onClick = [this] { copySelected(); };
+        blankBtn.setTooltip ("A blank song with these sounds: add your own sections on ARRANGE, then your own chords and notes in each one");
+        blankBtn.onClick = [this]
+        {
+            if (proc.song.currentPalette() == nullptr) return;
+            if (onBlankSong) onBlankSong();
+        };
+        addAndMakeVisible (blankBtn);
+        notThereBtn.setTooltip ("This sound isn't in your library any more (Analog Lab dropped it, say): Song Savant won't suggest it again");
+        notThereBtn.onClick = [this]
+        {
+            auto* s = selectedSlot();
+            if (s == nullptr || catalog == nullptr || ! s->current().isValid()) return;
+            const auto& snd = catalog->sounds[(size_t) s->current().sound];
+            juce::PopupMenu m;
+            m.addSectionHeader ("\"" + snd.name + "\" (" + snd.instrument + ")");
+            m.addItem (1, "It isn't there: don't suggest it again");
+            m.addItem (2, "Keep suggesting it");
+            m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&notThereBtn),
+                             [safe = juce::Component::SafePointer<SongPage> (this)] (int r) { if (safe != nullptr && r == 1) safe->hideSelected(); });
+        };
+        addChildComponent (notThereBtn);
         addAndMakeVisible (copyBtn);
         sendBtn.setTooltip ("Send your song (style, key, tempo and sections) to Groove Grabber. It builds four kits for it from your own samples, "
                             "with the 808 tuned to the key. The kits you save there show up here as drum choices.");
@@ -665,6 +687,18 @@ namespace ss::ui
         return placed;
     }
 
+    void SongPage::hideSelected()
+    {
+        auto* s = selectedSlot();
+        if (s == nullptr || catalog == nullptr || ! s->current().isValid()) return;
+        const auto snd = catalog->sounds[(size_t) s->current().sound];
+        hidden::hide (snd);
+        proc.song.forgetSound (*catalog, soundKey (snd));
+        refresh();
+        copiedNote = "\"" + snd.name + "\" won't be suggested again. To bring it back: LIBRARY, find it, SUGGEST IT AGAIN.";
+        repaint();
+    }
+
     void SongPage::copySelected()
     {
         auto* s = selectedSlot();
@@ -743,6 +777,9 @@ namespace ss::ui
         copyBtn.setVisible (sel != nullptr);
         copyBtn.setEnabled (sel != nullptr && sel->current().isValid());
         sendBtn.setVisible (sel != nullptr && partTypeFor (sel->part) == PartType::drums);
+        notThereBtn.setVisible (sel != nullptr && sel->current().isValid() && catalog != nullptr);
+        blankBtn.setEnabled (pal != nullptr);
+        blankBtn.setToggleState (proc.song.songShape == SongShape::blank, juce::dontSendNotification);
         resized();
         repaint();
     }
@@ -949,6 +986,8 @@ namespace ss::ui
         ideaBtn.setBounds (bar.removeFromRight (120.0f * k).withSizeKeepingCentre (120.0f * k, 38.0f).toNearestInt());
         bar.removeFromRight (8.0f);
         playBtn.setBounds (bar.removeFromRight (100.0f * k).withSizeKeepingCentre (100.0f * k, 38.0f).toNearestInt());
+        bar.removeFromRight (8.0f);
+        blankBtn.setBounds (bar.removeFromRight (124.0f * k).withSizeKeepingCentre (124.0f * k, 38.0f).toNearestInt());
         barHint = bar.withLeft (newBtn.getRight() + 16.0f).withTrimmedRight (12.0f);
         r.removeFromTop (12.0f);
 
@@ -970,6 +1009,8 @@ namespace ss::ui
         {
             auto in = detailsPanel.reduced (22.0f, 18.0f);
             whyArea = in.removeFromLeft (in.getWidth() * 0.38f);
+            // (at the end of the part's line, over the sound's name: where there's room)
+            notThereBtn.setBounds (whyArea.withHeight (22.0f).translated (0.0f, -3.0f).removeFromRight (juce::jmin (160.0f, whyArea.getWidth() * 0.5f)).toNearestInt());
             in.removeFromLeft (24.0f);
             auto mid = in.removeFromLeft (in.getWidth() * 0.5f);
             choicesTitle = mid.removeFromTop (18.0f);

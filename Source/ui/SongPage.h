@@ -77,6 +77,8 @@ namespace ss::ui
         bool checkGrooveGrabberKits();
         void showForm();                              // shows the song's form again (after the Masterclass changed it)
         std::function<void (const juce::String& role)> onEditPart;   // a card's EDIT: the piano roll
+        std::function<void()> onBlankSong;           // BLANK SONG: ARRANGE, with an empty map to fill yourself
+        void hideSelected();                         // NOT IN MY LIBRARY (also the tests): never suggested again
         std::function<void (const juce::String& role, const juce::File&)> onDropPart;   // a MIDI pattern dropped on a card
         void visibilityChanged() override;
 
@@ -110,7 +112,9 @@ namespace ss::ui
                    copyBtn { "COPY NAME", PillButton::Style::gold },
                    ideaBtn { "NEW IDEA", PillButton::Style::outline },
                    playBtn { "PLAY ALL", PillButton::Style::outline },
-                   sendBtn { "SEND TO GROOVE GRABBER", PillButton::Style::outline };
+                   sendBtn { "SEND TO GROOVE GRABBER", PillButton::Style::outline },
+                   blankBtn { "BLANK SONG", PillButton::Style::outline },
+                   notThereBtn { "NOT IN MY LIBRARY?", PillButton::Style::subtle };
         DragChip allParts { "ALL PARTS", DragChip::Kind::midi };
         juce::OwnedArray<PillButton> tabs;
         juce::OwnedArray<PartCard> cards;

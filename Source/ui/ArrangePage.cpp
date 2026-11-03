@@ -85,7 +85,7 @@ namespace ss::ui
         if (arr == nullptr || parts == nullptr || arr->empty()) { setSize (width, height); return width; }
         const int rows = std::max (1, (int) parts->size());
         rowH = juce::jlimit (26.0f, 44.0f, ((float) height - headerH - 8.0f) / (float) rows);
-        const float avail = (float) width - labelW - 8.0f;
+        const float avail = (float) width - labelW - addW - 8.0f;      // (room for + ADD SECTION at the end)
         const float perBar = juce::jmax (7.0f, avail / (float) juce::jmax (1, arr->totalBars()));
         float x = labelW;
         for (auto& s : arr->sections)
@@ -95,10 +95,16 @@ namespace ss::ui
             columnW.push_back (w);
             x += w;
         }
-        int needed = (int) std::ceil (x + 8.0f);
+        int needed = (int) std::ceil (x + addW + 8.0f);       // (+ ADD SECTION after the last section)
         if (needed <= width + 2) needed = width;          // it fits (rounding aside): no scroll bar
         setSize (needed, (int) (headerH + rowH * (float) rows + 8.0f));
         return needed;
+    }
+
+    juce::Rectangle<float> ArrangementGrid::addArea() const
+    {
+        if (columnX.empty()) return {};
+        return { columnX.back() + columnW.back() + 6.0f, rulerH + 2.0f, addW - 12.0f, headerH - rulerH - 4.0f };
     }
 
     juce::Rectangle<float> ArrangementGrid::headerArea (int s) const
@@ -161,14 +167,17 @@ namespace ss::ui
         bool h;
         hitTestAt (e.position, s, p, h);
         const bool ruler = e.position.y < rulerH && e.position.x >= labelW && ! columnX.empty();
-        if (s != hoverSection || p != hoverPart || h != hoverHeader || ruler != hoverRuler)
+        const bool add = addArea().contains (e.position);
+        if (s != hoverSection || p != hoverPart || h != hoverHeader || ruler != hoverRuler || add != hoverAdd)
         {
             hoverSection = s;
             hoverPart = p;
             hoverHeader = h;
             hoverRuler = ruler;
-            setMouseCursor ((s >= 0 && (h || p >= 0)) || ruler ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
-            setTooltip (ruler ? "Click or drag here to move the playhead"
+            hoverAdd = add;
+            setMouseCursor ((s >= 0 && (h || p >= 0)) || ruler || add ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+            setTooltip (add ? "Add a section at the end of the song"
+                        : ruler ? "Click or drag here to move the playhead"
                         : h && s >= 0 ? "Click: change this section (add or remove bars, add a section...)  |  drag it left or right to move it"
                         : p >= 0 && parts != nullptr && (*parts)[(size_t) p].type == PartType::drums
                               ? "Click: no drums, light, groove, build, full  |  drag it into your DAW for just this bit"
@@ -195,6 +204,13 @@ namespace ss::ui
         if (pressLabel) pressPart = (int) ((e.position.y - headerH) / rowH);
         draggedOut = false;
 
+        // + ADD SECTION: the menu to add one at the end
+        if (! onRuler && arr != nullptr && addArea().contains (e.position) && onSection)
+        {
+            menuShown = true;
+            onSection ((int) arr->sections.size(), localAreaToGlobal (addArea().toNearestInt()));
+            return;
+        }
         // right-click anywhere in a section (its name or a box): its menu; past the last section: add one at the end
         if (e.mods.isPopupMenu() && ! onRuler && ! pressLabel && arr != nullptr && ! columnX.empty() && onSection)
         {
@@ -420,6 +436,21 @@ namespace ss::ui
             }
         }
 
+        // + ADD SECTION, after the last one
+        if (const auto add = addArea(); ! add.isEmpty())
+        {
+            juce::Path box, dashed;
+            box.addRoundedRectangle (add, 8.0f);
+            const float dashes[] = { 6.0f, 5.0f };
+            juce::PathStrokeType (1.5f).createDashedStroke (dashed, box, dashes, 2);
+            g.setColour (hoverAdd ? pl.purple.withAlpha (0.3f) : pl.panelHi.withAlpha (0.25f));
+            g.fillRoundedRectangle (add, 8.0f);
+            g.setColour (pl.gold.withAlpha (hoverAdd ? 1.0f : 0.7f));
+            g.fillPath (dashed);
+            g.setFont (sans (12.5f, true));
+            g.drawFittedText ("+ ADD\nSECTION", add.reduced (6.0f).toNearestInt(), juce::Justification::centred, 2);
+        }
+
         // the sections, across
         int bar = 1;
         for (size_t s = 0; s < arr->sections.size(); ++s)
@@ -512,12 +543,7 @@ namespace ss::ui
     //==============================================================================
     ArrangePage::ArrangePage (SongSavantProcessor& p) : proc (p)
     {
-        shapeBox.onChange = [this]
-        {
-            proc.song.songShape = (SongShape) juce::jlimit (0, 2, shapeBox.getSelectedItemIndex());
-            proc.song.resetArrangement (parts);
-            changed();
-        };
+        shapeBox.onChange = [this] { setShape ((SongShape) juce::jlimit (0, 3, shapeBox.getSelectedId() - 1)); };
         addAndMakeVisible (shapeBox);
         resetBtn.setTooltip ("Put the map back the way it came for this song shape, undoing your changes to it");
         resetBtn.onClick = [this] { edit ([this] (Arrangement&) { proc.song.resetArrangement (parts); }); };
@@ -650,6 +676,17 @@ namespace ss::ui
         }
     }
 
+    void ArrangePage::setShape (SongShape shape)
+    {
+        if (shape == proc.song.songShape) return;
+        const bool blankBefore = proc.song.songShape == SongShape::blank;
+        proc.song.setSongShape (shape);
+        // into or out of a blank song: each keeps its own map (made fresh when there isn't one yet, or the song changed)
+        if (blankBefore || shape == SongShape::blank) proc.song.updateArrangement (parts);
+        else proc.song.resetArrangement (parts);
+        changed();
+    }
+
     void ArrangePage::togglePlay()
     {
         if (proc.isSketchPlaying (SongSavantProcessor::SketchMode::song)) proc.songStop();
@@ -704,9 +741,10 @@ namespace ss::ui
         seen = now;
 
         const auto names = songShapeNames (proc.song.keyCompassShape());
+        const auto shapes = songShapes (proc.song.keyCompassShape());
         shapeBox.clear (juce::dontSendNotification);
-        for (int i = 0; i < names.size(); ++i) shapeBox.addItem (names[i], i + 1);
-        shapeBox.setSelectedItemIndex (juce::jlimit (0, names.size() - 1, (int) proc.song.songShape), juce::dontSendNotification);
+        for (int i = 0; i < names.size() && i < (int) shapes.size(); ++i) shapeBox.addItem (names[i], (int) shapes[(size_t) i] + 1);
+        shapeBox.setSelectedId ((int) proc.song.arrangement.shape + 1, juce::dontSendNotification);
 
         grid.show (hasPalette ? &proc.song.arrangement : nullptr, &parts, &plan, &proc.song.patterns);
         shapeBox.setVisible (hasPalette);
@@ -984,6 +1022,16 @@ namespace ss::ui
         auto in = tipsArea.reduced (18.0f, 12.0f);
         g.setColour (p.gold);
         g.setFont (sans (12.0f, true));
+        if (proc.song.arrangement.shape == SongShape::blank)
+        {
+            g.drawText ("YOUR BLANK SONG: YOUR SECTIONS, YOUR CHORDS, YOUR NOTES", in.removeFromTop (20.0f), juce::Justification::centredLeft, true);
+            drawParagraph (g, "1. Add sections with + ADD SECTION, or right-click a section (Add a section before / after); drag a section's name "
+                              "to move it, and right-click for Add bars / Remove bars.   2. Double-click a box to write that part there in the piano roll: "
+                              "click the chords along its top to pick your own for each bar, then STAMP CHORDS (THIS BAR) or draw your notes. A part "
+                              "comes in where you write it.   3. Nothing plays that you didn't write. Your full song is kept: pick it in the box above "
+                              "to go back.", in, sans (13.0f), p.text);
+            return;
+        }
         g.drawText (("How " + plan.guide.name + " songs are built").toUpperCase(), in.removeFromTop (20.0f), juce::Justification::centredLeft, true);
         juce::String tips;
         for (auto& line : plan.guide.arrangement) tips << line << ".   ";

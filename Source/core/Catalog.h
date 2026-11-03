@@ -65,6 +65,7 @@ namespace ss
 
     // Arturia instruments still in the database but gone from Analog Lab (replaced by newer ones)
     const juce::StringArray& retiredArturiaInstruments();
+    const juce::StringArray& retiredArturiaPresets();      // single presets Analog Lab V dropped ("Smoker")
     std::vector<Sound> readCymatics (const juce::Array<juce::File>& roots);
     // The kits you saved in Groove Grabber (Documents/Groove Grabber/Kits/<genre>/*.ggkit), as drum kits (GrooveGrabberLink.cpp)
     std::vector<Sound> readGrooveGrabberKits (const juce::File& kitsFolder);

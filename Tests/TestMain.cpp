@@ -27,6 +27,7 @@
 #include "core/SongSession.h"
 #include "core/PatternEdit.h"
 #include "core/DrumLanes.h"
+#include "core/HiddenSounds.h"
 #include <map>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <algorithm>
@@ -1072,6 +1073,128 @@ namespace
         ss::SongSession restored;
         restored.fromXml (*session.toXml());
         check (restored.arrangement.sections.size() == 8 && restored.arrangement.signature == session.arrangement.signature, "saved and restored with the song");
+
+        const ss::ArrangementPart* bassPart = nullptr;
+        for (auto& p : parts) if (p.type == ss::PartType::bass) bassPart = &p;
+        const auto gm = ss::generalMidiDrums();
+
+        // a blank song: one empty section to start from, nothing suggested, the sections you add empty too
+        if (bassPart != nullptr)
+        {
+            auto blank = ss::makeArrangement (plan, parts, none, ss::SongShape::blank);
+            bool allOff = true;
+            for (auto& p : parts) allOff = allOff && blank.sections[0].modeFor (p.role).isEmpty();
+            check (blank.sections.size() == 1 && blank.sections[0].bars == 8 && blank.shape == ss::SongShape::blank && allOff,
+                   "a blank song: one empty 8-bar section, every part off");
+            blank.sections[0].play[bassRole] = "on";
+            check (ss::sectionNotes (plan, blank, 0, *bassPart, gm, nullptr).empty() && ! ss::suggestedNotes (plan, blank.sections[0], *bassPart, gm).empty(),
+                   "a blank song: a part switched on plays nothing until you write it");
+            ss::addSection (blank, 1, "Bridge", plan, parts);
+            ss::addSection (blank, 0, "Verse", plan, parts);
+            bool bridgeOff = true;
+            for (auto& p : parts) bridgeOff = bridgeOff && blank.sections[2].modeFor (p.role).isEmpty();
+            check (blank.sections.size() == 3 && blank.sections[2].name == "Bridge" && bridgeOff && blank.sections[0].modeFor (bassRole) == "on",
+                   "a blank song: a new kind of section starts empty; one more verse plays like your verse");
+            check (ss::arrangementSignature (ss::readBrief ("modern country"), {}, none, ss::SongShape::blank)
+                       == ss::arrangementSignature (brief, parts, none, ss::SongShape::blank)
+                   && ss::songShapeNames (none).contains ("A blank song") && ss::songShapes (none).back() == ss::SongShape::blank
+                   && ss::Arrangement::fromXml (*blank.toXml()).shape == ss::SongShape::blank,
+                   "a blank song stays yours when the style or the parts change; it's in the shape box; it's saved");
+        }
+
+        // your own chords: a bar of a section, in every section of that name; Song Savant's parts follow them
+        if (bassPart != nullptr)
+        {
+            auto own = full;                                         // Intro, Hook, Verse, Hook, Verse, Hook, Outro
+            const auto before = ss::sectionChords (plan, own.sections[1]);
+            ss::setSectionChord (own, plan, 1, 2, "Dm7");
+            const auto after = ss::sectionChords (plan, own.sections[1]);
+            const auto nextHook = ss::sectionChords (plan, own.sections[3]);
+            check (after.size() == before.size() && after[2].name == "Dm7" && after[0].name == before[0].name && nextHook[2].name == "Dm7"
+                   && ss::hasOwnChords (own, 3) && ! ss::hasOwnChords (own, 2)
+                   && ss::sectionChords (plan, own.sections[2])[2].name == ss::sectionChords (plan, full.sections[2])[2].name,
+                   "your own chord for a bar: in every hook, nowhere else (" + before[2].name + " -> " + after[2].name + ")");
+            bool followsD = false, beforeD = false;
+            for (auto& n : ss::sectionNotes (plan, own, 1, *bassPart, gm, nullptr))
+                if (n.start >= 8.0 && n.start < 12.0 && ((n.note % 12) + 12) % 12 == 2) followsD = true;
+            for (auto& n : ss::sectionNotes (plan, full, 1, *bassPart, gm, nullptr))
+                if (n.start >= 8.0 && n.start < 12.0 && ((n.note % 12) + 12) % 12 == 2) beforeD = true;
+            check (followsD && ! beforeD, "Song Savant's bass follows your chord (a D under the Dm7)");
+            const auto saved = ss::Arrangement::fromXml (*own.toXml());
+            check (ss::hasOwnChords (saved, 1) && ss::sectionChords (plan, saved.sections[1])[2].name == "Dm7", "your chords are saved with the song");
+            ss::setSectionChord (own, plan, 1, 2, {});
+            check (ss::sectionChords (plan, own.sections[1])[2].name == before[2].name, "Song Savant's chord for that bar again");
+            ss::setSectionChord (own, plan, 1, 0, "E");
+            ss::clearSectionChords (own, 1);
+            check (! ss::hasOwnChords (own, 1) && ! ss::hasOwnChords (own, 3) && ss::sectionChords (plan, own.sections[1])[0].name == before[0].name,
+                   "all of Song Savant's chords again");
+            ss::setSectionChord (own, plan, 1, 99, "E");             // (no such bar: nothing)
+            check (! ss::hasOwnChords (own, 1), "a bar past the section's end changes nothing");
+        }
+
+        // a blank song keeps its own notes and map: the full song's go aside, and come back
+        if (bassPart != nullptr)
+        {
+            ss::SongSession ses;
+            ses.form.description = "trap 142 BPM in A minor";
+            ses.updateArrangement (parts);
+            ss::Pattern pat;
+            pat.bars = 8;
+            pat.notes = { { 0.0, 1.0, 45, 100 } };
+            ses.storePattern (1, *bassPart, pat);
+            ses.setSongShape (ss::SongShape::blank);
+            ses.updateArrangement (parts);
+            const bool blankNow = ses.patterns.empty() && ses.arrangement.sections.size() == 1 && ses.arrangement.shape == ss::SongShape::blank
+                                  && ses.patternAt (0, *bassPart, gm).notes.empty();
+            ses.storePattern (0, *bassPart, pat);
+            const bool wrote = ses.isMine (0, bassRole) && ses.arrangement.sections[0].modeFor (bassRole) == "on";
+            ss::SongSession reread;
+            reread.fromXml (*ses.toXml());
+            const bool savedBoth = reread.songShape == ss::SongShape::blank && ! reread.patterns.empty() && ! reread.patternsAside.empty()
+                                   && reread.arrangementAside.sections.size() == 7 && reread.arrangement.sections.size() == 1;
+            ses.setSongShape (ss::SongShape::full);
+            ses.updateArrangement (parts);
+            const bool fullAgain = ses.arrangement.sections.size() == 7 && ses.isMine (1, bassRole) && ! ses.patternsAside.empty();
+            ses.setSongShape (ss::SongShape::blank);
+            ses.updateArrangement (parts);
+            check (blankNow && wrote && savedBoth && fullAgain && ses.isMine (0, bassRole) && ses.arrangement.sections.size() == 1,
+                   "a blank song keeps its own map and notes; the full song's come back when you go back to it");
+        }
+
+        // a sound that isn't in your library: never suggested again (and back when you say so)
+        {
+            const auto firstKey = [&cat] (const ss::Palette& p) { return p.slots.size() < 2 || ! p.slots[1].current().isValid() ? juce::String()
+                                                                          : ss::soundKey (cat.sounds[(size_t) p.slots[1].current().sound]); };
+            auto everywhere = [&cat] (const std::vector<ss::Palette>& ps, const juce::String& key)
+            {
+                for (auto& p : ps)
+                    for (auto& sl : p.slots)
+                    {
+                        if (sl.pick.isValid() && ss::soundKey (cat.sounds[(size_t) sl.pick.sound]) == key) return true;
+                        for (auto& a : sl.alternatives) if (ss::soundKey (cat.sounds[(size_t) a.sound]) == key) return true;
+                    }
+                return false;
+            };
+            const auto key = firstKey (pals[0]);
+            const int idx = ss::findSoundByKey (cat, key);
+            if (key.isNotEmpty() && idx >= 0)
+            {
+                const auto& snd = cat.sounds[(size_t) idx];
+                ss::SongSession ses;
+                ses.palettes = pals;
+                ses.forgetSound (cat, key);
+                const bool gone = ! everywhere (ses.palettes, key) && ses.palettes[0].slots[1].current().isValid() == (pals[0].slots[1].numOptions() > 1);
+                ss::hidden::hide (snd);
+                const bool hid = ss::hidden::isHidden (snd) && ss::hidden::count() >= 1 && ss::hidden::file().existsAsFile();
+                const bool notSuggested = ! everywhere (ss::makePalettes (cat, brief), key);
+                ss::hidden::useFileForTests (ss::hidden::file());     // (read again from the file)
+                const bool remembered = ss::hidden::isHidden (snd);
+                ss::hidden::show (snd);
+                check (gone && hid && notSuggested && remembered && ! ss::hidden::isHidden (snd) && everywhere (ss::makePalettes (cat, brief), key),
+                       "NOT IN MY LIBRARY: \"" + snd.name + "\" leaves the palettes, isn't suggested again, is remembered, and SUGGEST IT AGAIN brings it back");
+            }
+            check (ss::retiredArturiaPresets().contains ("Smoker"), "Analog Lab's Smoker (gone from Analog Lab V) is left out");
+        }
     }
 
     void testGrooveGrabberLink (const sstest::FakeComputer& fc)
@@ -2436,11 +2559,64 @@ namespace
                         check (gap >= 0 && gap <= (int) ar.getArrangement().sections.size(), "dragging a section: it lands between sections (" + juce::String (gap) + ")");
                         grid.showMove (2, 5, grid.xAt (4.0 * 50.0));
                     }
+                    if (name == "arrange-blank")
+                    {
+                        auto& v = e->getView();
+                        auto& sp = v.getSong();
+                        // NOT IN MY LIBRARY on the selected card: the next choice takes its place, and it isn't suggested again
+                        {
+                            const auto* palette = proc.song.currentPalette();
+                            const auto cat = proc.catalog.catalog();
+                            const int before = palette != nullptr && ! palette->slots.empty() ? palette->slots.front().current().sound : -1;
+                            sp.hideSelected();
+                            const int after = palette != nullptr ? palette->slots.front().current().sound : -1;
+                            const bool hid = before >= 0 && cat != nullptr && ss::hidden::isHidden (cat->sounds[(size_t) before]) && after != before;
+                            if (before >= 0 && cat != nullptr) ss::hidden::show (cat->sounds[(size_t) before]);
+                            check (hid, "the SONG page's NOT IN MY LIBRARY: the card moves on to the next choice and remembers");
+                        }
+                        // BLANK SONG: ARRANGE, with one empty section; add your own; your own chords and notes in the piano roll
+                        v.getSong().onBlankSong();
+                        auto& ar = v.getArrange();
+                        ar.refresh();
+                        const bool blank = ar.isVisible() && proc.song.songShape == ss::SongShape::blank && ar.getArrangement().sections.size() == 1;
+                        ar.addSectionAt (1, "Hook");
+                        ar.addSectionAt (0, "Intro");
+                        ar.changeBars (0, -4);
+                        const bool shaped = ar.getArrangement().sections.size() == 3 && ar.getArrangement().sections[2].name == "Hook"
+                                            && ar.getArrangement().sections[0].bars == 4;
+                        const bool opened = v.showPianoRoll ("Bass", 2);
+                        auto& roll = v.getPianoRoll();
+                        const bool emptyGrid = opened && roll.getEditor().notes().empty();
+                        roll.pickChord (0, "Dm");
+                        roll.pickChord (1, "Bb");
+                        roll.getEditor().addNote (0.0, 38);
+                        roll.getEditor().addNote (4.0, 46);
+                        roll.edited();
+                        const auto chords = ss::sectionChords (proc.song.partsPlan(), proc.song.arrangement.sections[2]);
+                        const bool ownChords = chords.size() >= 2 && chords[0].name == "Dm" && chords[1].name == "Bb";
+                        const bool wrote = proc.song.isMine (2, "Bass") && proc.song.arrangement.sections[2].modeFor ("Bass") == "on";
+                        {
+                            // (a picture of the piano roll here, before going back to ARRANGE)
+                            auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+                            auto f = dir.getChildFile ("piano-roll-blank.png");
+                            f.deleteFile();
+                            juce::FileOutputStream out (f);
+                            juce::PNGImageFormat png;
+                            check (out.openedOk() && png.writeImageToStream (img, out), "wrote piano-roll-blank.png");
+                        }
+                        roll.onDone();
+                        v.showPage (5);
+                        ar.refresh();
+                        check (blank && shaped && emptyGrid && ownChords && wrote,
+                               "BLANK SONG: one empty section; sections added; an empty grid; your own chords (Dm, Bb) and notes; the bass comes in");
+                    }
                     if (name == "arrange-scrolled")
                     {
                         auto& ar = e->getView().getArrange();
                         ar.refresh();
-                        proc.songMoveTo (4.0 * 60.0);                 // bar 61: off the right of a small window
+                        for (int i = 0; i < 4; ++i) ar.addSectionAt (1, "Verse");   // a long song: 96 bars
+                        ar.resized();
+                        proc.songMoveTo (4.0 * 92.0);                 // bar 93: off the right of a small window
                         ar.togglePlay();
                         auto* vp = ar.findChildWithID ("map");
                         check (vp != nullptr && dynamic_cast<juce::Viewport*> (vp)->getViewPositionX() > 0,
@@ -2589,6 +2765,7 @@ namespace
         shoot ("arrange-empty", false, 1240, 820, 5);
         shoot ("arrange-playing", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
         shoot ("arrange-moving", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
+        shoot ("arrange-blank", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
         shoot ("piano-roll", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-small", false, 1060, 780, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-tools", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");

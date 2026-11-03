@@ -150,6 +150,7 @@ namespace ss
             sx->setAttribute ("bars", s.bars);
             sx->setAttribute ("progression", s.progression);
             sx->setAttribute ("chords", s.chords.joinIntoString (" "));
+            if (s.ownChords) sx->setAttribute ("ownChords", true);
             for (auto& [role, mode] : s.play)
             {
                 auto* px = sx->createNewChildElement ("Play");
@@ -169,7 +170,7 @@ namespace ss
     Arrangement Arrangement::fromXml (const juce::XmlElement& x)
     {
         Arrangement a;
-        a.shape = (SongShape) juce::jlimit (0, 2, x.getIntAttribute ("shape", 0));
+        a.shape = (SongShape) juce::jlimit (0, 3, x.getIntAttribute ("shape", 0));
         a.signature = x.getStringAttribute ("signature");
         for (auto* sx : x.getChildWithTagNameIterator ("Section"))
         {
@@ -179,6 +180,7 @@ namespace ss
             s.progression = sx->getIntAttribute ("progression", 0);
             s.chords = juce::StringArray::fromTokens (sx->getStringAttribute ("chords"), " ", "");
             s.chords.removeEmptyStrings();
+            s.ownChords = sx->getBoolAttribute ("ownChords", false);
             for (auto* px : sx->getChildWithTagNameIterator ("Play")) s.play[px->getStringAttribute ("role")] = px->getStringAttribute ("mode");
             for (auto* px : sx->getChildWithTagNameIterator ("OwnPattern")) s.patterns[px->getStringAttribute ("role")] = px->getStringAttribute ("name");
             a.sections.push_back (s);
@@ -190,11 +192,22 @@ namespace ss
     {
         juce::StringArray names { "The full song", "A short song" };
         if (! kc.empty()) names.add ("Key Compass: " + kc.name);
+        names.add ("A blank song");
         return names;
+    }
+
+    std::vector<SongShape> songShapes (const KeyCompassShape& kc)
+    {
+        std::vector<SongShape> shapes { SongShape::full, SongShape::shortSong };
+        if (! kc.empty()) shapes.push_back (SongShape::keyCompass);
+        shapes.push_back (SongShape::blank);
+        return shapes;
     }
 
     juce::String arrangementSignature (const SongBrief& b, const std::vector<ArrangementPart>& parts, const KeyCompassShape& kc, SongShape shape)
     {
+        // a blank song is yours: a new style or new parts leave it alone (a part that wasn't there before plays nowhere yet)
+        if (shape == SongShape::blank) return "blank";
         juce::StringArray roles;
         for (auto& p : parts) roles.add (p.role);
         return genreId (b.genre) + "|" + b.styleId + "|" + roles.joinIntoString (",") + "|" + juce::String ((int) shape)
@@ -206,6 +219,19 @@ namespace ss
         Arrangement a;
         a.shape = shape;
         const auto& g = plan.guide;
+
+        if (shape == SongShape::blank)
+        {
+            // one empty section to start from: you add the rest, switch the parts on and write their notes
+            ArrangementSection s;
+            s.name = "Verse";
+            s.bars = 8;
+            const auto* f = formFor (g, "verse");
+            s.progression = f != nullptr ? f->progression : 1;
+            for (auto& p : parts) s.play[p.role] = {};
+            a.sections.push_back (s);
+            return a;
+        }
 
         if (shape == SongShape::keyCompass && ! kc.empty())
         {
@@ -339,7 +365,8 @@ namespace ss
         if ((kind == "intro" || kind == "outro") && (f == nullptr || sectionKind (f->name) != kind)) s.bars = 4;
         s.progression = f != nullptr ? f->progression : 0;
         if (kind == "bridge" || kind == "break") s.progression = 2;
-        fillPlay (s, f != nullptr ? f->play : juce::String ("all"), parts);
+        if (a.shape == SongShape::blank) for (auto& p : parts) s.play[p.role] = {};     // a blank song: nothing plays yet
+        else fillPlay (s, f != nullptr ? f->play : juce::String ("all"), parts);
         a.sections.insert (a.sections.begin() + at, std::move (s));
     }
 
@@ -367,6 +394,50 @@ namespace ss
         const auto inSong = sectionNamesInSong (a);
         for (auto& c : candidates) if (! inSong.contains (c, true)) out.add (c);
         return out;
+    }
+
+    std::vector<Chord> styleChords (const PartsPlan& plan, const ArrangementSection& s)
+    {
+        auto plain = s;
+        if (plain.ownChords) plain.chords.clear();
+        return sectionChords (plan, plain);
+    }
+
+    void setSectionChord (Arrangement& a, const PartsPlan& plan, int section, int bar, const juce::String& chord)
+    {
+        if (section < 0 || section >= (int) a.sections.size()) return;
+        const auto name = a.sections[(size_t) section].name;
+        for (auto& s : a.sections)
+        {
+            if (s.name != name || bar < 0 || bar >= s.bars) continue;
+            if (s.chords.size() != s.bars)
+            {
+                // the bars as they are now, so only this one changes
+                juce::StringArray now;
+                for (auto& c : sectionChords (plan, s)) now.add (c.name);
+                s.chords = now;
+            }
+            if (chord.isNotEmpty() && chordFromName (chord).has_value()) s.chords.set (bar, chordFromName (chord)->name);
+            else
+            {
+                const auto theirs = styleChords (plan, s);
+                if (bar < (int) theirs.size()) s.chords.set (bar, theirs[(size_t) bar].name);
+            }
+            s.ownChords = true;
+        }
+    }
+
+    void clearSectionChords (Arrangement& a, int section)
+    {
+        if (section < 0 || section >= (int) a.sections.size()) return;
+        const auto name = a.sections[(size_t) section].name;
+        for (auto& s : a.sections)
+            if (s.name == name && s.ownChords) { s.chords.clear(); s.ownChords = false; }
+    }
+
+    bool hasOwnChords (const Arrangement& a, int section)
+    {
+        return section >= 0 && section < (int) a.sections.size() && a.sections[(size_t) section].ownChords;
     }
 
     std::vector<Chord> sectionChords (const PartsPlan& plan, const ArrangementSection& s)
@@ -461,6 +532,7 @@ namespace ss
                 auto notes = playPattern (*p, s.bars, plan.key);
                 return part.type == PartType::drums ? drumsFromLanes (notes, drums) : notes;    // your drums, on this kit's notes
             }
+        if (a.shape == SongShape::blank) return {};                  // a blank song: only what you write
         return suggestedNotes (plan, s, part, drums);
     }
 

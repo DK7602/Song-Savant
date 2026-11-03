@@ -40,10 +40,15 @@ namespace ss
         KeyCompassShape keyCompassShape() const       { return { form.fromSong, form.sections, form.sectionChords }; }
         void updateArrangement (const std::vector<ArrangementPart>&);   // made again when the style, the parts or the shape changed
         void resetArrangement (const std::vector<ArrangementPart>&);    // back to the shape as it comes
+        // A new shape. A blank song keeps its own notes: going into one puts your other song's patterns aside, and
+        // coming back out brings them back (and the blank song's are put aside for next time).
+        void setSongShape (SongShape);
 
         // Your own parts, made in the piano roll: one pattern per part and section name (saved with the song). They stay
         // until you reset them (NEW IDEA and new palettes leave them alone) and move with the song's key.
         PatternBook patterns;
+        PatternBook patternsAside;                    // the other song's (the blank song's, or the full song's while blank)
+        Arrangement arrangementAside;                 // ... and its map
         bool isMine (int section, const juce::String& role) const;
         // What the piano roll opens: your pattern (in the song's key) or the suggestion (the section's length)
         Pattern patternAt (int section, const ArrangementPart&, const DrumNotes&) const;
@@ -52,6 +57,9 @@ namespace ss
         void forgetPattern (int section, const juce::String& role);     // back to Song Savant's suggestion
         // The section gets a pattern of its own (a copy of what it played): its name ("Chorus 3")
         juce::String makeDifferent (int section, const ArrangementPart&, const DrumNotes&);
+
+        // A sound you said isn't in your library: out of every palette (the next choice takes its place, unlocked)
+        void forgetSound (const Catalog&, const juce::String& key);
 
         SongBrief makeBrief() const;                  // the description, with the form's choices on top
         void find (const Catalog&);                   // fresh palettes for the form

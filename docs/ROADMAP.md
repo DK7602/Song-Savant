@@ -488,6 +488,25 @@ Built in steps, each one a build the owner can try:
     (1, 2, 4 or 8, at the end of the section; `ArrangePage::changeBars`), shown with the length they make. A section
     is one length for all its parts (the arrangement has no per-part lengths), so the menu says so: every part goes
     with it. Length lists the section's own length too when it's an odd one.
+- **A blank song, your own chords, and sounds that aren't there** *(1.5.0; the owner asked for "an option to build my own
+  arrangement / chords / notes using the recommended sounds", and said Analog Lab V no longer has "Smoker", November 2026)*.
+  - **BLANK SONG** (SONG page, next to PLAY ALL; or "A blank song" in ARRANGE's shape box): `SongShape::blank`. The map
+    starts with one empty 8-bar Verse, every part off. Nothing is suggested in a blank song: an unedited pattern is an
+    empty grid (`patternAt`, `sectionNotes`), new kinds of section start empty (`addSection`), START FROM's suggestion
+    becomes your pattern. Its signature is just "blank", so a new style, description or palette leaves it alone.
+  - **A blank song keeps its own map and notes**: going into one puts the other song's arrangement and patterns aside
+    (`SongSession::setSongShape`, `arrangementAside`, `patternsAside`, saved with the song), coming out brings them back.
+  - **+ ADD SECTION** after the last section on ARRANGE (any song).
+  - **Your own chords** (any song): click a bar's chord along the top of the piano roll: the key's chords with their
+    numerals, Richer (sus, 7ths), Any chord (12 roots x major, m, 7, maj7, m7, sus2, sus4, dim), Song Savant's chord
+    here, All of Song Savant's chords. Stored per section (`ArrangementSection::chords` + `ownChords`) and set in every
+    section of that name (`setSectionChord`, `clearSectionChords`, `styleChords`). Suggested parts follow them (they
+    read `sectionChords`); your own notes don't move.
+  - **Sounds that aren't in your library**: NOT IN MY LIBRARY? on the SONG page's details (asks first) and NOT IN MY
+    LIBRARY / SUGGEST IT AGAIN on the LIBRARY page. `Source/core/HiddenSounds.*`: one sound key per line in
+    <app data>/Hidden sounds.txt; makePalettes skips them; `SongSession::forgetSound` takes one out of the palettes
+    (the next choice takes its place, unlocked). Analog Lab's "Smoker" is left out for everyone
+    (`retiredArturiaPresets`, counted as left out like the Prophet V3 presets).
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is
