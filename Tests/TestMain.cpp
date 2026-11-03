@@ -1022,6 +1022,35 @@ namespace
         check (back.sections.size() == edited.sections.size() && back.sections[1].bars == 4 && back.sections[0].modeFor (drumsRole) == "full",
                "the map is saved with the song");
 
+        // dragging a section to another place, adding sections
+        {
+            auto order = [] (const ss::Arrangement& a) { juce::StringArray n; for (auto& x : a.sections) n.add (x.name); return n.joinIntoString (","); };
+            auto moved = full;
+            ss::moveSectionTo (moved, 0, 7);                                  // the intro to the very end
+            const auto toEnd = order (moved);
+            ss::moveSectionTo (moved, 6, 0);                                  // and back to the start
+            const auto back2 = order (moved);
+            ss::moveSectionTo (moved, 2, 2);                                  // dropped where it was: nothing
+            ss::moveSectionTo (moved, 2, 3);
+            ss::moveSectionTo (moved, 1, 3);                                  // the first hook after the first verse
+            check (toEnd == "Hook,Verse,Hook,Verse,Hook,Outro,Intro" && back2 == order (full) && order (moved) == "Intro,Verse,Hook,Hook,Verse,Hook,Outro",
+                   "a section dragged to another place: " + order (moved));
+            ss::addSection (moved, 1, "Verse", plan, parts);                  // one more verse: like the song's verses
+            ss::addSection (moved, 0, "Bridge", plan, parts);                 // a new kind: the style's way
+            ss::addSection (moved, 99, "Outro", plan, parts);                 // (past the end: at the end)
+            const auto& verse = moved.sections[2];
+            const auto& bridge = moved.sections[0];
+            check (verse.name == "Verse" && verse.bars == full.sections[2].bars && verse.play == full.sections[2].play && verse.patternFor (bassRole) == "Verse"
+                   && bridge.name == "Bridge" && bridge.bars >= 4 && bridge.progression == 2 && bridge.play.size() == parts.size()
+                   && moved.sections.back().name == "Outro" && moved.sections.size() == full.sections.size() + 3,
+                   "a section added: one more verse plays like the verses; a new bridge gets the style's length and parts");
+            const auto inSong = ss::sectionNamesInSong (full), fresh = ss::newSectionNames (plan.guide, full);
+            check (inSong.joinIntoString (",") == "Intro,Hook,Verse,Outro" && fresh.contains ("Bridge") && fresh.contains ("Pre-Chorus")
+                   && ! fresh.contains ("Chorus") && ! fresh.contains ("Hook") && ! fresh.contains ("Verse"),
+                   "what can be added: the song's own sections, and new kinds in the style's words (a trap song has a Hook, not a Chorus): "
+                   + fresh.joinIntoString (", "));
+        }
+
         // a Key Compass song's own sections and chords
         ss::KeyCompassShape kc { "Back Roads", { "Verse", "Chorus" }, { { "Am", "F", "C", "G" }, { "F", "G", "Am" } } };
         const auto kcArr = ss::makeArrangement (plan, parts, kc, ss::SongShape::keyCompass);
@@ -2363,6 +2392,36 @@ namespace
                         check (back.has_value() && back->drumSource.isNotEmpty(), "the drums' drag tag says which drum map it's on: " + (back.has_value() ? back->drumSource : juce::String()));
                         f.deleteFile();
                     }
+                    if (name == "arrange-moving")
+                    {
+                        // ARRANGE: drag a section to another place, add and delete sections; UNDO and REDO each step
+                        auto& ar = e->getView().getArrange();
+                        ar.refresh();
+                        auto xml = [] (const ss::Arrangement& a) { return a.toXml()->toString(); };
+                        const auto start = ar.getArrangement();
+                        const auto n = start.sections.size();
+                        ar.moveSectionTo (1, 3);                                  // the first hook, after the first verse
+                        const bool moved = ar.getArrangement().sections[1].name == "Verse" && ar.getArrangement().sections[2].name == "Hook";
+                        ar.addSectionAt (5, "Bridge");
+                        ar.addSectionAt (0, "Verse");
+                        const bool added = ar.getArrangement().sections.size() == n + 2 && ar.getArrangement().sections[6].name == "Bridge"
+                                           && ar.getArrangement().sections[0].name == "Verse";
+                        ar.deleteSection ((int) ar.getArrangement().sections.size() - 1);
+                        const auto edited = xml (ar.getArrangement());
+                        const bool deleted = ar.getArrangement().sections.size() == n + 1 && ar.getArrangement().sections.back().name == "Hook";
+                        for (int i = 0; i < 4; ++i) ar.undo();
+                        const bool undone = xml (ar.getArrangement()) == xml (start) && ! ar.canUndo() && ar.canRedo();
+                        for (int i = 0; i < 4; ++i) ar.redo();
+                        const bool redone = xml (ar.getArrangement()) == edited && ! ar.canRedo() && ar.canUndo();
+                        check (moved && added && deleted && undone && redone,
+                               "ARRANGE: a section moved, sections added and deleted; UNDO takes each back, REDO puts it back");
+                        // the map shows where a dragged section lands: the place between sections nearest the mouse
+                        auto& grid = ar.getGrid();
+                        ar.resized();
+                        const int gap = grid.gapAt (grid.xAt (4.0 * 41.0) + 1.0f);  // just past the start of bar 42
+                        check (gap >= 0 && gap <= (int) ar.getArrangement().sections.size(), "dragging a section: it lands between sections (" + juce::String (gap) + ")");
+                        grid.showMove (2, 5, grid.xAt (4.0 * 50.0));
+                    }
                     if (name == "arrange-scrolled")
                     {
                         auto& ar = e->getView().getArrange();
@@ -2515,6 +2574,7 @@ namespace
         shoot ("arrange-scrolled", false, 1060, 780, 5, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("arrange-empty", false, 1240, 820, 5);
         shoot ("arrange-playing", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
+        shoot ("arrange-moving", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
         shoot ("piano-roll", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-small", false, 1060, 780, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-tools", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");

@@ -470,6 +470,20 @@ Built in steps, each one a build the owner can try:
       Grabber's pads" and reads both; dropping a pattern on its SAUCE page makes it one of MY GROOVES (up to four
       bars, on 16ths).
     - Still to come for drums: hearing the real kit (Phase 3), and a step-grid view.
+- **Changing the song's sections on ARRANGE** *(1.4.0; the owner asked to drag sections to change their order and to add
+  and delete them from a right-click menu, November 2026)*.
+  - **Drag a section's name** left or right: a gold line shows the gap it lands in (`ArrangementGrid::gapAt`), and it
+    moves there with its parts and patterns (`moveSectionTo`). A click without a drag still opens its menu.
+  - **Right-click anywhere in a section** (or click its name) for its menu: **Add a section before / after** (one more
+    of a section the song has: a copy of the first, so it plays the same patterns; or a new kind, from the style's own
+    names first, then the usual ones the style doesn't name, so a trap song is offered a Hook, never a Chorus:
+    `sectionNamesInSong`, `newSectionNames`, `addSection`: a new kind gets the style's length, progression and parts for
+    that kind of section), Length, Copy, Move left / right, **Delete this section**. Right-click after the last section
+    adds one at the end.
+  - **UNDO / REDO** on ARRANGE (buttons by the transport, Ctrl+Z / Ctrl+Y): every change to the map is a step (moves,
+    adds, deletes, boxes, lengths, RESET MAP; 200 steps). The steps belong to the map: a new style, shape or palette
+    (a new arrangement signature) forgets them. A double-click on a box takes the first click's step back instead of
+    clicking the box round again.
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is

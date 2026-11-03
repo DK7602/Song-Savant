@@ -72,6 +72,13 @@ namespace ss
     void copySection (Arrangement&, int section); // a copy right after it
     void removeSection (Arrangement&, int section);
     void moveSection (Arrangement&, int section, int by);
+    // Dragged to a new place: `gap` is where it lands, 0 (before the first section) .. the number of sections (the end)
+    void moveSectionTo (Arrangement&, int section, int gap);
+    // A new section at `at` (0 .. the number of sections). A name the song already has ("Verse") is a copy of the first
+    // one (it plays the same pattern); a new kind ("Bridge") gets the style's own length, chords and parts for it.
+    void addSection (Arrangement&, int at, const juce::String& name, const PartsPlan&, const std::vector<ArrangementPart>&);
+    juce::StringArray sectionNamesInSong (const Arrangement&);                        // each name once, in order
+    juce::StringArray newSectionNames (const StyleGuide&, const Arrangement&);         // kinds the song doesn't have yet
 
     std::vector<Chord> sectionChords (const PartsPlan&, const ArrangementSection&);
 

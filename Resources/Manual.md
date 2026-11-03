@@ -245,13 +245,19 @@ The ARRANGE page lays your palette's parts out across the whole song. Make your 
 **Changing it**
 
 - **Click a box** to switch a part on or off in that section.
-- **Double-click a box** (bass, keys, guitar, pad, strings, lead) to open that part of that section in the piano roll.
+- **Double-click a box** (any part, the drums too) to open that part of that section in the piano roll.
 - **Drag a box** into your DAW for just that part in that section, or **drag a part's name** (on the left) for that part across the whole song, with the section markers.
 - **A pencil** on a box means it plays your own pattern (from the piano roll). **A star** means that section has a pattern of its own (MAKE ONE DIFFERENT).
 - **The drums** step through no drums, **light**, **groove**, **build** and **full** as you click: light is a sparse pattern, groove the main beat, build adds energy into the next section, and full is everything with a crash.
-- **Click a section's name** for its menu: **Length** (2 to 32 bars), **Copy this section** (right after it, playing the same patterns), **Move left**, **Move right**, **Remove this section**.
+- **Drag a section's name** left or right to move that section somewhere else in the song (a verse before the first hook, say). A gold line shows where it will land; let go there. Its parts and patterns go with it.
+- **Right-click anywhere in a section** (its name or any of its boxes) for its menu. **Click a section's name** opens the same menu:
+    - **Add a section before** / **Add a section after**: **one more** of a section your song already has (another Verse or Chorus: it plays the same parts and patterns as the others), or **a new section** your song doesn't have yet (Bridge, Pre-Chorus, Breakdown, Drop, Solo...), named the way your style names it (a trap song gets a Hook, not a Chorus). A new section starts with the style's usual length and the parts the style plays in it.
+    - **Length** (2 to 32 bars), **Copy this section** (right after it, playing the same patterns), **Move left**, **Move right**.
+    - **Delete this section**.
+- **Right-click the empty space after the last section** to add one at the end.
+- **UNDO** and **REDO** (next to the transport, or Ctrl+Z and Ctrl+Y) take back any change to the map, one at a time: a move, a section added or deleted, a box switched, a new length, even RESET MAP. They remember your changes until the map starts fresh (a new style, shape or palette).
 - **The shape box** (top) picks the song's shape: **The full song**, **A short song** (one verse and chorus fewer, shorter intro and outro), or **Key Compass: ...** (your Key Compass song's own sections and chords).
-- **RESET MAP** (it used to say START OVER) puts the map back the way it came for that shape, undoing your changes to it. It doesn't play anything.
+- **RESET MAP** (it used to say START OVER) puts the map back the way it came for that shape, undoing your changes to it. It doesn't play anything. (UNDO brings your map back.)
 
 Your changes stay while the song stays the same. Swapping a sound (a different drum kit, say) keeps them. Changing the style, the shape or the parts starts a fresh map.
 
@@ -519,6 +525,9 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | Drums from your own samples | Drum card, SEND TO GROOVE GRABBER, then USE IT and SAVE KIT in Groove Grabber |
 | Start from a Key Compass song | KEY COMPASS on the SONG page |
 | Change who plays where | ARRANGE: click boxes; click a section's name for its menu |
+| Move a section | ARRANGE: drag its name left or right |
+| Add or delete a section | ARRANGE: right-click the section, then Add a section before / after, or Delete this section |
+| Take back a change to the map | ARRANGE: UNDO (Ctrl+Z); REDO (Ctrl+Y) |
 | Change a part note by note | A card's EDIT, or double-click a box on ARRANGE: the piano roll |
 | Write your own part | The piano roll: START FROM > An empty grid, then click to add notes |
 | The same change in every chorus | Edit the Chorus pattern once (MAKE ONE DIFFERENT for one that isn't) |

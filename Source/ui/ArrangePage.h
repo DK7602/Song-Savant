@@ -1,6 +1,8 @@
 // Song Savant - the Arrange page: the arrangement map. Sections across (intro, verse, chorus...), the palette's parts
 // down; a box for each part in each section. Click a box to switch a part on or off (the drums step through light,
-// groove, build and full); click a section's name to change its length, copy, move or remove it. Hear it with the
+// groove, build and full); click a section's name to change its length, copy, move or delete it; drag a section's name
+// left or right to move it; right-click anywhere in a section to add one before or after it. UNDO / REDO (Ctrl+Z / Y)
+// take back any change to the map. Hear it with the
 // transport (to the start, rewind, play / stop, pause, fast forward, to the end) or click the bar ruler to move the
 // playhead. Drag the whole song into the DAW: one track per part, a marker per section.
 #pragma once
@@ -29,7 +31,10 @@ namespace ss::ui
         void mouseUp (const juce::MouseEvent&) override;
 
         std::function<void (int section, int part)> onCell;
+        std::function<void (int section, int part)> onCellRevert;  // a double-click: the first click's change taken back
+        // a section's menu (click its name, or right-click anywhere in it); section = the number of sections: past the end
         std::function<void (int section, juce::Rectangle<int> screenArea)> onSection;
+        std::function<void (int section, int gap)> onMoveSection;  // a section's name dragged to another place (gap 0..n)
         std::function<void (double beats)> onSeek;                 // the ruler was clicked (or dragged)
         std::function<void (int section, int part)> onEditCell;    // a box double-clicked: the piano roll
         std::function<void (int section, int part)> onDragCell;    // a box dragged out: that part in that section, as MIDI
@@ -43,6 +48,10 @@ namespace ss::ui
         // the bar ruler along the top (click to move the playhead), then the sections' names, then a row per part
         static constexpr float labelW = 190.0f, rulerH = 20.0f, headerH = 90.0f;
 
+        // (the tests: a section being dragged, shown landing at `gap`; -1 for none)
+        void showMove (int section, int gap, float x = -1.0f);
+        int gapAt (float x) const;                                 // the place between sections nearest x
+
     private:
         juce::Rectangle<float> cellArea (int section, int part) const;
         juce::Rectangle<float> headerArea (int section) const;
@@ -54,7 +63,9 @@ namespace ss::ui
         const PatternBook* book = nullptr;
         std::vector<float> columnX, columnW;
         int pressSection = -1, pressPart = -1, dropSection = -2, dropPart = -1;
-        bool pressLabel = false, draggedOut = false;
+        bool pressLabel = false, draggedOut = false, pressHeader = false, menuShown = false;
+        int movingSection = -1, moveGap = -1;                      // a section's name being dragged, and where it lands
+        float moveX = 0.0f;
         float rowH = 34.0f;
         double playhead = -1.0;
         bool playheadMoving = false, onRuler = false;
@@ -81,16 +92,34 @@ namespace ss::ui
         juce::File writeBit (int section, int part);         // one box (section >= 0) or a whole part, as MIDI (also the tests)
         juce::String positionText() const;                   // "Bar 17 of 72  |  Verse  |  0:34 / 2:02" (also the tests)
         const Arrangement& getArrangement() const;
+        bool keyPressed (const juce::KeyPress&) override;    // Ctrl+Z / Ctrl+Y
+
+        // changing the song's sections (the map's drag and menus; also the tests). Each is one step for UNDO.
+        void moveSectionTo (int section, int gap);           // gap: 0 (before the first) .. the number of sections
+        void addSectionAt (int at, const juce::String& name);
+        void deleteSection (int section);
+        void undo();
+        void redo();
+        bool canUndo() const                                 { return ! undos.empty(); }
+        bool canRedo() const                                 { return ! redos.empty(); }
+        ArrangementGrid& getGrid()                           { return grid; }
 
     private:
         void timerCallback() override;
         void showTransport();
         void sectionMenu (int section, juce::Rectangle<int> area);
         void changed();
+        void edit (const std::function<void (Arrangement&)>&);   // a change to the map, remembered for UNDO
+        void updateUndoButtons();
+        std::vector<Arrangement> undos, redos;
+        juce::String undoFor;                                // the arrangement the steps belong to (a new palette forgets them)
+        juce::Point<int> lastCell { -1, -1 };                // the box clicked last (a double-click takes it back)
 
         SongSavantProcessor& proc;
         juce::ComboBox shapeBox;
-        PillButton resetBtn { "RESET MAP", PillButton::Style::outline };
+        PillButton resetBtn { "RESET MAP", PillButton::Style::outline },
+                   undoBtn { "UNDO", PillButton::Style::outline },
+                   redoBtn { "REDO", PillButton::Style::outline };
         using Icon = TransportButton::Icon;
         TransportButton toStartBtn { Icon::toStart }, rewindBtn { Icon::rewind }, playBtn { Icon::play },
                         pauseBtn { Icon::pause }, forwardBtn { Icon::forward }, toEndBtn { Icon::toEnd };

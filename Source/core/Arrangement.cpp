@@ -308,6 +308,67 @@ namespace ss
         std::swap (a.sections[(size_t) section], a.sections[(size_t) to]);
     }
 
+    void moveSectionTo (Arrangement& a, int section, int gap)
+    {
+        const int n = (int) a.sections.size();
+        if (section < 0 || section >= n || gap < 0 || gap > n || gap == section || gap == section + 1) return;
+        auto moving = a.sections[(size_t) section];
+        a.sections.erase (a.sections.begin() + section);
+        a.sections.insert (a.sections.begin() + (gap > section ? gap - 1 : gap), std::move (moving));
+    }
+
+    void addSection (Arrangement& a, int at, const juce::String& name, const PartsPlan& plan, const std::vector<ArrangementPart>& parts)
+    {
+        at = juce::jlimit (0, (int) a.sections.size(), at);
+        const auto trimmed = name.trim();
+        if (trimmed.isEmpty()) return;
+        // one more of a section the song has: like the first of them (so it plays the same pattern)
+        for (auto& existing : a.sections)
+            if (existing.name.equalsIgnoreCase (trimmed))
+            {
+                auto copy = existing;
+                a.sections.insert (a.sections.begin() + at, std::move (copy));
+                return;
+            }
+        // a new kind: what the style does in one
+        ArrangementSection s;
+        s.name = trimmed;
+        const auto* f = formFor (plan.guide, sectionKind (trimmed));
+        const auto kind = sectionKind (trimmed);
+        s.bars = f != nullptr ? f->bars : 8;
+        if ((kind == "intro" || kind == "outro") && (f == nullptr || sectionKind (f->name) != kind)) s.bars = 4;
+        s.progression = f != nullptr ? f->progression : 0;
+        if (kind == "bridge" || kind == "break") s.progression = 2;
+        fillPlay (s, f != nullptr ? f->play : juce::String ("all"), parts);
+        a.sections.insert (a.sections.begin() + at, std::move (s));
+    }
+
+    juce::StringArray sectionNamesInSong (const Arrangement& a)
+    {
+        juce::StringArray names;
+        for (auto& s : a.sections) names.addIfNotAlreadyThere (s.name, true);
+        return names;
+    }
+
+    juce::StringArray newSectionNames (const StyleGuide& g, const Arrangement& a)
+    {
+        // the style's own names first ("Hook" in rap, "Drop" in dance music), then the usual ones it doesn't name
+        juce::StringArray styleNames, out;
+        for (auto& f : g.form) styleNames.addIfNotAlreadyThere (f.name, true);
+        juce::StringArray candidates = styleNames;
+        for (auto* usual : { "Intro", "Verse", "Pre-Chorus", "Chorus", "Post-Chorus", "Bridge", "Breakdown", "Build", "Drop", "Solo", "Outro" })
+        {
+            const juce::String name (usual);
+            bool named = false;                         // the style calls it something else
+            if (! name.containsIgnoreCase ("post"))
+                for (auto& sn : styleNames) if (sectionKind (sn) == sectionKind (name) && ! sn.containsIgnoreCase ("post")) named = true;
+            if (! named) candidates.addIfNotAlreadyThere (name, true);
+        }
+        const auto inSong = sectionNamesInSong (a);
+        for (auto& c : candidates) if (! inSong.contains (c, true)) out.add (c);
+        return out;
+    }
+
     std::vector<Chord> sectionChords (const PartsPlan& plan, const ArrangementSection& s)
     {
         std::vector<Chord> out;

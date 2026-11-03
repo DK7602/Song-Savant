@@ -2,6 +2,7 @@
 #include "PluginProcessor.h"
 #include "core/Paths.h"
 #include "core/DrumLanes.h"
+#include <limits>
 
 namespace ss::ui
 {
@@ -168,7 +169,7 @@ namespace ss::ui
             hoverRuler = ruler;
             setMouseCursor ((s >= 0 && (h || p >= 0)) || ruler ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
             setTooltip (ruler ? "Click or drag here to move the playhead"
-                        : h && s >= 0 ? "Change this section: length, copy, move, remove"
+                        : h && s >= 0 ? "Click: change this section  |  drag it left or right to move it  |  right-click: add a section before or after it"
                         : p >= 0 && parts != nullptr && (*parts)[(size_t) p].type == PartType::drums
                               ? "Click: no drums, light, groove, build, full  |  drag it into your DAW for just this bit"
                         : p >= 0 ? "Click: switch this part on or off here  |  double-click: open it in the piano roll  |  drag it into your DAW for just this bit"
@@ -180,20 +181,78 @@ namespace ss::ui
 
     void ArrangementGrid::mouseDown (const juce::MouseEvent& e)
     {
+        if (auto* page = findParentComponentOfClass<ArrangePage>()) page->grabKeyboardFocus();   // (Ctrl+Z / Ctrl+Y)
+        menuShown = false;
+        movingSection = moveGap = -1;
         onRuler = e.position.y < rulerH && e.position.x >= labelW && ! columnX.empty();
         if (onRuler && onSeek) onSeek (beatsAt (e.position.x));
         bool h;
         hitTestAt (e.position, pressSection, pressPart, h);
+        pressHeader = h && pressSection >= 0;
         if (h) pressPart = -1;
         pressLabel = e.position.x < labelW - 10.0f && e.position.y >= headerH && parts != nullptr
                      && (int) ((e.position.y - headerH) / rowH) < (int) parts->size();
         if (pressLabel) pressPart = (int) ((e.position.y - headerH) / rowH);
         draggedOut = false;
+
+        // right-click anywhere in a section (its name or a box): its menu; past the last section: add one at the end
+        if (e.mods.isPopupMenu() && ! onRuler && ! pressLabel && arr != nullptr && ! columnX.empty() && onSection)
+        {
+            const float end = columnX.back() + columnW.back();
+            if (pressSection >= 0)
+            {
+                menuShown = true;
+                onSection (pressSection, localAreaToGlobal (headerArea (pressSection).toNearestInt()));
+            }
+            else if (e.position.x >= end && e.position.y >= rulerH)
+            {
+                menuShown = true;
+                onSection ((int) arr->sections.size(), localAreaToGlobal (juce::Rectangle<int> ((int) e.position.x, (int) e.position.y, 1, 1)));
+            }
+        }
+    }
+
+    int ArrangementGrid::gapAt (float x) const
+    {
+        if (columnX.empty()) return -1;
+        int best = 0;
+        float bestD = std::numeric_limits<float>::max();
+        for (size_t i = 0; i <= columnX.size(); ++i)
+        {
+            const float edge = i < columnX.size() ? columnX[i] : columnX.back() + columnW.back();
+            if (const float d = std::abs (x - edge); d < bestD) { bestD = d; best = (int) i; }
+        }
+        return best;
+    }
+
+    void ArrangementGrid::showMove (int section, int gap, float x)
+    {
+        movingSection = section;
+        moveGap = gap;
+        moveX = x >= 0.0f ? x : (gap >= 0 && ! columnX.empty() ? (gap < (int) columnX.size() ? columnX[(size_t) gap] : columnX.back() + columnW.back()) : 0.0f);
+        repaint();
     }
 
     void ArrangementGrid::mouseDrag (const juce::MouseEvent& e)
     {
+        if (menuShown) return;
         if (onRuler) { if (onSeek) onSeek (beatsAt (e.position.x)); return; }
+        // a section's name dragged left or right: it moves (the gold line shows where it lands)
+        if (pressHeader && ! e.mods.isPopupMenu())
+        {
+            if (movingSection < 0 && e.getDistanceFromDragStart() < 6) return;
+            movingSection = pressSection;
+            moveGap = gapAt (e.position.x);
+            moveX = e.position.x;
+            setMouseCursor (juce::MouseCursor::DraggingHandCursor);
+            if (auto* vp = findParentComponentOfClass<juce::Viewport>())
+            {
+                const auto inView = e.getEventRelativeTo (vp).position.toInt();
+                vp->autoScroll (inView.x, inView.y, 40, 10);
+            }
+            repaint();
+            return;
+        }
         if (draggedOut || e.getDistanceFromDragStart() < 6 || pressPart < 0) return;
         draggedOut = true;               // into the DAW: this box, or the whole part
         if (pressLabel) { if (onDragPart) onDragPart (pressPart); }
@@ -202,7 +261,19 @@ namespace ss::ui
 
     void ArrangementGrid::mouseUp (const juce::MouseEvent& e)
     {
+        if (menuShown) { menuShown = false; return; }
         if (onRuler) { onRuler = false; return; }
+        if (movingSection >= 0)
+        {
+            const int from = movingSection, gap = moveGap;
+            movingSection = moveGap = -1;
+            pressHeader = false;
+            setMouseCursor (juce::MouseCursor::PointingHandCursor);
+            repaint();
+            if (gap >= 0 && gap != from && gap != from + 1 && onMoveSection) onMoveSection (from, gap);
+            return;
+        }
+        pressHeader = false;
         if (draggedOut) { draggedOut = false; return; }
         int s, p;
         bool h;
@@ -214,9 +285,7 @@ namespace ss::ui
             // a double-click on a part that can be edited: the piano roll (the first click's switch is put back)
             if (e.getNumberOfClicks() >= 2 && parts != nullptr && editable ((*parts)[(size_t) p]) && onEditCell)
             {
-                // put the first click's change back: on / off, or the drums' step (round the five of them)
-                const int back = (*parts)[(size_t) p].type == PartType::drums ? drumModes().size() - 1 : 1;
-                for (int k = 0; k < back; ++k) onCell (s, p);
+                if (onCellRevert) onCellRevert (s, p);
                 onEditCell (s, p);
                 return;
             }
@@ -270,6 +339,44 @@ namespace ss::ui
                 g.drawRoundedRectangle (r.expanded (1.0f), 6.0f, 2.5f);
             }
         } dropOnTop { *this, g };
+
+        // a section's name being dragged: its column faded, a gold line where it lands, its name with the mouse
+        struct Moving
+        {
+            const ArrangementGrid& grid;
+            juce::Graphics& g;
+            ~Moving()
+            {
+                const auto s = grid.movingSection;
+                if (s < 0 || grid.arr == nullptr || s >= (int) grid.columnX.size()) return;
+                const auto& pl = pal();
+                const float bottom = (float) grid.getHeight() - 4.0f;
+                g.setColour (pl.bgTop.withAlpha (0.55f));
+                g.fillRect (juce::Rectangle<float> (grid.columnX[(size_t) s], rulerH, grid.columnW[(size_t) s], bottom - rulerH));
+                const bool lands = grid.moveGap >= 0 && grid.moveGap != s && grid.moveGap != s + 1;
+                if (lands)
+                {
+                    const float x = grid.moveGap < (int) grid.columnX.size() ? grid.columnX[(size_t) grid.moveGap]
+                                                                            : grid.columnX.back() + grid.columnW.back();
+                    g.setColour (pl.gold);
+                    g.fillRoundedRectangle (x - 2.0f, rulerH, 4.0f, bottom - rulerH, 2.0f);
+                    juce::Path arrow;
+                    arrow.addTriangle (x - 8.0f, rulerH - 2.0f, x + 8.0f, rulerH - 2.0f, x, rulerH + 8.0f);
+                    g.fillPath (arrow);
+                }
+                const auto& name = grid.arr->sections[(size_t) s].name;
+                const auto font = sans (13.5f, true);
+                const float w = juce::GlyphArrangement::getStringWidth (font, name) + 28.0f;
+                auto chip = juce::Rectangle<float> (w, 30.0f).withCentre ({ grid.moveX, rulerH + 34.0f });
+                g.setColour (pl.purple.withAlpha (0.92f));
+                g.fillRoundedRectangle (chip, 15.0f);
+                g.setColour (pl.gold);
+                g.drawRoundedRectangle (chip.reduced (0.5f), 15.0f, 1.5f);
+                g.setColour (juce::Colours::white);
+                g.setFont (font);
+                g.drawText (name, chip, juce::Justification::centred, false);
+            }
+        } movingOnTop { *this, g };
 
         // the bar ruler: a tick for every bar, a taller one where each section starts
         if (! columnX.empty())
@@ -413,8 +520,18 @@ namespace ss::ui
         };
         addAndMakeVisible (shapeBox);
         resetBtn.setTooltip ("Put the map back the way it came for this song shape, undoing your changes to it");
-        resetBtn.onClick = [this] { proc.song.resetArrangement (parts); changed(); };
+        resetBtn.onClick = [this] { edit ([this] (Arrangement&) { proc.song.resetArrangement (parts); }); };
         addAndMakeVisible (resetBtn);
+        undoBtn.setTooltip ("Take back your last change to the map (Ctrl+Z)");
+        undoBtn.onClick = [this] { undo(); };
+        redoBtn.setTooltip ("Put it back again (Ctrl+Y)");
+        redoBtn.onClick = [this] { redo(); };
+        for (auto* b : { &undoBtn, &redoBtn })
+        {
+            b->setWantsKeyboardFocus (false);
+            addChildComponent (b);
+        }
+        setWantsKeyboardFocus (true);
         wholeSong.setTooltip ("Drag the whole song into Cubase: a track per part, a marker per section");
         addAndMakeVisible (wholeSong);
 
@@ -446,10 +563,23 @@ namespace ss::ui
 
         grid.onCell = [this] (int s, int part)
         {
-            if (part >= 0 && part < (int) parts.size()) toggleArrangementCell (proc.song.arrangement, s, parts[(size_t) part]);
-            changed();
+            if (part < 0 || part >= (int) parts.size()) return;
+            edit ([this, s, part] (Arrangement& a) { toggleArrangementCell (a, s, parts[(size_t) part]); });
+            lastCell = { s, part };
+        };
+        grid.onCellRevert = [this] (int s, int part)
+        {
+            // a double-click: the first click switched the box; put it back (and forget that step)
+            if (lastCell == juce::Point<int> (s, part) && ! undos.empty())
+            {
+                proc.song.arrangement = undos.back();
+                undos.pop_back();
+                lastCell = { -1, -1 };
+                changed();
+            }
         };
         grid.onSection = [this] (int s, juce::Rectangle<int> area) { sectionMenu (s, area); };
+        grid.onMoveSection = [this] (int s, int gap) { moveSectionTo (s, gap); };
         grid.onEditCell = [this] (int s, int part)
         {
             if (part >= 0 && part < (int) parts.size() && onEditPattern) onEditPattern (parts[(size_t) part].role, s);
@@ -557,6 +687,14 @@ namespace ss::ui
         parts = pal != nullptr ? arrangementParts (*pal, catalog.get()) : std::vector<ArrangementPart>();
         if (hasPalette) proc.song.updateArrangement (parts);
         plan = proc.song.partsPlan();
+        if (proc.song.arrangement.signature != undoFor)
+        {
+            // a new palette, style or shape: a new map, and the steps back belonged to the old one
+            undos.clear();
+            redos.clear();
+            undoFor = proc.song.arrangement.signature;
+        }
+        updateUndoButtons();
 
         // what to draw it for: only redraw (and rewrite the file) when something changed
         juce::String now = proc.song.arrangement.toXml()->toString() + "|" + plan.chordLine() + "|" + juce::String (plan.bpm) + "|" + juce::String (plan.key)
@@ -575,6 +713,7 @@ namespace ss::ui
         resetBtn.setVisible (hasPalette);
         wholeSong.setVisible (hasPalette);
         for (auto* b : { &toStartBtn, &rewindBtn, &playBtn, &pauseBtn, &forwardBtn, &toEndBtn }) b->setVisible (hasPalette);
+        for (auto* b : { &undoBtn, &redoBtn }) b->setVisible (hasPalette);
         if (hasPalette)         // what the transport plays: the same song as WHOLE SONG
             proc.updateSketch (SongSavantProcessor::SketchMode::song,
                                std::make_shared<const SketchSong> (sketchOfSong (plan, proc.song.arrangement, parts, &proc.song.patterns)));
@@ -628,30 +767,133 @@ namespace ss::ui
 
     void ArrangePage::sectionMenu (int s, juce::Rectangle<int> area)
     {
-        auto& sections = proc.song.arrangement.sections;
-        if (s < 0 || s >= (int) sections.size()) return;
+        const auto& sections = proc.song.arrangement.sections;
+        const int n = (int) sections.size();
+        if (s < 0 || s > n) return;
+
+        // what can be added: one more like a section the song has (it plays the same), or a new kind
+        const auto inSong = sectionNamesInSong (proc.song.arrangement);
+        const auto fresh = newSectionNames (plan.guide, proc.song.arrangement);
+        auto addMenu = [&inSong, &fresh] (int base)
+        {
+            juce::PopupMenu m;
+            m.addSectionHeader ("ONE MORE (PLAYS THE SAME)");
+            for (int i = 0; i < inSong.size(); ++i) m.addItem (base + i, inSong[i]);
+            if (! fresh.isEmpty())
+            {
+                m.addSectionHeader ("A NEW SECTION");
+                for (int i = 0; i < fresh.size(); ++i) m.addItem (base + 500 + i, fresh[i]);
+            }
+            return m;
+        };
+
         juce::PopupMenu m;
-        m.addSectionHeader (sections[(size_t) s].name + "  (" + juce::String (sections[(size_t) s].bars) + " bars)");
-        juce::PopupMenu lengths;
-        for (int b : { 2, 4, 8, 12, 16, 24, 32 }) lengths.addItem (100 + b, juce::String (b) + " bars", true, sections[(size_t) s].bars == b);
-        m.addSubMenu ("Length", lengths);
-        m.addItem (1, "Copy this section (right after it)");
-        m.addItem (2, "Move left", s > 0);
-        m.addItem (3, "Move right", s + 1 < (int) sections.size());
-        m.addSeparator();
-        m.addItem (4, "Remove this section", sections.size() > 1);
+        if (s == n)
+        {
+            m.addSectionHeader ("THE END OF THE SONG");
+            m.addSubMenu ("Add a section at the end", addMenu (2000));
+        }
+        else
+        {
+            m.addSectionHeader (sections[(size_t) s].name + "  (" + juce::String (sections[(size_t) s].bars) + " bars)");
+            m.addSubMenu ("Add a section before", addMenu (1000));
+            m.addSubMenu ("Add a section after", addMenu (2000));
+            m.addSeparator();
+            juce::PopupMenu lengths;
+            for (int b : { 2, 4, 8, 12, 16, 24, 32 }) lengths.addItem (100 + b, juce::String (b) + " bars", true, sections[(size_t) s].bars == b);
+            m.addSubMenu ("Length", lengths);
+            m.addItem (1, "Copy this section (right after it)");
+            m.addItem (2, "Move left", s > 0);
+            m.addItem (3, "Move right", s + 1 < n);
+            m.addSeparator();
+            m.addItem (4, "Delete this section", n > 1);
+        }
         juce::Component::SafePointer<ArrangePage> safe (this);
-        m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (area), [safe, s] (int r)
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (area), [safe, s, inSong, fresh] (int r)
         {
             if (safe == nullptr || r <= 0) return;
-            auto& a = safe->proc.song.arrangement;
-            if (r > 100) setSectionBars (a, s, r - 100);
-            else if (r == 1) copySection (a, s);
-            else if (r == 2) moveSection (a, s, -1);
-            else if (r == 3) moveSection (a, s, 1);
-            else if (r == 4) removeSection (a, s);
-            safe->changed();
+            if (r >= 1000)
+            {
+                const int at = r >= 2000 ? s + (s < (int) safe->proc.song.arrangement.sections.size() ? 1 : 0) : s;
+                const int i = (r % 1000) % 500;
+                const auto& names = (r % 1000) >= 500 ? fresh : inSong;
+                if (i < names.size()) safe->addSectionAt (at, names[i]);
+                return;
+            }
+            if (r > 100)       safe->edit ([s, r] (Arrangement& a) { setSectionBars (a, s, r - 100); });
+            else if (r == 1)   safe->edit ([s] (Arrangement& a) { copySection (a, s); });
+            else if (r == 2)   safe->moveSectionTo (s, s - 1);
+            else if (r == 3)   safe->moveSectionTo (s, s + 2);
+            else if (r == 4)   safe->deleteSection (s);
         });
+    }
+
+    //==============================================================================
+    // Changing the map: every change is one step for UNDO
+    void ArrangePage::edit (const std::function<void (Arrangement&)>& change)
+    {
+        auto before = proc.song.arrangement;
+        change (proc.song.arrangement);
+        if (proc.song.arrangement.toXml()->isEquivalentTo (before.toXml().get(), false)) return;   // (nothing changed)
+        undos.push_back (std::move (before));
+        if (undos.size() > 200) undos.erase (undos.begin());
+        redos.clear();
+        lastCell = { -1, -1 };
+        undoFor = proc.song.arrangement.signature;
+        changed();
+    }
+
+    void ArrangePage::moveSectionTo (int section, int gap)
+    {
+        edit ([section, gap] (Arrangement& a) { ss::moveSectionTo (a, section, gap); });
+    }
+
+    void ArrangePage::addSectionAt (int at, const juce::String& name)
+    {
+        edit ([this, at, name] (Arrangement& a) { ss::addSection (a, at, name, plan, parts); });
+    }
+
+    void ArrangePage::deleteSection (int section)
+    {
+        edit ([section] (Arrangement& a) { removeSection (a, section); });
+    }
+
+    void ArrangePage::undo()
+    {
+        if (undos.empty()) return;
+        redos.push_back (proc.song.arrangement);
+        proc.song.arrangement = undos.back();
+        undos.pop_back();
+        lastCell = { -1, -1 };
+        changed();
+    }
+
+    void ArrangePage::redo()
+    {
+        if (redos.empty()) return;
+        undos.push_back (proc.song.arrangement);
+        proc.song.arrangement = redos.back();
+        redos.pop_back();
+        lastCell = { -1, -1 };
+        changed();
+    }
+
+    void ArrangePage::updateUndoButtons()
+    {
+        undoBtn.setEnabled (! undos.empty());
+        redoBtn.setEnabled (! redos.empty());
+    }
+
+    bool ArrangePage::keyPressed (const juce::KeyPress& key)
+    {
+        const auto mods = key.getModifiers();
+        if (! mods.isCommandDown()) return false;
+        const auto c = juce::CharacterFunctions::toLowerCase (key.getTextCharacter());
+        const int code = key.getKeyCode();
+        const bool z = c == 'z' || code == 'Z' || code == 'z', y = c == 'y' || code == 'Y' || code == 'y';
+        if (z && ! mods.isShiftDown()) { undo(); return true; }
+        if (y || (z && mods.isShiftDown())) { redo(); return true; }
+        return false;
     }
 
     void ArrangePage::paint (juce::Graphics& g)
@@ -663,9 +905,11 @@ namespace ss::ui
         g.setFont (serif (24.0f));
         g.drawText ("Arrangement map", t.removeFromTop (30.0f), juce::Justification::centredLeft);
         g.setColour (p.muted);
-        g.setFont (sans (13.0f));
-        g.drawText (hasPalette ? plan.guide.name + ": which parts play where. Click a box to switch a part on or off; click a section's name to change it."
-                               : juce::String ("The map uses your palette's parts."), t, juce::Justification::centredLeft, true);
+        g.setFont (sans (12.5f));
+        // (narrow: without the style's name, which the box at the bottom shows)
+        const juce::String how = "Click a box to switch a part on or off. Drag a section's name to move it; right-click a section to add or delete one.";
+        g.drawFittedText (hasPalette ? (t.getWidth() > 450.0f ? plan.guide.name + ": which parts play where. " + how : how)
+                                     : juce::String ("The map uses your palette's parts."), t.toNearestInt(), juce::Justification::centredLeft, 2, 0.95f);
 
         if (! hasPalette)
         {
@@ -705,9 +949,10 @@ namespace ss::ui
             const auto dawName = proc.dawName().isNotEmpty() ? proc.dawName() : juce::String ("your DAW");
             g.setColour (p.dim);
             g.setFont (sans (12.5f));
-            g.drawText (proc.songFollowsDaw() ? "Playing along with " + dawName + ": move it with " + dawName + "'s own buttons"
-                                              : juce::String ("Click the bar ruler above the sections to move the playhead"),
-                        transportHint, juce::Justification::centredLeft, true);
+            const auto hint = proc.songFollowsDaw() ? "Playing along with " + dawName + ": move it with " + dawName + "'s own buttons"
+                                                    : juce::String ("Click the bar ruler to move the playhead");
+            if (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), hint) <= transportHint.getWidth() || proc.songFollowsDaw())
+                g.drawText (hint, transportHint, juce::Justification::centredLeft, true);
         }
 
         // how songs in this style are built
@@ -746,6 +991,10 @@ namespace ss::ui
                 b->setBounds (row.removeFromLeft (size).withSizeKeepingCentre (size, size).toNearestInt());
                 row.removeFromLeft (8.0f);
             }
+            redoBtn.setBounds (row.removeFromRight (84.0f).withSizeKeepingCentre (84.0f, 36.0f).toNearestInt());
+            row.removeFromRight (8.0f);
+            undoBtn.setBounds (row.removeFromRight (84.0f).withSizeKeepingCentre (84.0f, 36.0f).toNearestInt());
+            row.removeFromRight (12.0f);
             row.removeFromLeft (10.0f);
             const float infoW = juce::jmin (380.0f, row.getWidth());
             transportInfo = row.removeFromLeft (infoW).withSizeKeepingCentre (infoW, 40.0f);
