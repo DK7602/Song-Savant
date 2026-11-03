@@ -38,13 +38,31 @@ public:
     juce::File saveReport();                 // writes Documents/Song Savant/Setup Report.txt (if there's a result)
     juce::String reportText() const;
 
-    // hearing the parts: PLAY on the Song page (the starter parts, looped) and on the Arrange page (the whole song)
+    // hearing the parts: PLAY ALL and each card's play button on the Song page (the starter parts, looped), and the
+    // transport on the Arrange page (the whole song)
     ss::SketchPlayer sketch;
     enum class SketchMode { loop, song };
-    void playSketch (SketchMode);
+    void playSketch (SketchMode);                       // the loop from its start; the song from the playhead
     void stopSketch()                                   { sketch.stop(); }
     bool isSketchPlaying (SketchMode m) const           { return sketch.isPlaying() && sketchMode == m; }
     void updateSketch (SketchMode, std::shared_ptr<const ss::SketchSong>);   // the latest parts for that button
+    // The Song page: every part (an empty role) or one card's part on its own. It changes in time while it plays.
+    // False (and no change) when that card has no starter part.
+    bool setSketchSolo (const juce::String& role);
+    const juce::String& getSketchSolo() const           { return soloRole; }
+    bool sketchHasPart (const juce::String& role) const;   // the starter parts have one for this card
+
+    // The Arrange page's transport, for the whole song. PLAY plays from the playhead (from the top when it's at the
+    // end); STOP stops and the playhead goes back to where it started; PAUSE stops where it is. Moving the playhead
+    // while it plays carries on from there (and STOP then goes back to there).
+    void songPlay();
+    void songStop()                                     { if (isSketchPlaying (SketchMode::song)) sketch.stop(); }
+    void songPause();
+    void songMoveTo (double beats);
+    void songStep (int direction);                      // rewind (-1) / fast forward (+1): to the bar line before / after
+    double songPosition() const;                        // the playhead, in beats from the start (playing or not)
+    double songLength() const                           { return songSketch != nullptr ? songSketch->lengthBeats : 0.0; }
+    bool songFollowsDaw() const                         { return isSketchPlaying (SketchMode::song) && sketch.isFollowingHost(); }
     double getHostBpm() const                           { return hostBpm.load(); }   // the DAW's tempo; 0 in the app
     bool isInDaw() const                                { return wrapperType != wrapperType_Standalone && wrapperType != wrapperType_Undefined; }
 
@@ -73,8 +91,11 @@ public:
     void setStateInformation (const void*, int) override;
 
 private:
+    void applySolo();
     SketchMode sketchMode = SketchMode::loop;
     std::shared_ptr<const ss::SketchSong> loopSketch, songSketch;
+    juce::String soloRole;                               // the Song page's one part on its own ("" every part)
+    double songCursor = 0.0;                             // where the song's playhead waits (beats)
     std::atomic<double> hostBpm { 0.0 };
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SongSavantProcessor)
 };

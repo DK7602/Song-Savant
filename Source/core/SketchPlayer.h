@@ -24,6 +24,7 @@ namespace ss
         juce::String name;                    // "Bass - Warm Analog Bass"
         PartType type = PartType::none;
         Kind instrument = Kind::other;
+        juce::String role;                    // "Bass": the card it comes from
     };
 
     struct SketchSong
@@ -49,9 +50,15 @@ namespace ss
 
         // ---- the message thread
         void setSong (std::shared_ptr<const SketchSong>);    // takes over at the next block; what's sounding carries on
-        void play();                          // from the start; inside a DAW that's playing, along with it
+        // From `fromBeat` (the start, or where the playhead is); inside a DAW that's playing, along with the DAW. Playing
+        // already: it jumps there (notes held across that point sound from there on).
+        void play (double fromBeat = 0.0);
         void stop();
+        // One part on its own (an index into SketchSong::parts), or every part (-1). Changes as it plays, in time.
+        void setSolo (int part)               { solo = part; }
+        int getSolo() const                   { return solo.load(); }
         bool isPlaying() const                { return armed.load(); }
+        bool isFollowingHost() const          { return followingHost.load(); }   // the DAW is playing: it decides where
         double getPosition() const            { return position.load(); }   // beats into the song (-1: silent)
         std::atomic<float> volume { 0.8f };
 
@@ -74,13 +81,18 @@ namespace ss
         void render (juce::AudioBuffer<float>&, int from, int to);
         float toneSample (Voice&);
         float drumSample (Voice&);
+        void release (Voice&);
         void releaseAll();
         void schedule (const SketchSong&, double from, double to, double samplesPerBeat, int blockLength);
+        void chase (const SketchSong&, double at, double samplesPerBeat, int except);   // the notes already held at `at`
+        bool heard (int part) const           { const int s = solo.load(); return s < 0 || s == part; }
 
         double sampleRate = 44100.0;
         std::array<Voice, 64> voices;
-        std::atomic<bool> armed { false }, restart { false };
-        std::atomic<double> position { -1.0 };
+        std::atomic<bool> armed { false }, restart { false }, followingHost { false };
+        std::atomic<double> position { -1.0 }, startAt { 0.0 };
+        std::atomic<int> solo { -1 };
+        int lastSolo = -1;
         bool ownRunning = false, wasFollowing = false, wasSounding = false;
         double ownPos = 0.0, expectedPos = -1.0;
         juce::SpinLock songLock;

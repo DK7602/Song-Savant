@@ -361,8 +361,8 @@ Built in steps, each one a build the owner can try:
   groove / build / full, bass, chords, pad, hook; "all" brings in the extras; which progression: the main one, the
   verse's, the bridge's). Shapes: the full song, a short one (the second verse goes, shorter intro and outro), or the
   picked Key Compass song's own sections and chords. Click a box to switch a part on or off (the drums step through
-  light, groove, build, full); click a section's name to change its length, copy, move or remove it; START OVER goes
-  back to the shape. **WHOLE SONG** drags it all into Cubase: a track per part, each section's starter parts in
+  light, groove, build, full); click a section's name to change its length, copy, move or remove it; RESET MAP
+  (called START OVER until 1.0.1, which read like a play button) goes back to the shape. **WHOLE SONG** drags it all into Cubase: a track per part, each section's starter parts in
   place, a marker per section. The song keeps its map (`Source/core/Arrangement.*`, `Source/ui/ArrangePage.*`).
   The header's SETUP CHECK became a small icon next to the light/dark switch (it's a one-off tool now), to make
   room.
@@ -373,7 +373,8 @@ Built in steps, each one a build the owner can try:
   viewer). Plain language, one chapter per page plus drums and the 808, Groove Grabber, Key Compass, the plug-in, where
   files live, troubleshooting and a quick reference card. **Update it in the same commit whenever behaviour changes.**
 - **Hearing the parts, and Song Savant inside the DAW** *(1.0.0; the owner asked for it with the 1.0 release)*:
-  **PLAY** on the Song page (the starter parts, looped: what ALL PARTS drags) and **PLAY SONG** on the Arrange page (the
+  **PLAY** on the Song page (the starter parts, looped: what ALL PARTS drags; PLAY ALL and a play button per card since
+  1.0.1) and **PLAY SONG** on the Arrange page (a full transport since 1.0.1; the
   whole song, with a gold playhead on the map: what WHOLE SONG drags) play the parts with simple built-in **sketch
   sounds** (`Source/core/SketchPlayer.*`: synthesised drums on the General MIDI notes, a bass, keys / a guitar strum /
   an organ / strings by the card's kind of sound, a pad and a lead; never louder than full scale). They're for hearing
@@ -389,6 +390,24 @@ Built in steps, each one a build the owner can try:
   (push the tag `v1.0.0`: the workflow builds the installers and publishes them). **Still for the owner before
   selling:** a code-signing certificate (so Windows stops saying "Windows protected your PC") and the installer
   tool's commercial licence (Inno Setup prints "Non-commercial use only"); see Things to remember.
+- **Transport and one part on its own** *(1.0.1; the owner asked for both, November 2026)*:
+  - **ARRANGE** has a DAW-style transport instead of PLAY SONG: to the start, rewind, play / stop (gold), pause, fast
+    forward, to the end (`TransportButton` in `Source/ui/Widgets.*`). The playhead stays on the map when stopped (it's
+    where PLAY starts). STOP goes back to where you started playing or last moved the playhead (like Cubase's "return
+    to start position on stop"); PAUSE stays put; the song's end goes back like STOP. Rewind and fast forward step by a
+    bar (rewind first goes to the start of the bar it's in, unless it's just past the line) and repeat while held. A
+    **bar ruler** above the section names: click or drag to move the playhead (to the nearest bar line). A readout
+    shows the bar, the section and the time. A long song in a small window scrolls to follow the playhead.
+  - Inside a DAW that's playing, the DAW decides where the song is (a plug-in can't move the DAW's playhead), so the
+    moving buttons and the ruler rest until it stops, and the readout says so.
+  - Starting part-way through, the sketch picks up notes already held there (a pad's chord, a long bass note), and so
+    does a part coming back in.
+  - **SONG**: PLAY became **PLAY ALL**, and every card with a starter part has a round **play button** (bottom right of
+    its picture) that plays just that part. While one part plays, clicking another card switches to that card's part,
+    in time; PLAY ALL and a card's button switch between all and one without starting over. The cards being heard
+    show a small moving level meter. (`SketchPlayer::setSolo`, `SongSavantProcessor::setSketchSolo`, and the `song...`
+    transport calls.)
+  - START OVER on ARRANGE became **RESET MAP**: the owner read it as a transport button.
 
 ### Phase 3: Hearing it
 - Preview sounds by loading the instrument in the background and recording a short phrase. Run it in a

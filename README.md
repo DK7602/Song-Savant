@@ -6,7 +6,7 @@
 through the instruments and presets you already own, then suggests a complete sound palette: rhythm, bass,
 leads, pads and drums, each with alternatives, plus starter MIDI parts to get the song moving.
 
-> **Version 1.0.0.** New in 1.0: **PLAY** your starter parts and **PLAY SONG** on the Arrange page (simple built-in sketch sounds; inside Cubase it follows the project's tempo and plays along with Cubase), and a **welcome screen**. Also: **the manual** inside the app (the **?** button or F1). **SEND TO GROOVE GRABBER** on the drum card (Groove Grabber builds kits
+> **Version 1.0.1.** New in 1.0.1: a **transport** on the Arrange page (to the start, rewind, play / stop, pause, fast forward, to the end, and a bar ruler to click), and on the Song page **PLAY ALL** or a **play button on each card** for one part on its own. New in 1.0: **PLAY** your starter parts and **PLAY SONG** on the Arrange page (simple built-in sketch sounds; inside Cubase it follows the project's tempo and plays along with Cubase), and a **welcome screen**. Also: **the manual** inside the app (the **?** button or F1). **SEND TO GROOVE GRABBER** on the drum card (Groove Grabber builds kits
 > for your song, tuned to its key, and the kit you save there lands on the drum card by itself), the **ARRANGE** page (your song's shape, which parts play where, and the
 > whole song dragged into your DAW with a marker per section), **starter MIDI parts** (drag a card's part, or all of them, into your
 > DAW, in your key and tempo), the **MASTERCLASS** page (learn any genre or style: its sounds, drums, bass, chords in

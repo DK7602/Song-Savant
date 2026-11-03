@@ -143,7 +143,7 @@ Every card that plays notes has a starter part: 8 bars in your song's key and te
 
 **NEW IDEA** writes another take: the style's next chord progression, a varied drum pattern and a new hook. Click it as often as you like.
 
-**PLAY** (next to NEW IDEA) lets you hear the starter parts before you drag them: see Hearing your song.
+**PLAY ALL** (next to NEW IDEA) lets you hear every starter part together before you drag them in, and the **play button** on each card (bottom right of its picture) plays that card's part on its own: see Hearing your song.
 
 **The key.** The line above the cards says which key the parts are in ("STARTER PARTS IN A MINOR"). If you didn't give a key, Song Savant picks one that suits the style and says "Key picked for you". With a Key Compass song, the parts follow that song's own chords.
 
@@ -153,8 +153,32 @@ Every card that plays notes has a starter part: 8 bars in your song's key and te
 
 You can hear your song's parts in Song Savant before dragging anything into your DAW.
 
-- **SONG page, PLAY:** plays the starter parts (all the cards that have one), looped, in your key and tempo. Click **STOP** to stop. Click **NEW IDEA** while it plays to hear another take.
-- **ARRANGE page, PLAY SONG:** plays the whole song, section by section, with only the parts you switched on in each. A gold line on the map shows where it is. It stops by itself at the end.
+**On the SONG page** the starter parts play as an 8-bar loop, in your key and tempo:
+
+- **PLAY ALL** (next to NEW IDEA) plays every card's part together. It turns into **STOP**.
+- **The play button on a card** (the round button at the bottom right of the card's picture) plays **just that card's part**, on its own. Its button turns into a stop square; click it again to stop.
+- **While one part plays on its own, click another card** (anywhere on it) to hear that card's part instead. It changes in time, without starting over.
+- **Switch between the two whenever you like:** while one part plays, PLAY ALL brings every part back in; while they all play, a card's play button leaves just that part. The loop keeps going either way.
+- **Which parts you're hearing:** each card that's playing shows a small moving level meter at the top left of its picture.
+- Click **NEW IDEA** while it plays to hear another take.
+
+**On the ARRANGE page** the whole song plays, section by section, with only the parts you switched on in each. The buttons above the map work like your DAW's transport:
+
+| Button | What it does |
+| --- | --- |
+| To the start (bar and arrow pointing left) | Moves the playhead to bar 1 |
+| Rewind (two arrows pointing left) | Back a bar: to the start of the bar it's in, or the bar before if it's right at the start. Hold it down to keep going back |
+| Play / Stop (the gold button) | Plays from the playhead. While it plays it's a stop square: **STOP** stops and the playhead goes back to where you started playing, so you can hear the same part again |
+| Pause (two bars) | Stops right where it is: Play carries on from there |
+| Fast forward (two arrows pointing right) | On a bar. Hold it down to keep going |
+| To the end (arrow pointing right and a bar) | Moves the playhead to the end of the song. Play there starts again from bar 1 |
+
+- **The playhead** is the gold line down the map, with a marker on the bar ruler above the sections. It shows where the song will play from, even when it's stopped.
+- **Click or drag on the bar ruler** (the strip of ticks above the section names, one tick per bar) to move the playhead to that bar. While it plays, it carries on from there.
+- **Moving the playhead while it plays** (any of the buttons, or the ruler) carries on playing from the new place, and STOP then goes back to there.
+- **Where you are:** the box next to the buttons shows the bar ("Bar 17 of 72"), the section you're in, and the time, with the song's length.
+- At the end of the song it stops by itself and the playhead goes back to where you started.
+- In a small window the map scrolls sideways. While it plays it follows the playhead.
 
 Song Savant plays them with **simple built-in sketch sounds**: synthesised drums, a bass, keys or a guitar strum, a pad and a lead. They're there to hear the idea (the groove, the chords, the hook, how the song builds), not your real sounds. For the real thing, load the sounds on the cards in your DAW and drag the parts in.
 
@@ -213,13 +237,13 @@ The ARRANGE page lays your palette's parts out across the whole song. Make your 
 - **The drums** step through no drums, **light**, **groove**, **build** and **full** as you click: light is a sparse pattern, groove the main beat, build adds energy into the next section, and full is everything with a crash.
 - **Click a section's name** for its menu: **Length** (2 to 32 bars), **Copy this section** (right after it), **Move left**, **Move right**, **Remove this section**.
 - **The shape box** (top) picks the song's shape: **The full song**, **A short song** (one verse and chorus fewer, shorter intro and outro), or **Key Compass: ...** (your Key Compass song's own sections and chords).
-- **START OVER** goes back to the shape as it comes, undoing your changes.
+- **RESET MAP** (it used to say START OVER) puts the map back the way it came for that shape, undoing your changes to it. It doesn't play anything.
 
 Your changes stay while the song stays the same. Swapping a sound (a different drum kit, say) keeps them. Changing the style, the shape or the parts starts a fresh map.
 
 **WHOLE SONG** (top right) drags it all into your DAW: one track per part with each section's starter parts in place, the tempo and key, and a **marker for every section** (in Cubase, on the Marker track). The chip shows the length in bars and minutes.
 
-**PLAY SONG** plays the whole song with the sketch sounds, with a gold line moving across the map (see Hearing your song).
+**The transport** (the round buttons under the title: to the start, rewind, play / stop, pause, fast forward, to the end) plays the whole song with the sketch sounds, with a gold line moving across the map. Click or drag on the bar ruler above the sections to move it. See Hearing your song.
 
 The panel at the bottom explains how songs in your style are usually built.
 
@@ -313,7 +337,8 @@ The clipboard icon in the header opens the setup check: a one-off look at what's
 In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the instrument list, made by Grabber Audio (under Tools when the list is sorted by category). Everything works the same as in the app, plus:
 
 - **It follows Cubase's tempo.** The song's tempo is your project's tempo: the starter parts, the whole song and what you send to Groove Grabber all use it. The gold "Your song" line shows it ("120 BPM (Cubase)"), and says if the style usually sits somewhere else ("the style is usually 70-80 BPM"): change Cubase's tempo to try it. To use another tempo anyway, type it in the **BPM** box.
-- **PLAY plays in time with Cubase.** Click **PLAY** (or **PLAY SONG** on ARRANGE), then press play in Cubase: the sketch plays along, from wherever Cubase is. On the SONG page the 8 bars loop along Cubase's timeline; on ARRANGE the whole song starts at bar 1 of your project, so it lines up with WHOLE SONG once you've dragged it in. When Cubase stops, the sketch stops. With Cubase stopped, PLAY plays on its own.
+- **It plays in time with Cubase.** Click **PLAY ALL** or a card's play button (or the gold play button on ARRANGE), then press play in Cubase: the sketch plays along, from wherever Cubase is. On the SONG page the 8 bars loop along Cubase's timeline; on ARRANGE the whole song starts at bar 1 of your project, so it lines up with WHOLE SONG once you've dragged it in. When Cubase stops, the sketch stops. With Cubase stopped, Song Savant plays on its own.
+- **While Cubase is playing, Cubase decides where you are.** Song Savant can't move Cubase's playhead, so on ARRANGE the rewind, fast forward, to the start and to the end buttons (and the bar ruler) rest until Cubase stops: move with Cubase's own transport then. The box next to the buttons says so. Stop and Pause still silence Song Savant.
 - **The sound** comes out of Song Savant's track in Cubase: turn that track down or mute it whenever you like.
 - **It's saved with the project:** your song (description, palettes, choices, locks and arrangement) is there next time you open it.
 
@@ -341,7 +366,7 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | The drum part plays the wrong drums | Check which notes it uses (hover the drum card's MIDI tag). For Analog Lab and HALion kits, make a drum map on DRUM MAPS. |
 | Cubase freezes when you quit after using Groove Grabber | Install Groove Grabber 1.0.15 or newer. If it still happens, force-close Cubase and send Documents\Groove Grabber\Groove Grabber log.txt: its last lines show where it got stuck. |
 | Your Groove Grabber kit didn't land on the drum card | Song Savant needs to be open when you click SAVE KIT, and the kit has to be built for the song you sent. Saved kits always show up among the drum choices. |
-| PLAY makes no sound | In the app: Options (top left) > Audio/MIDI Settings, and pick your output. In Cubase: check Song Savant's track isn't muted or turned down. |
+| Nothing plays when I click play | In the app: Options (top left) > Audio/MIDI Settings, and pick your output. In Cubase: check Song Savant's track isn't muted or turned down. |
 | Dragging MIDI into Cubase made a silent track | Drop it on the lane of a track that has the instrument, or set the new MIDI track's output to that instrument. |
 | The markers didn't appear in Cubase | Cubase puts them on a Marker track; add one if your project has none (Project > Add Track > Marker). |
 | The Library is empty | Wait for "Reading your libraries..." to finish, then click REFRESH LIBRARY. Run the setup check to see what was found. |
@@ -360,7 +385,11 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | One starter part into your DAW | Drag the card's MIDI tag |
 | Every starter part | Drag ALL PARTS |
 | Another take on the parts | NEW IDEA |
-| Hear the parts | PLAY on SONG (looped), PLAY SONG on ARRANGE (the whole song) |
+| Hear all the parts | PLAY ALL on SONG (looped) |
+| Hear one part on its own | The play button on its card; click another card to switch |
+| Hear the whole song | ARRANGE: the gold play button (plays from the playhead) |
+| Move around the song | ARRANGE: to the start, rewind, fast forward, to the end; or click the bar ruler |
+| Stop here / go back | ARRANGE: Pause stays where it is; Stop goes back to where you started |
 | Drums from your own samples | Drum card, SEND TO GROOVE GRABBER, then USE IT and SAVE KIT in Groove Grabber |
 | Start from a Key Compass song | KEY COMPASS on the SONG page |
 | Change who plays where | ARRANGE: click boxes; click a section's name for its menu |

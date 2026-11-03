@@ -326,4 +326,80 @@ namespace ss::ui
         g.setFont (serif (r.getHeight() * 0.58f, true));
         g.drawText ("?", r.translated (0.0f, 0.5f), juce::Justification::centred, false);
     }
+
+    //==============================================================================
+    TransportButton::TransportButton (Icon i) : juce::Button ("transport"), icon (i)
+    {
+        setMouseCursor (juce::MouseCursor::PointingHandCursor);
+    }
+
+    void TransportButton::drawIcon (juce::Graphics& g, Icon icon, bool stop, juce::Rectangle<float> a)
+    {
+        // a: the square the icon sits in
+        const float s = a.getWidth(), x = a.getX(), y = a.getY(), cy = a.getCentreY();
+        juce::Path p;
+        auto triangle = [&p, cy, s] (float tipX, bool right)
+        {
+            const float w = s * 0.42f, h = s * 0.5f;
+            const float baseX = right ? tipX - w : tipX + w;
+            p.addTriangle (baseX, cy - h, baseX, cy + h, tipX, cy);
+        };
+        switch (icon)
+        {
+            case Icon::play:
+                if (stop) p.addRoundedRectangle (a.reduced (s * 0.12f), s * 0.08f);
+                else      p.addTriangle (x + s * 0.18f, y, x + s * 0.18f, y + s, x + s * 0.98f, cy);
+                break;
+            case Icon::pause:
+                p.addRoundedRectangle (x + s * 0.12f, y + s * 0.02f, s * 0.26f, s * 0.96f, s * 0.06f);
+                p.addRoundedRectangle (x + s * 0.62f, y + s * 0.02f, s * 0.26f, s * 0.96f, s * 0.06f);
+                break;
+            case Icon::rewind:  triangle (x,                  false); triangle (x + s * 0.5f, false); break;
+            case Icon::forward: triangle (x + s * 0.5f,       true);  triangle (x + s,        true);  break;
+            case Icon::toStart:
+                p.addRectangle (x + s * 0.08f, y, s * 0.16f, s);
+                triangle (x + s * 0.26f, false);
+                triangle (x + s * 0.6f, false);
+                break;
+            case Icon::toEnd:
+                triangle (x + s * 0.4f, true);
+                triangle (x + s * 0.74f, true);
+                p.addRectangle (x + s * 0.76f, y, s * 0.16f, s);
+                break;
+        }
+        g.fillPath (p);
+    }
+
+    void TransportButton::paintButton (juce::Graphics& g, bool over, bool down)
+    {
+        const auto& p = pal();
+        auto r = getLocalBounds().toFloat().reduced (2.0f);
+        r = r.withSizeKeepingCentre (juce::jmin (r.getWidth(), r.getHeight()), juce::jmin (r.getWidth(), r.getHeight()));
+        const float alpha = isEnabled() ? 1.0f : 0.35f;
+        const bool gold = icon == Icon::play;
+        if (gold)
+        {
+            if (isEnabled())
+                juce::DropShadow (p.gold.withAlpha (over ? 0.55f : 0.35f), over ? 16 : 10, {}).drawForPath (g, [&] { juce::Path e; e.addEllipse (r); return e; }());
+            g.setGradientFill (juce::ColourGradient (p.gold.brighter (over ? 0.15f : 0.0f), r.getX(), r.getY(), p.goldDeep, r.getX(), r.getBottom(), false));
+            g.setOpacity (alpha);
+            g.fillEllipse (r);
+            g.setColour (juce::Colours::white.withAlpha (0.35f * alpha));
+            g.drawEllipse (r, 1.0f);
+            g.setColour (p.goldText.withAlpha (alpha));
+        }
+        else
+        {
+            g.setColour (p.panelHi.withAlpha ((over && isEnabled() ? 1.0f : 0.7f) * alpha));
+            g.fillEllipse (r);
+            g.setColour (p.gold.withAlpha ((over ? 1.0f : 0.75f) * alpha));
+            g.drawEllipse (r, over ? 1.6f : 1.2f);
+            g.setColour (p.gold.withAlpha (alpha));
+        }
+        const float is = r.getWidth() * (gold ? 0.36f : 0.34f);
+        auto iconArea = juce::Rectangle<float> (is, is).withCentre (r.getCentre());
+        if (icon == Icon::play && ! getToggleState()) iconArea = iconArea.translated (is * 0.06f, 0.0f);   // a triangle looks centred a little right
+        if (down) iconArea = iconArea.translated (0.0f, 1.0f);
+        drawIcon (g, icon, getToggleState(), iconArea);
+    }
 }

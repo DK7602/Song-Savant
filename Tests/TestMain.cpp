@@ -1265,7 +1265,7 @@ namespace
         shortSong.loop = false;
         shortSong.lengthBeats = 4.0;
         shortSong.bpm = 120.0;
-        shortSong.parts.push_back ({ "Bass", ss::PartType::bass, ss::Kind::bass });
+        shortSong.parts.push_back ({ "Bass", ss::PartType::bass, ss::Kind::bass, "Bass" });
         shortSong.notes.push_back ({ 0.0, 1.0, 45, 100, 0 });
         p.setSong (std::make_shared<const ss::SketchSong> (shortSong));
         p.play();
@@ -1318,6 +1318,119 @@ namespace
         check (std::abs (s.partsPlan().bpm - 128.0) < 0.01, "inside a DAW the song follows its tempo");
         s.form.bpm = 72.0;
         check (std::abs (s.partsPlan().bpm - 72.0) < 0.01, "unless the BPM box says otherwise");
+    }
+
+    void testTransport()
+    {
+        section ("The transport (ARRANGE) and one part on its own (SONG)");
+        const double sr = 48000.0;
+        juce::AudioBuffer<float> buf (2, 480);
+        const ss::SketchPlayer::Host app;
+        auto loudness = [&] (ss::SketchPlayer& p, int blocks)
+        {
+            float peak = 0.0f;
+            for (int i = 0; i < blocks; ++i) { p.process (buf, app); peak = juce::jmax (peak, buf.getMagnitude (0, buf.getNumSamples())); }
+            return peak;
+        };
+
+        // two parts that take turns: the bass on beats 0-2, the keys on beats 2-4 (120 BPM: a beat is 0.5 s, 50 blocks)
+        ss::SketchSong turns;
+        turns.loop = true;
+        turns.lengthBeats = 4.0;
+        turns.bpm = 120.0;
+        turns.parts.push_back ({ "Bass", ss::PartType::bass, ss::Kind::bass, "Bass" });
+        turns.parts.push_back ({ "Keys", ss::PartType::pad, ss::Kind::pad, "Keys" });
+        turns.notes.push_back ({ 0.0, 1.9, 45, 110, 0 });
+        turns.notes.push_back ({ 2.0, 1.9, 69, 110, 1 });
+        ss::SketchPlayer p;
+        p.prepare (sr);
+        p.setSong (std::make_shared<const ss::SketchSong> (turns));
+
+        p.setSolo (1);
+        p.play();
+        const float soloQuiet = loudness (p, 90);            // beats 0-1.8: only the bass plays here, and it's left out
+        const float soloKeys = loudness (p, 80);             // beats 2-3.6: the keys
+        check (soloQuiet < 1.0e-3f && soloKeys > 0.02f, "one part on its own: only that part sounds (" + juce::String (soloQuiet, 4) + " / " + juce::String (soloKeys, 3) + ")");
+        p.setSolo (-1);
+        p.play();
+        check (loudness (p, 90) > 0.05f, "and every part again");
+        loudness (p, 35);                                    // beat 2.5: the keys hold their note
+        p.setSolo (0);                                       // the bass on its own (it has nothing until the loop comes round)
+        const float cut = loudness (p, 30), after = loudness (p, 30);
+        check (after < cut * 0.5f, "switching to one part while it plays: the others fade out (" + juce::String (cut, 3) + " to " + juce::String (after, 3) + ")");
+        p.stop();
+        p.setSolo (-1);
+        loudness (p, 50);
+
+        // starting part-way through: a note that's already held sounds from there on (a pad, a long bass note)
+        p.play (1.0);                                        // halfway through the bass note
+        const float held = loudness (p, 20);
+        check (held > 0.02f && std::abs (p.getPosition() - (1.0 + 20 * 480.0 / 24000.0)) < 1.0e-6,
+               "PLAY from beat 1: in time from there (" + juce::String (p.getPosition(), 3) + "), with the bass note it lands in (" + juce::String (held, 3) + ")");
+        p.stop();
+        loudness (p, 50);
+
+        // the ARRANGE page's transport
+        SongSavantProcessor proc;
+        proc.sketch.prepare (sr);
+        ss::SketchSong song;
+        song.loop = false;
+        song.lengthBeats = 32.0;                              // 8 bars
+        song.bpm = 120.0;
+        song.parts.push_back ({ "Bass", ss::PartType::bass, ss::Kind::bass, "Bass" });
+        for (int b = 0; b < 32; ++b) song.notes.push_back ({ (double) b, 0.5, 45, 100, 0 });
+        proc.updateSketch (SongSavantProcessor::SketchMode::song, std::make_shared<const ss::SketchSong> (song));
+        auto run = [&] (double beats) { for (int i = 0; i < juce::roundToInt (beats * 24000.0 / 480.0); ++i) proc.sketch.process (buf, app); };
+        const auto mode = SongSavantProcessor::SketchMode::song;
+
+        check (proc.songPosition() < 1.0e-9 && ! proc.isSketchPlaying (mode), "the playhead waits at the start");
+        proc.songStep (1);
+        proc.songStep (1);
+        check (std::abs (proc.songPosition() - 8.0) < 1.0e-9, "fast forward: a bar at a time (bar 3)");
+        proc.songStep (-1);
+        check (std::abs (proc.songPosition() - 4.0) < 1.0e-9, "rewind: a bar back (bar 2)");
+        proc.songPlay();
+        run (6.0);
+        check (proc.isSketchPlaying (mode) && std::abs (proc.songPosition() - 10.0) < 0.02, "PLAY plays from the playhead (beat " + juce::String (proc.songPosition(), 2) + ")");
+        proc.songPause();
+        run (2.0);
+        check (! proc.isSketchPlaying (mode) && std::abs (proc.songPosition() - 10.0) < 0.02, "PAUSE stops where it is");
+        proc.songPlay();
+        run (2.0);
+        check (std::abs (proc.songPosition() - 12.0) < 0.02, "and PLAY carries on from there");
+        proc.songStop();
+        run (1.0);
+        check (! proc.isSketchPlaying (mode) && std::abs (proc.songPosition() - 10.0) < 1.0e-9, "STOP goes back to where it started playing");
+        proc.songPlay();
+        run (1.1);
+        proc.songStep (-1);                                   // most of the way through bar 3 (beat 11.1): back to where it starts
+        check (std::abs (proc.songPosition() - 8.0) < 0.02, "rewind while it plays: back to the bar line (" + juce::String (proc.songPosition(), 2) + ")");
+        proc.songStep (-1);                                   // right on it: the bar before
+        run (0.5);
+        check (proc.isSketchPlaying (mode) && std::abs (proc.songPosition() - 4.5) < 0.02, "again: the bar before, and it carries on playing (" + juce::String (proc.songPosition(), 2) + ")");
+        proc.songMoveTo (0.0);
+        run (0.5);
+        check (std::abs (proc.songPosition() - 0.5) < 0.02, "to the start while it plays: from the top");
+        proc.songMoveTo (proc.songLength());
+        run (0.5);
+        check (! proc.isSketchPlaying (mode) && std::abs (proc.songPosition() - 32.0) < 1.0e-9, "to the end: the song's over, the playhead waits at the end");
+        proc.songPlay();
+        run (1.0);
+        check (proc.isSketchPlaying (mode) && std::abs (proc.songPosition() - 1.0) < 0.02, "PLAY at the end plays from the top");
+        proc.songMoveTo (28.0);
+        run (5.0);
+        check (! proc.isSketchPlaying (mode) && std::abs (proc.songPosition() - 28.0) < 1.0e-9, "the song plays to its end, then the playhead goes back");
+
+        // the Song page's PLAY ALL and one card: the loop, every part or one
+        auto loop = turns;
+        proc.updateSketch (SongSavantProcessor::SketchMode::loop, std::make_shared<const ss::SketchSong> (loop));
+        check (proc.sketchHasPart ("Keys") && ! proc.sketchHasPart ("FX") && ! proc.setSketchSolo ("FX"), "a card with no starter part has nothing to play");
+        check (proc.setSketchSolo ("Keys"), "one card's part");
+        proc.playSketch (SongSavantProcessor::SketchMode::loop);
+        check (proc.sketch.getSolo() == 1, "plays that part on its own");
+        proc.playSketch (mode);
+        check (proc.sketch.getSolo() == -1, "while the whole song plays every part");
+        proc.stopSketch();
     }
 
     void testMusic()
@@ -1708,6 +1821,40 @@ namespace
                         check (in.openedOk() && mf.readFrom (in) && mf.getNumTracks() >= 5 && ar.getArrangement().sections.size() >= 5,
                                "the Arrange page maps the song and writes it whole: " + whole.getFileName());
                     }
+                    if (name == "arrange-scrolled")
+                    {
+                        auto& ar = e->getView().getArrange();
+                        ar.refresh();
+                        proc.songMoveTo (4.0 * 60.0);                 // bar 61: off the right of a small window
+                        ar.togglePlay();
+                        auto* vp = ar.findChildWithID ("map");
+                        check (vp != nullptr && dynamic_cast<juce::Viewport*> (vp)->getViewPositionX() > 0,
+                               "a long song in a small window: the map scrolls to keep the playhead in sight");
+                    }
+                    if (name == "arrange-playing")
+                    {
+                        auto& ar = e->getView().getArrange();
+                        ar.refresh();
+                        proc.songMoveTo (4.0 * 16.0);                 // bar 17: the first verse
+                        ar.togglePlay();
+                        const auto where = ar.positionText();
+                        check (proc.isSketchPlaying (SongSavantProcessor::SketchMode::song) && where.startsWith ("Bar 17 of 72") && where.contains ("Verse"),
+                               "ARRANGE plays from the playhead and shows where it is: " + where);
+                    }
+                    if (name == "song-playing")
+                    {
+                        auto& sp = e->getView().getSong();
+                        const auto loop = SongSavantProcessor::SketchMode::loop;
+                        sp.playPart (1);
+                        const bool alone = proc.isSketchPlaying (loop) && proc.getSketchSolo() == "Bass";
+                        sp.playAll();
+                        const bool all = proc.isSketchPlaying (loop) && proc.getSketchSolo().isEmpty();
+                        sp.playAll();
+                        const bool stopped = ! proc.isSketchPlaying (loop);
+                        sp.playPart (1);
+                        check (alone && all && stopped && proc.getSketchSolo() == "Bass",
+                               "the Song page: a card's play button plays its part on its own, PLAY ALL every part, and STOP stops");
+                    }
                     if (name.startsWith ("masterclass"))
                     {
                         auto& mc = e->getView().getMasterclass();
@@ -1735,9 +1882,9 @@ namespace
                         check (e->getView().getSong().writeStarterParts (1).existsAsFile(), "and one card's part");
 
                         // PLAY and STOP
-                        e->getView().getSong().togglePlay();
+                        e->getView().getSong().playAll();
                         const bool started = proc.isSketchPlaying (SongSavantProcessor::SketchMode::loop);
-                        e->getView().getSong().togglePlay();
+                        e->getView().getSong().playAll();
                         check (started && ! proc.sketch.isPlaying(), "the Song page's PLAY plays the starter parts, and STOP stops them");
 
                         // a kit saved in Groove Grabber for this song lands on the drum card by itself
@@ -1823,7 +1970,10 @@ namespace
         shoot ("library-small", false, 1060, 780, 1);
         shoot ("arrange", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
         shoot ("arrange-small", false, 1060, 780, 5, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
+        shoot ("arrange-scrolled", false, 1060, 780, 5, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("arrange-empty", false, 1240, 820, 5);
+        shoot ("arrange-playing", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
+        shoot ("song-playing", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("masterclass", false, 1240, 820, 4, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("masterclass-small", false, 1060, 780, 4, {}, "uk drill 142 bpm");
         shoot ("masterclass-tall", false, 1240, 1900, 4, {}, "uk drill 142 bpm in F minor");
@@ -1846,6 +1996,7 @@ namespace
         shoot ("setup-check-light", true, 1140, 800, 2);
         shoot ("drum-maps-kit-light", false, 1240, 820, 3);
         shoot ("masterclass-light", false, 1240, 820, 4, {}, "modern country like Morgan Wallen in G");
+        shoot ("arrange-light", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
         ss::ui::setLightTheme (false);
         check (! ss::ui::isLightTheme(), "back to dark");
         juce::ignoreUnused (r);
@@ -1884,6 +2035,7 @@ int main (int argc, char** argv)
     testArrangement (fc);
     testGrooveGrabberLink (fc);
     testSketch();
+    testTransport();
     testPalettes (fc);
     testCancelAndJob (fc);
 

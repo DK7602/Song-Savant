@@ -59,7 +59,38 @@ namespace ss::ui
 
     juce::Rectangle<float> ArrangementGrid::headerArea (int s) const
     {
-        return { columnX[(size_t) s], 0.0f, columnW[(size_t) s], headerH };
+        return { columnX[(size_t) s], rulerH, columnW[(size_t) s], headerH - rulerH };
+    }
+
+    float ArrangementGrid::xAt (double beats) const
+    {
+        if (beats < 0.0 || arr == nullptr || columnX.empty() || columnX.size() != arr->sections.size()) return -1.0f;
+        const double bar = beats / 4.0;
+        double start = 0.0;
+        for (size_t s = 0; s < arr->sections.size(); ++s)
+        {
+            const double bars = juce::jmax (1, arr->sections[s].bars);
+            if (bar < start + bars) return columnX[s] + columnW[s] * (float) ((bar - start) / bars);
+            start += bars;
+        }
+        return columnX.back() + columnW.back();             // (at the very end)
+    }
+
+    double ArrangementGrid::beatsAt (float x) const
+    {
+        if (arr == nullptr || columnX.empty() || columnX.size() != arr->sections.size()) return 0.0;
+        double start = 0.0;
+        for (size_t s = 0; s < columnX.size(); ++s)
+        {
+            const double bars = juce::jmax (1, arr->sections[s].bars);
+            if (x < columnX[s] + columnW[s] || s + 1 == columnX.size())
+            {
+                const double f = juce::jlimit (0.0, 1.0, (double) (x - columnX[s]) / (double) columnW[s]);
+                return std::round (start + f * bars) * 4.0;
+            }
+            start += bars;
+        }
+        return start * 4.0;
     }
 
     juce::Rectangle<float> ArrangementGrid::cellArea (int s, int p) const
@@ -74,7 +105,7 @@ namespace ss::ui
         if (arr == nullptr || parts == nullptr) return;
         for (size_t s = 0; s < columnX.size(); ++s)
             if (pos.x >= columnX[s] && pos.x < columnX[s] + columnW[s]) section = (int) s;
-        if (section < 0) return;
+        if (section < 0 || pos.y < rulerH) { section = -1; return; }      // (the ruler: see mouseDown)
         if (pos.y < headerH) { header = true; return; }
         const int p = (int) ((pos.y - headerH) / rowH);
         if (p >= 0 && p < (int) parts->size()) part = p;
@@ -85,21 +116,36 @@ namespace ss::ui
         int s, p;
         bool h;
         hitTestAt (e.position, s, p, h);
-        if (s != hoverSection || p != hoverPart || h != hoverHeader)
+        const bool ruler = e.position.y < rulerH && e.position.x >= labelW && ! columnX.empty();
+        if (s != hoverSection || p != hoverPart || h != hoverHeader || ruler != hoverRuler)
         {
             hoverSection = s;
             hoverPart = p;
             hoverHeader = h;
-            setMouseCursor (s >= 0 && (h || p >= 0) ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
-            setTooltip (h && s >= 0 ? "Change this section: length, copy, move, remove"
+            hoverRuler = ruler;
+            setMouseCursor ((s >= 0 && (h || p >= 0)) || ruler ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+            setTooltip (ruler ? "Click or drag here to move the playhead"
+                        : h && s >= 0 ? "Change this section: length, copy, move, remove"
                         : p >= 0 && parts != nullptr && (*parts)[(size_t) p].type == PartType::drums ? "Click: no drums, light, groove, build, full"
                         : p >= 0 ? "Click to switch this part on or off here" : juce::String());
             repaint();
         }
     }
 
+    void ArrangementGrid::mouseDown (const juce::MouseEvent& e)
+    {
+        onRuler = e.position.y < rulerH && e.position.x >= labelW && ! columnX.empty();
+        if (onRuler && onSeek) onSeek (beatsAt (e.position.x));
+    }
+
+    void ArrangementGrid::mouseDrag (const juce::MouseEvent& e)
+    {
+        if (onRuler && onSeek) onSeek (beatsAt (e.position.x));
+    }
+
     void ArrangementGrid::mouseUp (const juce::MouseEvent& e)
     {
+        if (onRuler) { onRuler = false; return; }
         int s, p;
         bool h;
         hitTestAt (e.position, s, p, h);
@@ -108,10 +154,11 @@ namespace ss::ui
         else if (p >= 0 && onCell) onCell (s, p);
     }
 
-    void ArrangementGrid::setPlayhead (double beats)
+    void ArrangementGrid::setPlayhead (double beats, bool playing)
     {
-        if (std::abs (beats - playhead) < 1.0e-3) return;
+        if (std::abs (beats - playhead) < 1.0e-3 && playing == playheadMoving) return;
         playhead = beats;
+        playheadMoving = playing;
         repaint();
     }
 
@@ -126,22 +173,37 @@ namespace ss::ui
             juce::Graphics& g;
             ~Playhead()
             {
-                if (grid.playhead < 0.0 || grid.arr == nullptr || grid.columnX.size() != grid.arr->sections.size()) return;
-                double bar = grid.playhead / 4.0, start = 0.0;
-                for (size_t s = 0; s < grid.arr->sections.size(); ++s)
-                {
-                    const double bars = juce::jmax (1, grid.arr->sections[s].bars);
-                    if (bar < start + bars)
-                    {
-                        const float x = grid.columnX[s] + grid.columnW[s] * (float) ((bar - start) / bars);
-                        g.setColour (pal().gold);
-                        g.fillRect (x - 1.0f, 2.0f, 2.0f, (float) grid.getHeight() - 4.0f);
-                        return;
-                    }
-                    start += bars;
-                }
+                const float x = grid.xAt (grid.playhead);
+                if (x < 0.0f) return;
+                // a line down through the sections, and a marker on the ruler (brighter while it plays)
+                const auto gold = pal().gold.withAlpha (grid.playheadMoving ? 1.0f : 0.75f);
+                g.setColour (gold);
+                g.fillRect (x - 1.0f, rulerH - 2.0f, 2.0f, (float) grid.getHeight() - rulerH);
+                juce::Path marker;
+                marker.addTriangle (x - 7.0f, 2.0f, x + 7.0f, 2.0f, x, rulerH - 1.0f);
+                g.fillPath (marker);
             }
         } playheadOnTop { *this, g };
+
+        // the bar ruler: a tick for every bar, a taller one where each section starts
+        if (! columnX.empty())
+        {
+            const float left = columnX.front(), right = columnX.back() + columnW.back();
+            auto strip = juce::Rectangle<float> (left, 3.0f, right - left, rulerH - 6.0f);
+            g.setColour (pl.panelHi.withAlpha (hoverRuler || onRuler ? 0.9f : 0.45f));
+            g.fillRoundedRectangle (strip, 4.0f);
+            for (size_t s = 0; s < arr->sections.size() && s < columnX.size(); ++s)
+            {
+                const int bars = juce::jmax (1, arr->sections[s].bars);
+                for (int b = 0; b < bars; ++b)
+                {
+                    const float x = columnX[s] + columnW[s] * (float) b / (float) bars;
+                    const bool first = b == 0;
+                    g.setColour ((first ? pl.gold : pl.dim).withAlpha (first ? 0.8f : 0.5f));
+                    g.fillRect (x, first ? strip.getY() : strip.getCentreY(), 1.0f, first ? strip.getHeight() : strip.getHeight() * 0.5f);
+                }
+            }
+        }
 
         // the parts, down the left
         for (size_t p = 0; p < parts->size(); ++p)
@@ -240,14 +302,37 @@ namespace ss::ui
             changed();
         };
         addAndMakeVisible (shapeBox);
-        resetBtn.setTooltip ("Back to the song's shape as it comes, undoing your changes");
+        resetBtn.setTooltip ("Put the map back the way it came for this song shape, undoing your changes to it");
         resetBtn.onClick = [this] { proc.song.resetArrangement (parts); changed(); };
         addAndMakeVisible (resetBtn);
         wholeSong.setTooltip ("Drag the whole song into Cubase: a track per part, a marker per section");
         addAndMakeVisible (wholeSong);
-        playBtn.setTooltip ("Hear the whole song with simple built-in sounds (inside Cubase: in time with Cubase, from bar 1)");
+
+        // the transport: hear the whole song with simple built-in sounds
+        toStartBtn.setTooltip ("To the start of the song");
+        toStartBtn.onClick = [this] { proc.songMoveTo (0.0); showTransport(); };
+        rewindBtn.setTooltip ("Back a bar (hold it down to keep going back)");
+        rewindBtn.onClick = [this] { proc.songStep (-1); showTransport(); };
+        playBtn.setTooltip ("Play the whole song from the playhead, with simple built-in sounds");
         playBtn.onClick = [this] { togglePlay(); };
-        addChildComponent (playBtn);
+        pauseBtn.setTooltip ("Pause: stops here, and PLAY carries on from here");
+        pauseBtn.onClick = [this] { proc.songPause(); showTransport(); };
+        forwardBtn.setTooltip ("On a bar (hold it down to keep going)");
+        forwardBtn.onClick = [this] { proc.songStep (1); showTransport(); };
+        toEndBtn.setTooltip ("To the end of the song");
+        toEndBtn.onClick = [this] { proc.songMoveTo (proc.songLength()); showTransport(); };
+        for (auto* b : { &rewindBtn, &forwardBtn })
+        {
+            b->setTriggeredOnMouseDown (true);         // a bar as soon as it's pressed,
+            b->setRepeatSpeed (350, 110);              // and on while it's held down
+        }
+        for (auto* b : { &toStartBtn, &rewindBtn, &playBtn, &pauseBtn, &forwardBtn, &toEndBtn }) addChildComponent (b);
+        grid.onSeek = [this] (double beats)
+        {
+            if (proc.songFollowsDaw() || std::abs (beats - proc.songPosition()) < 1.0e-6) return;
+            proc.songMoveTo (beats);
+            showTransport();
+        };
 
         grid.onCell = [this] (int s, int part)
         {
@@ -255,6 +340,7 @@ namespace ss::ui
             changed();
         };
         grid.onSection = [this] (int s, juce::Rectangle<int> area) { sectionMenu (s, area); };
+        view.setComponentID ("map");
         view.setViewedComponent (&grid, false);
         view.setScrollBarsShown (false, true);
         addAndMakeVisible (view);
@@ -270,22 +356,69 @@ namespace ss::ui
     {
         if (! isVisible()) return;
         refresh();
+        showTransport();
+    }
+
+    void ArrangePage::showTransport()
+    {
         const bool playing = proc.isSketchPlaying (SongSavantProcessor::SketchMode::song);
-        if (playBtn.getToggleState() != playing)
+        const bool withDaw = proc.songFollowsDaw();
+        if (playBtn.getToggleState() != playing || playing != wasPlaying)
         {
+            wasPlaying = playing;
             playBtn.setToggleState (playing, juce::dontSendNotification);
-            playBtn.setButtonText (playing ? "STOP" : "PLAY SONG");
+            playBtn.setTooltip (playing ? "Stop: the playhead goes back to where you started playing"
+                                        : "Play the whole song from the playhead, with simple built-in sounds");
             stopTimer();
             startTimerHz (playing ? 15 : 2);          // the playhead moves smoothly while it plays
         }
-        grid.setPlayhead (playing ? proc.sketch.getPosition() : -1.0);
+        // inside Cubase while Cubase plays, it plays along with Cubase: Cubase's own buttons move it
+        for (auto* b : { &toStartBtn, &rewindBtn, &forwardBtn, &toEndBtn }) b->setEnabled (! withDaw);
+        pauseBtn.setEnabled (playing);
+        grid.setPlayhead (hasPalette ? proc.songPosition() : -1.0, playing);
+        if (playing && grid.getWidth() > view.getWidth())
+        {
+            // a long song that scrolls: keep the playhead in sight
+            const float x = grid.xAt (proc.songPosition());
+            const int left = view.getViewPositionX();
+            if (x >= 0.0f && (x < (float) left + ArrangementGrid::labelW || x > (float) (left + view.getWidth() - 40)))
+                view.setViewPosition (juce::jlimit (0, grid.getWidth() - view.getWidth(), (int) x - (int) ArrangementGrid::labelW - 20), 0);
+        }
+        const auto text = positionText();
+        if (text != shownPosition)
+        {
+            shownPosition = text;
+            repaint (transportInfo.getSmallestIntegerContainer().expanded (4));
+        }
     }
 
     void ArrangePage::togglePlay()
     {
-        if (proc.isSketchPlaying (SongSavantProcessor::SketchMode::song)) proc.stopSketch();
-        else proc.playSketch (SongSavantProcessor::SketchMode::song);
-        timerCallback();
+        if (proc.isSketchPlaying (SongSavantProcessor::SketchMode::song)) proc.songStop();
+        else proc.songPlay();
+        showTransport();
+    }
+
+    juce::String ArrangePage::positionText() const
+    {
+        const auto& a = proc.song.arrangement;
+        if (! hasPalette || a.empty()) return {};
+        const double beats = proc.songPosition();
+        const int total = a.totalBars();
+        const int bar = (int) std::floor (beats / 4.0 + 1.0e-6) + 1;
+        juce::String section;
+        int start = 1;
+        for (auto& sec : a.sections)
+        {
+            if (bar < start + sec.bars) { section = sec.name; break; }
+            start += sec.bars;
+        }
+        auto clock = [] (int s)   { return juce::String (s / 60) + ":" + juce::String (s % 60).paddedLeft ('0', 2); };
+        const double bpm = juce::jmax (40.0, plan.bpm);          // (as the WHOLE SONG tag works out the length)
+        juce::String t = bar > total ? juce::String ("End") : "Bar " + juce::String (bar) + " of " + juce::String (total);
+        if (section.isNotEmpty()) t << "  |  " << section;
+        t << "  |  " << clock ((int) std::floor (beats * 60.0 / bpm + 1.0e-6)) << " / " << clock (juce::roundToInt (total * 4 * 60.0 / bpm));
+        return t;
     }
 
     void ArrangePage::refresh()
@@ -312,8 +445,8 @@ namespace ss::ui
         shapeBox.setVisible (hasPalette);
         resetBtn.setVisible (hasPalette);
         wholeSong.setVisible (hasPalette);
-        playBtn.setVisible (hasPalette);
-        if (hasPalette)         // what PLAY SONG plays: the same song as WHOLE SONG
+        for (auto* b : { &toStartBtn, &rewindBtn, &playBtn, &pauseBtn, &forwardBtn, &toEndBtn }) b->setVisible (hasPalette);
+        if (hasPalette)         // what the transport plays: the same song as WHOLE SONG
             proc.updateSketch (SongSavantProcessor::SketchMode::song,
                                std::make_shared<const SketchSong> (sketchOfSong (plan, proc.song.arrangement, parts)));
         if (hasPalette)
@@ -324,6 +457,7 @@ namespace ss::ui
                                                   + " at " + juce::String (juce::roundToInt (plan.bpm)) + " BPM", "No song yet");
         }
         resized();
+        showTransport();
         repaint();
     }
 
@@ -393,6 +527,40 @@ namespace ss::ui
             return;
         }
 
+        // where the playhead is: the bar, the section, the time
+        {
+            auto box = transportInfo;
+            g.setColour (p.panelHi.withAlpha (0.6f));
+            g.fillRoundedRectangle (box, box.getHeight() * 0.5f);
+            g.setColour (p.gold.withAlpha (0.5f));
+            g.drawRoundedRectangle (box.reduced (0.5f), box.getHeight() * 0.5f, 1.0f);
+            auto in = box.reduced (18.0f, 0.0f);
+            const auto bits = juce::StringArray::fromTokens (shownPosition, "|", {});
+            const juce::Colour colours[] = { p.gold, p.text, p.muted };
+            for (int i = 0; i < bits.size() && i < 3; ++i)
+            {
+                const auto bit = bits[i].trim();
+                const auto font = sans (i == 0 ? 15.0f : 14.0f, i < 2);
+                const float w = juce::GlyphArrangement::getStringWidth (font, bit) + 2.0f;
+                g.setColour (colours[i]);
+                g.setFont (font);
+                g.drawText (bit, in.removeFromLeft (juce::jmin (w, in.getWidth())), juce::Justification::centredLeft, false);
+                if (i + 1 < bits.size() && i < 2)
+                {
+                    g.setColour (p.dim);
+                    g.fillEllipse (in.getX() + 9.0f, in.getCentreY() - 2.0f, 4.0f, 4.0f);
+                    in.removeFromLeft (22.0f);
+                }
+            }
+            // what moves it
+            const auto dawName = proc.dawName().isNotEmpty() ? proc.dawName() : juce::String ("your DAW");
+            g.setColour (p.dim);
+            g.setFont (sans (12.5f));
+            g.drawText (proc.songFollowsDaw() ? "Playing along with " + dawName + ": move it with " + dawName + "'s own buttons"
+                                              : juce::String ("Click the bar ruler above the sections to move the playhead"),
+                        transportHint, juce::Justification::centredLeft, true);
+        }
+
         // how songs in this style are built
         drawPanel (g, tipsArea, 14.0f);
         auto in = tipsArea.reduced (18.0f, 12.0f);
@@ -413,14 +581,29 @@ namespace ss::ui
             auto in = topPanel.reduced (20.0f, 14.0f);
             wholeSong.setBounds (in.removeFromRight (280.0f).withSizeKeepingCentre (280.0f, 52.0f).toNearestInt());
             in.removeFromRight (10.0f);
-            playBtn.setBounds (in.removeFromRight (124.0f).withSizeKeepingCentre (124.0f, 38.0f).toNearestInt());
-            in.removeFromRight (10.0f);
-            resetBtn.setBounds (in.removeFromRight (140.0f).withSizeKeepingCentre (140.0f, 38.0f).toNearestInt());
+            resetBtn.setBounds (in.removeFromRight (130.0f).withSizeKeepingCentre (130.0f, 38.0f).toNearestInt());
             in.removeFromRight (10.0f);
             shapeBox.setBounds (in.removeFromRight (200.0f).withSizeKeepingCentre (200.0f, 36.0f).toNearestInt());
             titleArea = in;
         }
-        r.removeFromTop (14.0f);
+        r.removeFromTop (12.0f);
+
+        // the transport: to the start, rewind, play / stop, pause, fast forward, to the end; then where the playhead is
+        {
+            auto row = r.removeFromTop (50.0f);
+            for (auto* b : { &toStartBtn, &rewindBtn, &playBtn, &pauseBtn, &forwardBtn, &toEndBtn })
+            {
+                const float size = b == &playBtn ? 50.0f : 42.0f;
+                b->setBounds (row.removeFromLeft (size).withSizeKeepingCentre (size, size).toNearestInt());
+                row.removeFromLeft (8.0f);
+            }
+            row.removeFromLeft (10.0f);
+            const float infoW = juce::jmin (380.0f, row.getWidth());
+            transportInfo = row.removeFromLeft (infoW).withSizeKeepingCentre (infoW, 40.0f);
+            row.removeFromLeft (16.0f);
+            transportHint = row;
+        }
+        r.removeFromTop (8.0f);
         emptyArea = r;
         tipsArea = r.removeFromBottom (juce::jmin (130.0f, r.getHeight() * 0.25f));
         r.removeFromBottom (12.0f);

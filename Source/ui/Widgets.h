@@ -40,6 +40,18 @@ namespace ss::ui
         void paintButton (juce::Graphics&, bool over, bool down) override;
     };
 
+    // A round transport button: to the start, rewind, play (a stop square while it plays: the toggle state), pause,
+    // fast forward, to the end. Play is the gold one.
+    class TransportButton : public juce::Button
+    {
+    public:
+        enum class Icon { toStart, rewind, play, pause, forward, toEnd };
+        explicit TransportButton (Icon);
+        void paintButton (juce::Graphics&, bool over, bool down) override;
+        static void drawIcon (juce::Graphics&, Icon, bool stop, juce::Rectangle<float> area);   // (the cards use it too)
+        Icon icon;
+    };
+
     // Something the user drags out of Song Savant into their DAW (a preset file, a MIDI clip)
     class DragChip : public juce::Component, public juce::SettableTooltipClient
     {

@@ -19,6 +19,23 @@ namespace ss::ui
         repaint();
     }
 
+    void PartCard::setPlaying (bool h, bool a)
+    {
+        if (h == heard && a == alone && ! heard) return;
+        heard = h;
+        alone = a;
+        repaint();             // (while it plays: the level meter moves)
+    }
+
+    void PartCard::mouseMove (const juce::MouseEvent& e)
+    {
+        const auto tip = playArea.contains (e.position)
+                           ? juce::String (alone ? "Stop" : "Hear just this part, looped. While it plays, click another card to hear that one.")
+                           : partInfo.isNotEmpty() ? "Starter part: " + partInfo + ". Drag the MIDI tag into Cubase." : juce::String();
+        if (tip != getTooltip()) setTooltip (tip);
+        repaint();
+    }
+
     void PartCard::paint (juce::Graphics& g)
     {
         const auto& p = pal();
@@ -70,6 +87,42 @@ namespace ss::ui
             for (int row = 0; row < 3; ++row)
                 for (int col = 0; col < 2; ++col)
                     g.fillEllipse (midiArea.getRight() - 15.0f + (float) col * 4.5f, midiArea.getY() + 4.5f + (float) row * 3.5f, 2.2f, 2.2f);
+        }
+
+        playArea = {};
+        if (partInfo.isNotEmpty())
+        {
+            // play just this part (a stop square while it plays on its own)
+            playArea = juce::Rectangle<float> (art.getRight() - 30.0f, art.getBottom() - 30.0f, 24.0f, 24.0f);
+            const bool hot = playArea.contains (getMouseXYRelative().toFloat()) && isMouseOver (true);
+            if (alone || hot)
+            {
+                g.setGradientFill (juce::ColourGradient (p.gold, playArea.getX(), playArea.getY(), p.goldDeep, playArea.getX(), playArea.getBottom(), false));
+                g.fillEllipse (playArea);
+                g.setColour (p.goldText);
+            }
+            else
+            {
+                g.setColour (p.panel.withAlpha (0.85f));
+                g.fillEllipse (playArea);
+                g.setColour (p.gold);
+                g.drawEllipse (playArea.reduced (0.5f), 1.0f);
+            }
+            const float is = 9.0f;
+            auto icon = juce::Rectangle<float> (is, is).withCentre (playArea.getCentre());
+            TransportButton::drawIcon (g, TransportButton::Icon::play, alone, alone ? icon : icon.translated (1.0f, 0.0f));
+        }
+        if (heard)
+        {
+            // a small moving level meter: this part is playing
+            const auto t = (double) juce::Time::getMillisecondCounter() / 1000.0;
+            auto meter = juce::Rectangle<float> (art.getX() + 9.0f, art.getY() + 8.0f, 16.0f, 13.0f);
+            g.setColour (p.gold);
+            for (int b = 0; b < 3; ++b)
+            {
+                const float level = 0.35f + 0.65f * (float) (0.5 + 0.5 * std::sin (t * (5.0 + b * 1.7) + b * 2.1));
+                g.fillRoundedRectangle (meter.getX() + (float) b * 6.0f, meter.getBottom() - meter.getHeight() * level, 4.0f, meter.getHeight() * level, 1.0f);
+            }
         }
 
         lockArea = art.removeFromTop (30.0f).removeFromRight (30.0f).reduced (3.0f);
@@ -141,6 +194,7 @@ namespace ss::ui
     {
         if (dragging) { dragging = false; return; }
         const auto pos = e.position;
+        if (playArea.contains (pos) && ! pressedOnMidi) { if (onPlayPart) onPlayPart(); return; }
         if (prevArea.contains (pos)) { if (onPrev) onPrev(); }
         else if (nextArea.contains (pos)) { if (onNext) onNext(); }
         else if (lockArea.contains (pos)) { if (onLock) onLock(); }
@@ -240,8 +294,9 @@ namespace ss::ui
         addAndMakeVisible (ideaBtn);
         allParts.setTooltip ("Drag every starter part into Cubase: one track each");
         addAndMakeVisible (allParts);
-        playBtn.setTooltip ("Hear the starter parts, looped, with simple built-in sounds (inside Cubase: in time with Cubase's play button)");
-        playBtn.onClick = [this] { togglePlay(); };
+        playBtn.setTooltip ("Hear all the starter parts together, looped, with simple built-in sounds (inside Cubase: in time with Cubase's "
+                            "play button). For one part on its own, click the play button on its card.");
+        playBtn.onClick = [this] { playAll(); };
         addChildComponent (playBtn);
 
         choices.onChoose = [this] (int i)
@@ -341,24 +396,52 @@ namespace ss::ui
         refresh();
     }
 
-    void SongPage::togglePlay()
+    void SongPage::playAll()
     {
-        if (proc.isSketchPlaying (SongSavantProcessor::SketchMode::loop)) proc.stopSketch();
-        else proc.playSketch (SongSavantProcessor::SketchMode::loop);
-        timerCallback();
+        const bool playing = proc.isSketchPlaying (SongSavantProcessor::SketchMode::loop);
+        if (playing && proc.getSketchSolo().isEmpty()) proc.stopSketch();
+        else
+        {
+            proc.setSketchSolo ({});                                 // every part (in time, if one was playing alone)
+            if (! playing) proc.playSketch (SongSavantProcessor::SketchMode::loop);
+        }
+        showPlaying();
+    }
+
+    void SongPage::playPart (int card)
+    {
+        auto* pal = proc.song.currentPalette();
+        if (pal == nullptr || card < 0 || card >= (int) pal->slots.size()) return;
+        const auto role = pal->slots[(size_t) card].part.role;
+        if (selectedRole != role) { selectedRole = role; copiedNote.clear(); }
+        const bool playing = proc.isSketchPlaying (SongSavantProcessor::SketchMode::loop);
+        if (playing && proc.getSketchSolo() == role) proc.stopSketch();
+        else if (proc.setSketchSolo (role) && ! playing) proc.playSketch (SongSavantProcessor::SketchMode::loop);
+        refresh();
+    }
+
+    void SongPage::showPlaying()
+    {
+        const bool playing = proc.isSketchPlaying (SongSavantProcessor::SketchMode::loop);
+        const auto solo = playing ? proc.getSketchSolo() : juce::String();
+        const bool all = playing && solo.isEmpty();
+        if (playBtn.getToggleState() != all)
+        {
+            playBtn.setToggleState (all, juce::dontSendNotification);
+            playBtn.setButtonText (all ? "STOP" : "PLAY ALL");
+        }
+        if (auto* pal = proc.song.currentPalette())
+            for (int i = 0; i < cards.size() && i < (int) pal->slots.size(); ++i)
+            {
+                const auto& role = pal->slots[(size_t) i].part.role;
+                const bool has = playing && proc.sketchHasPart (role);
+                cards[i]->setPlaying (has && (solo.isEmpty() || solo == role), has && solo == role);
+            }
     }
 
     void SongPage::timerCallback()
     {
-        // PLAY / STOP
-        {
-            const bool playing = proc.isSketchPlaying (SongSavantProcessor::SketchMode::loop);
-            if (playBtn.getToggleState() != playing)
-            {
-                playBtn.setToggleState (playing, juce::dontSendNotification);
-                playBtn.setButtonText (playing ? "STOP" : "PLAY");
-            }
-        }
+        showPlaying();          // PLAY ALL / STOP, and which cards are playing
         // inside a DAW: the song follows its tempo
         if (proc.isInDaw() && std::abs (proc.getHostBpm() - proc.song.hostBpm) > 0.01)
         {
@@ -561,7 +644,19 @@ namespace ss::ui
             card->show (&slot, snd, role == selectedRole,
                         type == PartType::none ? juce::String() : describePart (plan, type, drums, snd != nullptr ? snd->kind : slot.part.kinds.front()));
             card->onDragPart = [this, i] { dragPart (i); };
-            card->onSelect = [this, role] { if (selectedRole != role) { selectedRole = role; copiedNote.clear(); } refresh(); };
+            card->onPlayPart = [this, i] { playPart (i); };
+            card->onSelect = [this, role]
+            {
+                if (selectedRole != role)
+                {
+                    selectedRole = role;
+                    copiedNote.clear();
+                    // one part playing on its own: now this card's (if it has a part to play)
+                    if (proc.isSketchPlaying (SongSavantProcessor::SketchMode::loop) && proc.getSketchSolo().isNotEmpty())
+                        proc.setSketchSolo (role);
+                }
+                refresh();
+            };
             card->onPrev = [this, i] { if (auto* p = proc.song.currentPalette()) { auto& s = p->slots[(size_t) i]; s.cycle (-1); if (catalog != nullptr && s.current().isValid()) s.keepKey = soundKey (catalog->sounds[(size_t) s.current().sound]); } };
             card->onNext = [this, i] { if (auto* p = proc.song.currentPalette()) { auto& s = p->slots[(size_t) i]; s.cycle (1); if (catalog != nullptr && s.current().isValid()) s.keepKey = soundKey (catalog->sounds[(size_t) s.current().sound]); } };
             card->onLock = [this, i] { if (auto* p = proc.song.currentPalette()) { auto& s = p->slots[(size_t) i]; if (s.current().isValid()) s.locked = ! s.locked; } };
@@ -570,9 +665,10 @@ namespace ss::ui
         ideaBtn.setVisible (pal != nullptr);
         allParts.setVisible (pal != nullptr);
         playBtn.setVisible (pal != nullptr);
-        if (pal != nullptr)     // what PLAY plays: the same starter parts as ALL PARTS
+        if (pal != nullptr)     // what PLAY ALL plays: the same starter parts as ALL PARTS
             proc.updateSketch (SongSavantProcessor::SketchMode::loop,
                                std::make_shared<const SketchSong> (sketchOfParts (plan, arrangementParts (*pal, catalog.get()))));
+        showPlaying();
         if (pal != nullptr)
             allParts.setFile (writeStarterParts (-1), plan.chordLine() + "  |  " + juce::String (juce::roundToInt (plan.bpm)) + " BPM", "No parts yet");
 

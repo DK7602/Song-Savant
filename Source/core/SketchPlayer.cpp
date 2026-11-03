@@ -42,7 +42,7 @@ namespace ss
         for (auto& p : parts)
         {
             if (p.type == PartType::none) continue;
-            s.parts.push_back ({ p.label, p.type, p.instrument });
+            s.parts.push_back ({ p.label, p.type, p.instrument, p.role });
             addNotes (s, makePart (plan, p.type, generalMidiDrums(), p.instrument), (int) s.parts.size() - 1);
         }
         sortNotes (s);
@@ -58,7 +58,7 @@ namespace ss
         const auto song = arrangeParts (plan, a, parts, generalMidiDrums());
         for (size_t i = 0; i < parts.size() && i < song.size(); ++i)
         {
-            s.parts.push_back ({ parts[i].label, parts[i].type, parts[i].instrument });
+            s.parts.push_back ({ parts[i].label, parts[i].type, parts[i].instrument, parts[i].role });
             addNotes (s, song[i].notes, (int) s.parts.size() - 1);
         }
         sortNotes (s);
@@ -83,8 +83,10 @@ namespace ss
         while (keep.size() > 4) keep.pop_back();
     }
 
-    void SketchPlayer::play()
+    void SketchPlayer::play (double fromBeat)
     {
+        startAt = juce::jmax (0.0, fromBeat);
+        position = juce::jmax (0.0, fromBeat);     // (until the next block says where it is)
         restart = true;
         armed = true;
     }
@@ -94,14 +96,16 @@ namespace ss
         armed = false;
     }
 
+    void SketchPlayer::release (Voice& v)
+    {
+        if (! v.active) return;
+        if (v.drum) v.gate = juce::jmin (v.gate, (int) (sampleRate * 0.03));   // drums: a quick fade
+        else v.releasing = true;
+    }
+
     void SketchPlayer::releaseAll()
     {
-        for (auto& v : voices)
-            if (v.active)
-            {
-                if (v.drum) v.gate = juce::jmin (v.gate, (int) (sampleRate * 0.03));   // drums: a quick fade
-                else v.releasing = true;
-            }
+        for (auto& v : voices) release (v);
     }
 
     void SketchPlayer::startVoice (const SketchNote& n, const SketchSong& s, double lengthSamples, int offset)
@@ -141,6 +145,7 @@ namespace ss
             auto it = std::lower_bound (s.notes.begin(), s.notes.end(), a, [] (const SketchNote& n, double v) { return n.start < v; });
             for (; it != s.notes.end() && it->start < b; ++it)
             {
+                if (! heard (it->part)) continue;
                 const int offset = juce::jlimit (0, juce::jmax (0, blockLength - 1), (int) ((it->start - beatAtSample0) * samplesPerBeat));
                 startVoice (*it, s, it->length * samplesPerBeat, offset);
             }
@@ -164,6 +169,22 @@ namespace ss
             run (juce::jmax (0.0, from), juce::jmin (to, s.lengthBeats), from);
     }
 
+    void SketchPlayer::chase (const SketchSong& s, double at, double samplesPerBeat, int except)
+    {
+        if (s.notes.empty() || s.lengthBeats <= 0.0) return;
+        if (s.loop) at = std::fmod (juce::jmax (0.0, at), s.lengthBeats);
+        if (at <= 0.0 || at >= s.lengthBeats) return;
+        // the notes that started a little earlier and are still held (a pad's chord, a long bass note): the rest of them
+        auto it = std::lower_bound (s.notes.begin(), s.notes.end(), at - 32.0, [] (const SketchNote& n, double v) { return n.start < v; });
+        for (; it != s.notes.end() && it->start < at; ++it)
+        {
+            if (it->part == except || ! heard (it->part)) continue;
+            if (s.parts[(size_t) juce::jlimit (0, (int) s.parts.size() - 1, it->part)].type == PartType::drums) continue;
+            const double left = it->start + it->length - at;
+            if (left > 0.05) startVoice (*it, s, left * samplesPerBeat, 0);
+        }
+    }
+
     void SketchPlayer::process (juce::AudioBuffer<float>& buffer, const Host& host)
     {
         buffer.clear();
@@ -177,27 +198,39 @@ namespace ss
         }
         const SketchSong* s = cachedSong;
 
-        if (restart.exchange (false))
+        bool jumped = false;
+        if (restart.exchange (false))           // PLAY, or a jump while it plays
         {
             ownRunning = true;
-            ownPos = 0.0;
+            ownPos = juce::jmax (0.0, startAt.load());
             expectedPos = -1.0;
             releaseAll();
+            jumped = true;
         }
 
-        bool sounding = false;
+        // one part on its own: the others fade out (and when they come back in, they pick up what they hold)
+        const int so = solo.load();
+        const bool soloChanged = so != lastSolo;
+        if (soloChanged && so >= 0)
+            for (auto& v : voices)
+                if (v.active && v.part != so) release (v);
+
+        bool sounding = false, following = false;
         if (armed.load() && s != nullptr)
         {
             const double bpm = host.known && host.bpm > 0.0 ? host.bpm : s->bpm;
             const double samplesPerBeat = sampleRate * 60.0 / juce::jlimit (20.0, 400.0, bpm);
-            const bool following = host.known && host.playing;
+            following = host.known && host.playing;
             if (wasFollowing && ! following) ownRunning = false;   // the DAW stopped: so does the sketch (until PLAY or the DAW plays)
             double pos = -1.0;
             if (following)       pos = host.ppq;
             else if (ownRunning) pos = ownPos;
             if (following || ownRunning)
             {
-                if (expectedPos >= 0.0 && std::abs (pos - expectedPos) > 0.05) releaseAll();   // the DAW jumped
+                if (expectedPos >= 0.0 && std::abs (pos - expectedPos) > 0.05) { releaseAll(); jumped = true; }   // the DAW jumped
+                if (expectedPos < 0.0) jumped = true;                 // starting: from the playhead, or the DAW started
+                if (jumped) chase (*s, pos, samplesPerBeat, -1);
+                else if (soloChanged && lastSolo >= 0) chase (*s, pos, samplesPerBeat, lastSolo);
                 const double end = pos + (double) n / samplesPerBeat;
                 schedule (*s, pos, end, samplesPerBeat, n);
                 expectedPos = end;
@@ -224,6 +257,8 @@ namespace ss
             wasFollowing = false;
             ownRunning = false;
         }
+        lastSolo = so;
+        followingHost = following;
         if (! sounding) position = -1.0;
         if (wasSounding && ! sounding) releaseAll();         // stopped (or the DAW did): what's sounding fades out
         wasSounding = sounding;

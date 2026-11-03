@@ -88,13 +88,93 @@ void SongSavantProcessor::playSketch (SketchMode m)
 {
     sketchMode = m;
     sketch.setSong (m == SketchMode::loop ? loopSketch : songSketch);
-    sketch.play();
+    applySolo();
+    sketch.play (m == SketchMode::song ? juce::jlimit (0.0, songLength(), songCursor) : 0.0);
 }
 
 void SongSavantProcessor::updateSketch (SketchMode m, std::shared_ptr<const ss::SketchSong> s)
 {
     (m == SketchMode::loop ? loopSketch : songSketch) = s;
-    if (m == sketchMode) sketch.setSong (std::move (s));
+    if (m == sketchMode)
+    {
+        sketch.setSong (std::move (s));
+        applySolo();
+    }
+}
+
+namespace
+{
+    int partIndex (const ss::SketchSong* s, const juce::String& role)
+    {
+        if (s != nullptr)
+            for (size_t i = 0; i < s->parts.size(); ++i)
+                if (s->parts[i].role == role) return (int) i;
+        return -1;
+    }
+}
+
+bool SongSavantProcessor::sketchHasPart (const juce::String& role) const
+{
+    return role.isNotEmpty() && partIndex (loopSketch.get(), role) >= 0;
+}
+
+bool SongSavantProcessor::setSketchSolo (const juce::String& role)
+{
+    if (role.isNotEmpty() && ! sketchHasPart (role)) return false;
+    soloRole = role;
+    applySolo();
+    return true;
+}
+
+void SongSavantProcessor::applySolo()
+{
+    // only the Song page plays one part on its own; the whole song always plays every part
+    int i = -1;
+    if (sketchMode == SketchMode::loop && soloRole.isNotEmpty())
+    {
+        i = partIndex (loopSketch.get(), soloRole);
+        if (i < 0) soloRole.clear();             // that card has no part now (a new palette): every part
+    }
+    sketch.setSolo (i);
+}
+
+void SongSavantProcessor::songPlay()
+{
+    if (songCursor >= songLength() - 1.0e-6) songCursor = 0.0;      // at the end: from the top
+    playSketch (SketchMode::song);
+}
+
+void SongSavantProcessor::songPause()
+{
+    if (! isSketchPlaying (SketchMode::song)) return;
+    songCursor = juce::jlimit (0.0, songLength(), songPosition());
+    sketch.stop();
+}
+
+void SongSavantProcessor::songMoveTo (double beats)
+{
+    songCursor = juce::jlimit (0.0, songLength(), beats);
+    if (isSketchPlaying (SketchMode::song) && ! sketch.isFollowingHost())
+    {
+        if (songCursor >= songLength()) sketch.stop();             // to the end while it plays: the song's over
+        else sketch.play (songCursor);
+    }
+}
+
+void SongSavantProcessor::songStep (int direction)
+{
+    const double bar = songPosition() / 4.0;
+    double to = std::floor (bar + 1.0e-6);
+    if (direction > 0) to += 1.0;
+    else if (bar - to < 0.25) to -= 1.0;           // just past a bar line (or on it): the bar before
+    songMoveTo (juce::jmax (0.0, to) * 4.0);
+}
+
+double SongSavantProcessor::songPosition() const
+{
+    if (isSketchPlaying (SketchMode::song))
+        if (const double p = sketch.getPosition(); p >= 0.0) return juce::jmin (p, songLength());
+    return juce::jlimit (0.0, songLength(), songCursor);
 }
 
 juce::AudioProcessorEditor* SongSavantProcessor::createEditor()   { return new SongSavantEditor (*this); }
