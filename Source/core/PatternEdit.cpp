@@ -296,11 +296,13 @@ namespace ss
     void PatternEditor::dragVelocity (int index, int velocity)
     {
         if (! dragging) beginDrag();
-        if (index < 0 || index >= (int) items.size()) return;
+        if (index < 0 || index >= (int) items.size() || index >= (int) dragFrom.size()) return;
         velocity = juce::jlimit (1, 127, velocity);
+        // the others keep their differences: they all move by the same amount from where they started
+        const int by = velocity - dragFrom[(size_t) index].n.velocity;
         const bool all = items[(size_t) index].selected;
-        for (size_t k = 0; k < items.size(); ++k)
-            if ((int) k == index || (all && items[k].selected)) items[k].n.velocity = velocity;
+        for (size_t k = 0; k < items.size() && k < dragFrom.size(); ++k)
+            if ((int) k == index || (all && items[k].selected)) items[k].n.velocity = juce::jlimit (1, 127, dragFrom[k].n.velocity + by);
         lastVelocity = velocity;
     }
 

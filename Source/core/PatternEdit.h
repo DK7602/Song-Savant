@@ -62,7 +62,8 @@ namespace ss
         void beginDrag();
         void dragMove (double beats, int semitones);           // every selected note
         void dragResize (double beats);                        // every selected note's end
-        void dragVelocity (int index, int velocity);           // that note (and every selected one with it, when it's selected)
+        // that note's velocity; when it's selected, every selected note moves up or down by the same amount, from where it was
+        void dragVelocity (int index, int velocity);
         bool endDrag();                                        // true when something changed
 
         bool canUndo() const                                   { return ! undos.empty(); }

@@ -1486,11 +1486,23 @@ namespace
         ed.transposeSelected (12);
         check (ed.notes().back().n.note == 72, "the arrow keys move selected notes up and down");
         ed.selectAll();
-        ed.dragVelocity (0, 40);
+        ed.beginDrag();
+        ed.dragVelocity (0, 60);                 // all at 100: down 40 together
         ed.endDrag();
-        bool all40 = true;
-        for (auto& e : ed.notes()) all40 = all40 && e.n.velocity == 40;
-        check (all40, "velocity: dragging one selected note's stem sets them all");
+        bool all60 = true;
+        for (auto& e : ed.notes()) all60 = all60 && e.n.velocity == 60;
+        ed.select (1, false);
+        ed.beginDrag();
+        ed.dragVelocity (1, 90);
+        ed.endDrag();
+        ed.selectAll();
+        ed.beginDrag();
+        ed.dragVelocity (0, 70);                 // up 10: the one at 90 goes to 100, the rest to 70
+        ed.endDrag();
+        int at70 = 0, at100 = 0;
+        for (auto& e : ed.notes()) { if (e.n.velocity == 70) ++at70; if (e.n.velocity == 100) ++at100; }
+        check (all60 && at100 == 1 && at70 == (int) ed.notes().size() - 1,
+               "velocity: dragging one selected note's stem moves them all up or down together, keeping their differences");
         ed.eraseSelected();
         check (ed.notes().empty() && ed.canUndo(), "Delete removes them");
         ed.undo();

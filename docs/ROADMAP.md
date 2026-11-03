@@ -437,6 +437,8 @@ Built in steps, each one a build the owner can try:
     the playhead repaints a thin strip; ghost notes are worked out once per part / section, not per repaint; no threads.
   - **ARRANGE:** double-click a box opens it (the first click's on / off is put back); drag a box out for that part in
     that section, a part's name for the whole part (with markers); a pencil marks your patterns, a star a section's own.
+  - 1.1.1 (the owner's first try): with several notes selected, dragging a velocity stem moves them all by the same
+    amount from where each was (it used to set them all to one value); in DRAW a double-click on a note deletes it.
   - Drums aren't in the piano roll yet (next: a step grid and the roll for drums), nor the building tools (1.2.0:
     chord stamp, strum, arpeggiate, quantize, humanize, legato, move in key, chop, flip, ideas from the style).
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can

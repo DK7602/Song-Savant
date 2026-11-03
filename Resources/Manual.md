@@ -287,9 +287,9 @@ The piano roll is where you change a part note by note, or write your own from a
 
 - **Click** an empty spot: a new note (as long as the last one you made). You hear it.
 - **Drag** a note to move it; **drag its right end** to make it longer or shorter.
-- **Right-click** a note to delete it (or drag with the right button over several). With **ERASE** picked, a normal click deletes.
+- **Double-click** or **right-click** a note to delete it (or drag with the right button over several). With **ERASE** picked, a normal click deletes.
 - **Ctrl + drag** (or **SELECT**) on an empty spot draws a box: the notes in it are selected. Shift adds to what's selected. Dragging a selected note moves them all.
-- **Velocity:** drag a note's stem up or down. With several notes selected, they all change together.
+- **Velocity:** drag a note's stem up or down. With several notes selected, they all move up or down together by the same amount, each from where it was (so the louder ones stay louder).
 - Mouse wheel: up and down; Shift + wheel: across; Ctrl + wheel: zoom.
 
 **Keys**

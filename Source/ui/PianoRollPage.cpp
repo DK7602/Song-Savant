@@ -252,6 +252,14 @@ namespace ss::ui
             }
             downBeat = beat;
             downPitch = pitch;
+            if (i >= 0 && e.getNumberOfClicks() >= 2 && page.tool == Tool::draw)
+            {
+                ed.erase (i);                            // DRAW: a double-click on a note deletes it
+                page.edited();
+                drag = Drag::none;
+                repaint();
+                return;
+            }
             if (i >= 0)
             {
                 if (! ed.notes()[(size_t) i].selected || e.mods.isShiftDown()) ed.select (i, e.mods.isShiftDown());
@@ -604,7 +612,7 @@ namespace ss::ui
         addAndMakeVisible (*grid);
 
         for (auto* b : { &drawBtn, &selectBtn, &eraseBtn, &ghostsBtn, &aloneBtn, &bandBtn }) b->setComponentID ("tab");
-        drawBtn.setTooltip ("Click to add a note, drag a note to move it, drag its end to stretch it (right-click deletes)");
+        drawBtn.setTooltip ("Click to add a note, drag a note to move it, drag its end to stretch it (double-click or right-click deletes)");
         selectBtn.setTooltip ("Drag a box around notes to select them (or hold Ctrl with DRAW)");
         eraseBtn.setTooltip ("Click or drag over notes to delete them");
         drawBtn.onClick = [this] { tool = Tool::draw; updateButtons(); };
@@ -1075,7 +1083,7 @@ namespace ss::ui
 
         g.setColour (p.dim);
         g.setFont (sans (12.0f));
-        g.drawText ("Click: add a note  |  drag: move  |  drag its end: longer / shorter  |  right-click: delete  |  Ctrl + drag: select  |  "
+        g.drawText ("Click: add a note  |  drag: move  |  drag its end: longer / shorter  |  double-click or right-click: delete  |  Ctrl + drag: select  |  "
                     "Ctrl+C / V / D: copy, paste, duplicate  |  Ctrl+Z: undo  |  arrows: up / down  |  Space: play",
                     hintArea, juce::Justification::centredLeft, true);
     }
