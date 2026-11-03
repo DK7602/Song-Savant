@@ -252,7 +252,8 @@ The ARRANGE page lays your palette's parts out across the whole song. Make your 
 - **Drag a section's name** left or right to move that section somewhere else in the song (a verse before the first hook, say). A gold line shows where it will land; let go there. Its parts and patterns go with it.
 - **Right-click anywhere in a section** (its name or any of its boxes) for its menu. **Click a section's name** opens the same menu:
     - **Add a section before** / **Add a section after**: **one more** of a section your song already has (another Verse or Chorus: it plays the same parts and patterns as the others), or **a new section** your song doesn't have yet (Bridge, Pre-Chorus, Breakdown, Drop, Solo...), named the way your style names it (a trap song gets a Hook, not a Chorus). A new section starts with the style's usual length and the parts the style plays in it.
-    - **Length** (2 to 32 bars), **Copy this section** (right after it, playing the same patterns), **Move left**, **Move right**.
+    - **Add bars** (1, 2, 4 or 8 more, at the end) and **Remove bars** (1, 2, 4 or 8 fewer, from the end). A section is one length for all its parts, so every part in it gets longer or shorter together; the menu shows the new length. Your patterns repeat into the new bars, and notes in bars you remove are kept in case you add them back.
+    - **Length** (pick 2 to 32 bars), **Copy this section** (right after it, playing the same patterns), **Move left**, **Move right**.
     - **Delete this section**.
 - **Right-click the empty space after the last section** to add one at the end.
 - **UNDO** and **REDO** (next to the transport, or Ctrl+Z and Ctrl+Y) take back any change to the map, one at a time: a move, a section added or deleted, a box switched, a new length, even RESET MAP. They remember your changes until the map starts fresh (a new style, shape or palette).
@@ -527,6 +528,7 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | Change who plays where | ARRANGE: click boxes; click a section's name for its menu |
 | Move a section | ARRANGE: drag its name left or right |
 | Add or delete a section | ARRANGE: right-click the section, then Add a section before / after, or Delete this section |
+| Make a section longer or shorter | ARRANGE: right-click it (or a box in it), then Add bars or Remove bars |
 | Take back a change to the map | ARRANGE: UNDO (Ctrl+Z); REDO (Ctrl+Y) |
 | Change a part note by note | A card's EDIT, or double-click a box on ARRANGE: the piano roll |
 | Write your own part | The piano roll: START FROM > An empty grid, then click to add notes |

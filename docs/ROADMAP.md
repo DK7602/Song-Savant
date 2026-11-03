@@ -484,6 +484,10 @@ Built in steps, each one a build the owner can try:
     adds, deletes, boxes, lengths, RESET MAP; 200 steps). The steps belong to the map: a new style, shape or palette
     (a new arrangement signature) forgets them. A double-click on a box takes the first click's step back instead of
     clicking the box round again.
+  - 1.4.1 (the owner asked for adding and removing bars from the right-click menu): **Add bars** / **Remove bars**
+    (1, 2, 4 or 8, at the end of the section; `ArrangePage::changeBars`), shown with the length they make. A section
+    is one length for all its parts (the arrangement has no per-part lengths), so the menu says so: every part goes
+    with it. Length lists the section's own length too when it's an odd one.
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is

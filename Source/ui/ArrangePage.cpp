@@ -169,7 +169,7 @@ namespace ss::ui
             hoverRuler = ruler;
             setMouseCursor ((s >= 0 && (h || p >= 0)) || ruler ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
             setTooltip (ruler ? "Click or drag here to move the playhead"
-                        : h && s >= 0 ? "Click: change this section  |  drag it left or right to move it  |  right-click: add a section before or after it"
+                        : h && s >= 0 ? "Click: change this section (add or remove bars, add a section...)  |  drag it left or right to move it"
                         : p >= 0 && parts != nullptr && (*parts)[(size_t) p].type == PartType::drums
                               ? "Click: no drums, light, groove, build, full  |  drag it into your DAW for just this bit"
                         : p >= 0 ? "Click: switch this part on or off here  |  double-click: open it in the piano roll  |  drag it into your DAW for just this bit"
@@ -799,8 +799,22 @@ namespace ss::ui
             m.addSubMenu ("Add a section before", addMenu (1000));
             m.addSubMenu ("Add a section after", addMenu (2000));
             m.addSeparator();
-            juce::PopupMenu lengths;
-            for (int b : { 2, 4, 8, 12, 16, 24, 32 }) lengths.addItem (100 + b, juce::String (b) + " bars", true, sections[(size_t) s].bars == b);
+            // its length: bars added to (or taken off) the end, or a length picked; every part in the section goes with it
+            const int bars = sections[(size_t) s].bars;
+            auto barsText = [] (int b) { return juce::String (b) + (b == 1 ? " bar" : " bars"); };
+            juce::PopupMenu more, fewer, lengths;
+            more.addSectionHeader ("AT THE END, FOR EVERY PART");
+            fewer.addSectionHeader ("FROM THE END, FOR EVERY PART");
+            for (int b : { 1, 2, 4, 8 })
+            {
+                more.addItem (300 + b, barsText (b) + " more  (" + barsText (bars + b) + ")", bars + b <= 64);
+                fewer.addItem (400 + b, barsText (b) + " fewer  (" + barsText (bars - b) + ")", bars - b >= 1);
+            }
+            juce::Array<int> sizes { 2, 4, 8, 12, 16, 24, 32 };
+            if (! sizes.contains (bars)) { sizes.add (bars); sizes.sort(); }
+            for (int b : sizes) lengths.addItem (100 + b, barsText (b), true, bars == b);
+            m.addSubMenu ("Add bars", more, bars < 64);
+            m.addSubMenu ("Remove bars", fewer, bars > 1);
             m.addSubMenu ("Length", lengths);
             m.addItem (1, "Copy this section (right after it)");
             m.addItem (2, "Move left", s > 0);
@@ -820,7 +834,9 @@ namespace ss::ui
                 if (i < names.size()) safe->addSectionAt (at, names[i]);
                 return;
             }
-            if (r > 100)       safe->edit ([s, r] (Arrangement& a) { setSectionBars (a, s, r - 100); });
+            if (r > 400)       safe->changeBars (s, -(r - 400));
+            else if (r > 300)  safe->changeBars (s, r - 300);
+            else if (r > 100)  safe->edit ([s, r] (Arrangement& a) { setSectionBars (a, s, r - 100); });
             else if (r == 1)   safe->edit ([s] (Arrangement& a) { copySection (a, s); });
             else if (r == 2)   safe->moveSectionTo (s, s - 1);
             else if (r == 3)   safe->moveSectionTo (s, s + 2);
@@ -851,6 +867,14 @@ namespace ss::ui
     void ArrangePage::addSectionAt (int at, const juce::String& name)
     {
         edit ([this, at, name] (Arrangement& a) { ss::addSection (a, at, name, plan, parts); });
+    }
+
+    void ArrangePage::changeBars (int section, int by)
+    {
+        edit ([section, by] (Arrangement& a)
+        {
+            if (section >= 0 && section < (int) a.sections.size()) setSectionBars (a, section, a.sections[(size_t) section].bars + by);
+        });
     }
 
     void ArrangePage::deleteSection (int section)

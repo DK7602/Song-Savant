@@ -2415,6 +2415,20 @@ namespace
                         const bool redone = xml (ar.getArrangement()) == edited && ! ar.canRedo() && ar.canUndo();
                         check (moved && added && deleted && undone && redone,
                                "ARRANGE: a section moved, sections added and deleted; UNDO takes each back, REDO puts it back");
+                        // bars added to a section and taken off (every part goes with it); one step each
+                        const int bars0 = ar.getArrangement().sections[1].bars;
+                        ar.changeBars (1, 1);
+                        const int more = ar.getArrangement().sections[1].bars;
+                        ar.changeBars (1, -4);
+                        const int fewer = ar.getArrangement().sections[1].bars;
+                        ar.changeBars (1, -999);                                   // (never below a bar)
+                        const int least = ar.getArrangement().sections[1].bars;
+                        ar.undo();
+                        ar.undo();
+                        ar.undo();
+                        check (more == bars0 + 1 && fewer == bars0 - 3 && least == 1 && ar.getArrangement().sections[1].bars == bars0,
+                               "ARRANGE: bars added and removed (" + juce::String (bars0) + " -> " + juce::String (more) + " -> " + juce::String (fewer)
+                               + " -> " + juce::String (least) + "), and UNDO puts the length back");
                         // the map shows where a dragged section lands: the place between sections nearest the mouse
                         auto& grid = ar.getGrid();
                         ar.resized();

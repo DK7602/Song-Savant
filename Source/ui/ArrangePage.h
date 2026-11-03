@@ -97,6 +97,7 @@ namespace ss::ui
         // changing the song's sections (the map's drag and menus; also the tests). Each is one step for UNDO.
         void moveSectionTo (int section, int gap);           // gap: 0 (before the first) .. the number of sections
         void addSectionAt (int at, const juce::String& name);
+        void changeBars (int section, int by);               // bars added at the end (or taken off it), for every part
         void deleteSection (int section);
         void undo();
         void redo();
