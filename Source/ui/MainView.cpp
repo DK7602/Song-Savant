@@ -39,6 +39,12 @@ namespace ss::ui
         pianoRoll.onDone = [this] { showPage (page); };
         songPage.onEditPart = [this] (const juce::String& role) { showPianoRoll (role, -1); };
         arrangePage.onEditPattern = [this] (const juce::String& role, int section) { showPianoRoll (role, section); };
+        // a MIDI pattern dropped on a card or a box: that part (and section) in the piano roll, with the pattern in it
+        songPage.onDropPart = [this] (const juce::String& role, const juce::File& f) { if (showPianoRoll (role, -1)) pianoRoll.dropFile (f); };
+        arrangePage.onDropPattern = [this] (const juce::String& role, int section, const juce::File& f)
+        {
+            if (showPianoRoll (role, section)) pianoRoll.dropFile (f);
+        };
         addChildComponent (help);              // over everything, when it's open
         welcome.onManual = [this] { showHelp(); };
         addChildComponent (welcome);

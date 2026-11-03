@@ -218,6 +218,12 @@ That's it. Within a few seconds the kit you saved appears on Song Savant's **dru
 - Only a kit made for the song you sent goes on the drum card. Every other kit you save shows up among the drum choices, with your kits made for the song's style near the top.
 - The Groove Grabber plug-in itself stays among the drum choices, so you can build new kits any time.
 
+**Drum patterns both ways (Groove Grabber 1.0.21 or newer)**
+
+- **From Groove Grabber to Song Savant:** on Groove Grabber's SAUCE page, drag the groove's MIDI tag onto Song Savant: onto the drum card, a drums box on ARRANGE, or the drum piano roll. Each drum lands on its own row, the 808 too.
+- **From Song Savant to Groove Grabber:** drag the drum piano roll's drag tag (or a drums box on ARRANGE) onto Groove Grabber's SAUCE page. It becomes one of **MY GROOVES**, ready to play on your kit, edit on the grid and save. Groove Grabber keeps up to four bars, lined up to 16ths.
+- If one app is the plug-in in your DAW, drag the pattern into the DAW first, then from the DAW's track onto the other app (or drop the .mid file from the folder it's in).
+
 **Playing the kit in Cubase:** put Groove Grabber on an instrument track, open **MY KITS** and click **LOAD** on your kit. Then drag the drum card's MIDI tag (or the drums from ALL PARTS or WHOLE SONG) onto that track. Every Groove Grabber kit uses the same pads, so the part plays the right drums with any of them. To use Groove Agent instead, click **EXPORT** in Groove Grabber and follow its steps.
 
 ## Working with Key Compass
@@ -257,7 +263,7 @@ The panel at the bottom explains how songs in your style are usually built.
 
 ## The piano roll: your own parts
 
-The piano roll is where you change a part note by note, or write your own from an empty grid (with chord stamps, strums, arpeggios and the other building tools on the right), then hear it and drag it into your DAW. It edits the melodic parts: bass, keys, guitar, pad, strings and lead. (Drums come in a later version: for now, change them in Groove Grabber or in your DAW.)
+The piano roll is where you change a part note by note, or write your own from an empty grid (with chord stamps, strums, arpeggios and the other building tools on the right), then hear it and drag it into your DAW. It edits every part: bass, keys, guitar, pad, strings, lead, and the drums (a row for each drum, see **Drums in the piano roll** below).
 
 **Opening it:** click **EDIT** on a card (it opens the part's first chorus), or **double-click a box** on ARRANGE (that part in that section). **DONE** (or Esc) goes back.
 
@@ -335,6 +341,28 @@ Click **STAMP CHORDS** again (or DRAW) to go back to single notes.
 | IN KEY + / IN KEY - | Moves the notes up or down to the next note of your song's key (a note outside the key goes to the nearest one in it) |
 
 *Ideas:* **A NEW IDEA FOR THIS PART** writes another take on this part in your song's style (a new bass line, a new hook...), over what's there. Click it again for another; Ctrl+Z brings yours back.
+
+**Drums in the piano roll**
+
+Open the drum card's **EDIT** (or double-click a drums box on ARRANGE) and the keyboard becomes a list of drums, a row each, top to bottom: Crash, Ride, Open Hat, Closed Hat, Pedal Hat, High / Mid / Low Tom, Clap, Snare, Rim, Kick, 808, Shaker, Perc. Click a row to hear that drum.
+
+- Click to add a hit, drag to move it (up and down goes a row at a time: from the snare to the clap, say), right-click or double-click to delete. The arrow keys move the selected hits a row.
+- Hits start as 16ths. Velocity, copy, paste, duplicate and undo work the same as for the other parts.
+- The tools for drums are **QUANTIZE**, **HUMANIZE**, **CHOP** and **FLIP** (back to front). CHOP makes rolls: pick a hit (or draw a longer one), then CHOP > *Into 16ths (a roll)* or *Into 32nds (a fast roll)*. That's the trap hi-hat roll. **A NEW IDEA FOR THIS PART** writes another beat in your song's style.
+- Your beat plays on the kit on the drum card. Drag it into your DAW and each drum lands on that kit's own pad: a Groove Grabber kit gets Groove Grabber's pads (the 808 on its own pad), other kits get their drum map's notes, or the usual layout (General MIDI). Here in Song Savant you hear simple sketch drums (the 808 plays as a kick).
+- Changing the key never moves the drums.
+
+**Dropping a pattern in (from Groove Grabber, your DAW, or anywhere)**
+
+Drag a MIDI file (.mid) onto Song Savant and it becomes your pattern:
+
+- **Onto the piano roll:** it starts at the bar you drop it on and replaces the notes in the bars it covers. The rest of the section stays as it was.
+- **Onto a box on ARRANGE:** the piano roll opens on that part in that section, and the pattern goes in from bar 1.
+- **Onto a card on the SONG page:** the piano roll opens on that part's first chorus, and the pattern goes in from bar 1.
+
+A gold dashed line shows where it will land. A line under the title says what came in ("Dropped ...: 24 notes from bar 1"). **Ctrl+Z puts it back**, all in one step.
+
+For the drums, Song Savant works out which note is which drum: Groove Grabber's pads, the usual General MIDI layout, and the kits you mapped on DRUM MAPS. Files from Groove Grabber and Song Savant say which layout they use, so the 808 and the percussion land on the right rows. A hit Song Savant doesn't know is left out. A pattern shorter than the section fills only the bars it covers: copy it along with Ctrl+D, or drop it again further on.
 
 **What happens to your notes**
 
@@ -498,6 +526,10 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | Place whole chords | The piano roll: STAMP CHORDS, pick THIS BAR (or a chord), click the grid |
 | Strum, arpeggiate, quantize, humanize... | The piano roll's panel on the right (the selected notes, or all of them) |
 | Another take on one part | The piano roll: A NEW IDEA FOR THIS PART |
+| Edit the drums | The drum card's EDIT: a row for each drum |
+| A hi-hat roll | The drum piano roll: select hits, CHOP > Into 16ths (a roll) or Into 32nds |
+| Bring in a MIDI pattern (Groove Grabber, your DAW) | Drop the .mid on a card, a box on ARRANGE, or the piano roll (at the bar it should start) |
+| Send a beat to Groove Grabber | Drag the drum piano roll's drag tag onto Groove Grabber's SAUCE page |
 | One part of one section into your DAW | Drag its box on ARRANGE (or the piano roll's drag tag) |
 | One part, the whole song | Drag the part's name on ARRANGE |
 | The whole song into your DAW | ARRANGE: drag WHOLE SONG |

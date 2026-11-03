@@ -1,6 +1,7 @@
 #include "Arrangement.h"
 #include "KitMap.h"
 #include "GrooveGrabberLink.h"
+#include "DrumLanes.h"
 
 namespace ss
 {
@@ -395,7 +396,10 @@ namespace ss
         if (s.modeFor (part.role).isEmpty()) return {};
         if (book != nullptr)
             if (const auto* p = book->find (part.role, s.patternFor (part.role)))
-                return playPattern (*p, s.bars, plan.key);
+            {
+                auto notes = playPattern (*p, s.bars, plan.key);
+                return part.type == PartType::drums ? drumsFromLanes (notes, drums) : notes;    // your drums, on this kit's notes
+            }
         return suggestedNotes (plan, s, part, drums);
     }
 
@@ -407,7 +411,10 @@ namespace ss
             {
                 const auto& s = a.sections[(size_t) main];
                 if (const auto* p = book->find (part.role, s.patternFor (part.role)))
-                    return sequenceFromNotes (playPattern (*p, s.bars, plan.key));
+                {
+                    auto notes = playPattern (*p, s.bars, plan.key);
+                    return sequenceFromNotes (part.type == PartType::drums ? drumsFromLanes (notes, drums) : notes);
+                }
             }
         return makePart (plan, part.type, drums, part.instrument);
     }
@@ -426,7 +433,7 @@ namespace ss
     std::vector<NamedPart> arrangePart (const PartsPlan& plan, const Arrangement& a, const ArrangementPart& part, const DrumNotes& drums,
                                         const PatternBook* book, int section)
     {
-        NamedPart np { part.label, {} };
+        NamedPart np { part.label, {}, part.type == PartType::drums ? drumTag (drums) : juce::String() };
         int bar = 0;
         for (int i = 0; i < (int) a.sections.size(); ++i)
         {

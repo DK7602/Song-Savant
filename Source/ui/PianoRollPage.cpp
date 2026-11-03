@@ -1,12 +1,13 @@
 #include "PianoRollPage.h"
 #include "PluginProcessor.h"
 #include "core/Paths.h"
+#include "core/DrumLanes.h"
 
 namespace ss::ui
 {
     namespace
     {
-        constexpr float keysW = 64.0f, rulerH = 34.0f, velH = 58.0f, barThickness = 10.0f, velGap = 8.0f;
+        constexpr float rulerH = 34.0f, velH = 58.0f, barThickness = 10.0f, velGap = 8.0f;
         constexpr int lowest = 24, highest = 96;                       // C1 .. C7
 
         juce::String noteName (int n)
@@ -42,7 +43,8 @@ namespace ss::ui
             return p.instrument;
         }
 
-        bool editable (const ArrangementPart& p)    { return p.type == PartType::bass || p.type == PartType::chords || p.type == PartType::pad || p.type == PartType::hook; }
+        bool editable (const ArrangementPart& p)    { return p.type != PartType::none; }
+        bool melodic (const ArrangementPart& p)     { return p.type == PartType::bass || p.type == PartType::chords || p.type == PartType::pad || p.type == PartType::hook; }
 
         int centreFor (PartType t)
         {
@@ -84,15 +86,29 @@ namespace ss::ui
             const double beats = page.editor.visibleBars() * 4.0;
             if (fit && notes.getWidth() > 10.0f) pxPerBeat = juce::jlimit (8.0, 220.0, (double) notes.getWidth() / beats);
             scrollBeat = fit ? 0.0 : juce::jlimit (0.0, juce::jmax (0.0, beats - visibleBeats()), scrollBeat);
-            int lo = 128, hi = -1;
-            for (auto& e : page.editor.notes()) { lo = juce::jmin (lo, e.n.note); hi = juce::jmax (hi, e.n.note); }
-            const int centre = hi >= lo ? (lo + hi) / 2 : (page.part() != nullptr ? centreFor (page.part()->type) : 60);
-            topPitch = juce::jlimit (lowest + visibleRows() - 1, highest, centre + visibleRows() / 2);
+            int lo = 1 << 20, hi = -1;
+            for (auto& e : page.editor.notes())
+                if (const int r = rowOf (e.n.note); r >= 0) { lo = juce::jmin (lo, r); hi = juce::jmax (hi, r); }
+            const int centre = hi >= lo ? (lo + hi) / 2 : drumRows ? 0 : rowOf (page.part() != nullptr ? centreFor (page.part()->type) : 60);
+            topRow = centre - visibleRows() / 2;
+            clampScroll();
             updateBars();
             invalidate();
         }
 
         void invalidate()                   { bgValid = false; repaint(); }
+
+        // the rows: every semitone (C7 at the top, C1 at the bottom), or a row per drum
+        void setRows (bool drums)
+        {
+            drumRows = drums;
+            rowNotes.clear();
+            if (drums) for (auto& l : drumLanes()) rowNotes.push_back (l.note);
+            else for (int n = highest; n >= lowest; --n) rowNotes.push_back (n);
+            rowH = drums ? 24.0f : 15.0f;
+            resized();
+        }
+        const std::vector<int>& rows() const    { return rowNotes; }
 
         void setPlayhead (double beats)
         {
@@ -115,6 +131,7 @@ namespace ss::ui
         }
 
         float zoomCentre() const            { return notes.getCentreX(); }
+        double beatAt (float x) const       { return juce::jmax (0.0, xBeat (x)); }
         double mouseBeat = -1.0;            // where the mouse is over the notes (a paste goes to that bar)
 
         void resized() override
@@ -162,7 +179,7 @@ namespace ss::ui
                     g.fillRoundedRectangle (r, 3.0f);
                     g.setColour (e.selected ? juce::Colours::white : colour.brighter (0.6f).withAlpha (0.8f));
                     g.drawRoundedRectangle (r, 3.0f, e.selected ? 1.6f : 0.8f);
-                    if (r.getWidth() > 30.0f && rowH >= 12.0f)
+                    if (r.getWidth() > 30.0f && rowH >= 12.0f && ! drumRows)
                     {
                         g.setColour (juce::Colour (0xff141040));
                         g.setFont (sans (juce::jmin (11.0f, rowH - 3.0f), true));
@@ -321,7 +338,7 @@ namespace ss::ui
                 {
                     double d = xBeat (pos.x) - downBeat;
                     if (ed.snap > 0.0) d = std::round (d / ed.snap) * ed.snap;
-                    const int dp = yPitch (pos.y) - downPitch;
+                    const int dp = rowOf (downPitch) - yRow (pos.y);          // up: semitones, or drums
                     ed.dragMove (d, dp);
                     if (grabbed >= 0 && grabbed < (int) ed.notes().size())
                         if (const int now = ed.notes()[(size_t) grabbed].n.note; now != heard) { heard = now; page.preview (now); }
@@ -339,7 +356,14 @@ namespace ss::ui
                 case Drag::box:
                 {
                     box = juce::Rectangle<float> (downPos, pos).getIntersection (notes);
-                    ed.selectBox (xBeat (box.getX()), xBeat (box.getRight()), yPitch (box.getBottom() - 1.0f), yPitch (box.getY()), e.mods.isShiftDown());
+                    if (drumRows)
+                    {
+                        std::vector<int> inBox;
+                        for (int r = yRow (box.getY()); r <= yRow (box.getBottom() - 1.0f); ++r) inBox.push_back (noteOfRow (r));
+                        ed.selectBox (xBeat (box.getX()), xBeat (box.getRight()), inBox, e.mods.isShiftDown());
+                    }
+                    else
+                        ed.selectBox (xBeat (box.getX()), xBeat (box.getRight()), yPitch (box.getBottom() - 1.0f), yPitch (box.getY()), e.mods.isShiftDown());
                     repaint();
                     break;
                 }
@@ -369,7 +393,7 @@ namespace ss::ui
             if (e.mods.isShiftDown() || std::abs (w.deltaX) > std::abs (w.deltaY))
                 scrollBeat -= (double) (std::abs (w.deltaX) > std::abs (w.deltaY) ? w.deltaX : w.deltaY) * visibleBeats() * 0.5;
             else
-                topPitch += juce::roundToInt (w.deltaY * 10.0f);
+                topRow -= juce::roundToInt (w.deltaY * 10.0f);
             clampScroll();
             updateBars();
             invalidate();
@@ -382,10 +406,10 @@ namespace ss::ui
         {
             auto r = getLocalBounds().toFloat();
             r.removeFromBottom (barThickness);
-            vel = r.removeFromBottom (velH).withTrimmedLeft (keysW).withTrimmedRight (barThickness);
+            vel = r.removeFromBottom (velH).withTrimmedLeft (keysW()).withTrimmedRight (barThickness);
             r.removeFromBottom (velGap);
-            ruler = r.removeFromTop (rulerH).withTrimmedLeft (keysW).withTrimmedRight (barThickness);
-            keys = r.removeFromLeft (keysW);
+            ruler = r.removeFromTop (rulerH).withTrimmedLeft (keysW()).withTrimmedRight (barThickness);
+            keys = r.removeFromLeft (keysW());
             r.removeFromRight (barThickness);
             notes = r;
         }
@@ -394,8 +418,19 @@ namespace ss::ui
         int visibleRows() const             { return juce::jmax (1, (int) (notes.getHeight() / rowH)); }
         double beatX (double b) const       { return notes.getX() + (b - scrollBeat) * pxPerBeat; }
         double xBeat (float x) const        { return scrollBeat + (x - notes.getX()) / pxPerBeat; }
-        float pitchY (int p) const          { return notes.getY() + (float) (topPitch - p) * rowH; }
-        int yPitch (float y) const          { return juce::jlimit (lowest, highest, topPitch - (int) std::floor ((y - notes.getY()) / rowH)); }
+        int numRows() const                 { return (int) rowNotes.size(); }
+        float keysW() const                 { return drumRows ? 100.0f : 64.0f; }
+        int rowOf (int note) const
+        {
+            if (! drumRows) return note >= lowest && note <= highest ? highest - note : -1;
+            for (size_t i = 0; i < rowNotes.size(); ++i) if (rowNotes[i] == note) return (int) i;
+            return -1;
+        }
+        int noteOfRow (int row) const       { return rowNotes.empty() ? 60 : rowNotes[(size_t) juce::jlimit (0, numRows() - 1, row)]; }
+        float rowY (int row) const          { return notes.getY() + (float) (row - topRow) * rowH; }
+        float pitchY (int p) const          { const int r = rowOf (p); return r < 0 ? -10000.0f : rowY (r); }
+        int yRow (float y) const            { return juce::jlimit (0, juce::jmax (0, numRows() - 1), topRow + (int) std::floor ((y - notes.getY()) / rowH)); }
+        int yPitch (float y) const          { return noteOfRow (yRow (y)); }
         int velocityAt (float y) const      { return juce::jlimit (1, 127, juce::roundToInt (1.0f + 126.0f * (vel.getBottom() - 3.0f - y) / (vel.getHeight() - 8.0f))); }
 
         juce::Rectangle<float> noteRect (const PatternNote& n) const
@@ -422,7 +457,7 @@ namespace ss::ui
         {
             const double beats = page.editor.visibleBars() * 4.0;
             scrollBeat = juce::jlimit (0.0, juce::jmax (0.0, beats - visibleBeats()), scrollBeat);
-            topPitch = juce::jlimit (lowest + visibleRows() - 1, highest, topPitch);
+            topRow = juce::jlimit (0, juce::jmax (0, numRows() - visibleRows()), topRow);
         }
 
         void updateBars()
@@ -430,14 +465,14 @@ namespace ss::ui
             const double beats = page.editor.visibleBars() * 4.0;
             hbar.setRangeLimits (0.0, juce::jmax (beats, visibleBeats()), juce::dontSendNotification);
             hbar.setCurrentRange (scrollBeat, visibleBeats(), juce::dontSendNotification);
-            vbar.setRangeLimits (0.0, highest - lowest + 1, juce::dontSendNotification);
-            vbar.setCurrentRange (highest - topPitch, visibleRows(), juce::dontSendNotification);
+            vbar.setRangeLimits (0.0, juce::jmax (numRows(), visibleRows()), juce::dontSendNotification);
+            vbar.setCurrentRange (topRow, visibleRows(), juce::dontSendNotification);
         }
 
         void scrollBarMoved (juce::ScrollBar* b, double start) override
         {
             if (b == &hbar) scrollBeat = start;
-            else topPitch = highest - juce::roundToInt (start);
+            else topRow = juce::roundToInt (start);
             clampScroll();
             invalidate();
         }
@@ -458,9 +493,24 @@ namespace ss::ui
             if (page.section >= 0 && page.section < (int) arr.sections.size()) chords = sectionChords (page.plan, arr.sections[(size_t) page.section]);
             const double total = page.editor.visibleBars() * 4.0;
             const float ox = notes.getX(), oy = notes.getY();
-            for (int pitch = topPitch; pitch >= lowest && pitchY (pitch) - oy < (float) h; --pitch)
+            for (int row = topRow; row < numRows() && rowY (row) - oy < (float) h; ++row)
             {
-                const float y = pitchY (pitch) - oy;
+                const int pitch = noteOfRow (row);
+                const float y = rowY (row) - oy;
+                if (drumRows)
+                {
+                    // a row per drum, in turn lighter and darker; a line between the cymbals, the toms, the kit and the rest
+                    g.setColour (row % 2 == 0 ? keyRow : keyRow.interpolatedWith (otherRow, 0.45f));
+                    g.fillRect (0.0f, y, (float) w, rowH);
+                    g.setColour (juce::Colours::black.withAlpha (light ? 0.06f : 0.28f));
+                    g.fillRect (0.0f, y + rowH - 1.0f, (float) w, 1.0f);
+                    if (pitch == 44 || pitch == 45 || pitch == 35)
+                    {
+                        g.setColour (p.dim.withAlpha (0.55f));
+                        g.fillRect (0.0f, y + rowH - 1.0f, (float) w, 1.0f);
+                    }
+                    continue;
+                }
                 g.setColour (inScale (pitch, key) ? keyRow : otherRow);
                 g.fillRect (0.0f, y, (float) w, rowH);
                 for (size_t bar = 0; bar < chords.size(); ++bar)
@@ -547,9 +597,24 @@ namespace ss::ui
             const auto& p = pal();
             juce::Graphics::ScopedSaveState clip (g);
             g.reduceClipRegion (keys.toNearestInt());
-            for (int pitch = topPitch; pitch >= lowest && pitchY (pitch) < keys.getBottom(); --pitch)
+            for (int row = topRow; row < numRows() && rowY (row) < keys.getBottom(); ++row)
             {
-                const float y = pitchY (pitch);
+                const int pitch = noteOfRow (row);
+                const float y = rowY (row);
+                if (drumRows)
+                {
+                    // the drums' names: click one to hear it
+                    const bool hot = pitch == heard && drag == Drag::keys;
+                    g.setColour (hot ? p.gold.withAlpha (0.8f) : p.panelHi.withAlpha (row % 2 == 0 ? 0.95f : 0.75f));
+                    g.fillRect (keys.getX(), y, keys.getWidth(), rowH);
+                    g.setColour (juce::Colours::black.withAlpha (0.25f));
+                    g.fillRect (keys.getX(), y + rowH - 1.0f, keys.getWidth(), 1.0f);
+                    g.setColour (hot ? p.goldText : p.text);
+                    g.setFont (sans (12.0f, true));
+                    g.drawText (laneName (pitch), juce::Rectangle<float> (keys.getX() + 8.0f, y, keys.getWidth() - 12.0f, rowH),
+                                juce::Justification::centredLeft, true);
+                    continue;
+                }
                 const bool black = juce::String ("0101001010100").substring (pitch % 12, pitch % 12 + 1) == "1";
                 g.setColour (juce::Colour (0xfff3f0fb));
                 g.fillRect (keys.getX(), y, keys.getWidth(), rowH);
@@ -581,10 +646,10 @@ namespace ss::ui
             g.fillRoundedRectangle (vel, 6.0f);
             g.setColour (p.gold);
             g.setFont (sans (9.5f, true));
-            g.drawText ("VELOCITY", juce::Rectangle<float> (0.0f, vel.getY() + 4.0f, keysW - 6.0f, 12.0f), juce::Justification::centredRight, false);
+            g.drawText ("VELOCITY", juce::Rectangle<float> (0.0f, vel.getY() + 4.0f, keysW() - 6.0f, 12.0f), juce::Justification::centredRight, false);
             g.setColour (p.dim);
             g.setFont (sans (9.5f));
-            g.drawText ("how hard", juce::Rectangle<float> (0.0f, vel.getY() + 17.0f, keysW - 6.0f, 12.0f), juce::Justification::centredRight, false);
+            g.drawText ("how hard", juce::Rectangle<float> (0.0f, vel.getY() + 17.0f, keysW() - 6.0f, 12.0f), juce::Justification::centredRight, false);
             juce::Graphics::ScopedSaveState clip (g);
             g.reduceClipRegion (vel.toNearestInt());
             const double total = page.editor.visibleBars() * 4.0;
@@ -606,7 +671,9 @@ namespace ss::ui
         juce::Rectangle<float> notes, keys, ruler, vel;
         double pxPerBeat = 30.0, scrollBeat = 0.0;
         float rowH = 15.0f;
-        int topPitch = 84;
+        std::vector<int> rowNotes;
+        int topRow = 12;
+        bool drumRows = false;
         juce::Image bg;
         bool bgValid = false;
         double playhead = -1.0;
@@ -717,6 +784,82 @@ namespace ss::ui
         stopTimer();
     }
 
+    bool PianoRollPage::isDrums() const
+    {
+        const auto* p = part();
+        return p != nullptr && p->type == PartType::drums;
+    }
+
+    //==============================================================================
+    // A pattern dropped in: from Groove Grabber (its pads), the DAW, or Song Savant
+    bool PianoRollPage::isInterestedInFileDrag (const juce::StringArray& files)
+    {
+        for (auto& f : files) if (isMidiFile (juce::File (f))) return part() != nullptr;
+        return false;
+    }
+
+    void PianoRollPage::filesDropped (const juce::StringArray& files, int x, int y)
+    {
+        dropHover = false;
+        double at = -1.0;
+        const auto g = grid->getBounds();
+        if (g.contains (x, y)) at = grid->beatAt ((float) (x - g.getX()));
+        for (auto& f : files)
+            if (isMidiFile (juce::File (f))) { dropFile (juce::File (f), at); break; }
+        repaint();
+    }
+
+    bool PianoRollPage::dropFile (const juce::File& file, double atBeat)
+    {
+        const auto d = readMidiFile (file);
+        if (! d.has_value() || part() == nullptr)
+        {
+            status = "\"" + file.getFileName() + "\" has no notes Song Savant can read.";
+            repaint();
+            return false;
+        }
+        auto notes = d->notes;
+        if (isDrums())
+        {
+            // by drum, from the drum map the file says it was made with (or the usual layouts)
+            DrumNotes from;
+            from.source = d->drumSource;
+            notes = drumsToLanes (notes, from);
+        }
+        if (notes.empty())
+        {
+            status = "\"" + d->name + "\" has no drums Song Savant knows.";
+            repaint();
+            return false;
+        }
+        const double at = atBeat < 0.0 ? 0.0 : atBeat;
+        editor.pasteOver (notes, d->bars, at);
+        edited();
+        const int bar = (int) std::floor (juce::jmax (0.0, at) / 4.0) + 1;
+        status = "Dropped \"" + d->name + "\": " + juce::String ((int) notes.size()) + " notes from bar " + juce::String (bar)
+                 + (bar - 1 + d->bars > editor.visibleBars() ? " (the bars past the section's end were left out)" : juce::String())
+                 + ". Ctrl+Z puts it back.";
+        repaint();
+        return true;
+    }
+
+    void PianoRollPage::paintOverChildren (juce::Graphics& g)
+    {
+        if (! dropHover) return;
+        const auto& p = pal();
+        auto r = grid->getBounds().toFloat().reduced (4.0f);
+        g.setColour (p.bgTop.withAlpha (0.55f));
+        g.fillRoundedRectangle (r, 12.0f);
+        juce::Path box, dashed;
+        box.addRoundedRectangle (r, 12.0f);
+        const float dashes[] = { 10.0f, 7.0f };
+        juce::PathStrokeType (2.0f).createDashedStroke (dashed, box, dashes, 2);
+        g.setColour (p.gold);
+        g.fillPath (dashed);
+        g.setFont (serif (24.0f));
+        g.drawText ("Drop the pattern on the bar it should start at", r, juce::Justification::centred);
+    }
+
     const ArrangementPart* PianoRollPage::part() const
     {
         for (auto& p : parts) if (p.role == role) return &p;
@@ -738,6 +881,7 @@ namespace ss::ui
         parts = pal != nullptr ? arrangementParts (*pal, catalog.get()) : std::vector<ArrangementPart>();
         if (pal != nullptr) proc.song.updateArrangement (parts);
         plan = proc.song.partsPlan();
+        kit = pal != nullptr ? drumNotesFor (*pal, catalog.get()) : generalMidiDrums();
     }
 
     bool PianoRollPage::open (const juce::String& r, int s)
@@ -749,6 +893,8 @@ namespace ss::ui
         if (p == nullptr || ! editable (*p) || a.empty()) { role.clear(); section = -1; return false; }
         section = juce::jlimit (0, (int) a.sections.size() - 1, s < 0 ? juce::jmax (0, mainSection (a, role)) : s);
         proc.setSectionSolo (alone ? role : juce::String());
+        if (isDrums() && tool == Tool::stamp) tool = Tool::draw;
+        status.clear();
         load();
         buildChordChips();
         buildTabs();
@@ -763,7 +909,10 @@ namespace ss::ui
         const auto* p = part();
         if (p == nullptr) return;
         const auto& s = proc.song.arrangement.sections[(size_t) section];
-        editor.load (proc.song.patternAt (section, *p, generalMidiDrums()), s.bars);
+        const bool drums = isDrums();
+        grid->setRows (drums);
+        editor.setRows (drums ? grid->rows() : std::vector<int>());
+        editor.load (proc.song.patternAt (section, *p, kit), s.bars);
         seenEdits = editor.edits();
         findGhosts();
         // a new note is as long as the part's notes usually are
@@ -775,6 +924,7 @@ namespace ss::ui
             editor.lastLength = juce::jlimit (0.25, 8.0, std::round (lengths[lengths.size() / 2] * 4.0) / 4.0);
         }
         else editor.lastLength = p->type == PartType::pad ? 4.0 : p->type == PartType::hook ? 0.5 : 1.0;
+        if (drums) editor.lastLength = 0.25;                       // a drum hit: a 16th
         dragChip.setTitle ((role + " - " + patternName()).toUpperCase());
         dragChip.setFile (writeMidi(), juce::String (s.bars) + " bars, " + keyName (plan.key), "Nothing to drag yet");
         updateButtons();
@@ -784,6 +934,7 @@ namespace ss::ui
     void PianoRollPage::edited()
     {
         if (editor.edits() == seenEdits) return;
+        if (seenEdits >= 0 && ! status.startsWith ("Dropped")) status.clear();
         seenEdits = editor.edits();
         if (const auto* p = part()) proc.song.storePattern (section, *p, editor.pattern());
         updateSketch();
@@ -796,7 +947,8 @@ namespace ss::ui
     void PianoRollPage::updateSketch()
     {
         if (part() == nullptr) return;
-        const auto mine = playPattern (editor.pattern(), editor.visibleBars(), plan.key);
+        auto mine = playPattern (editor.pattern(), editor.visibleBars(), plan.key);
+        if (isDrums()) mine = drumsFromLanes (mine, generalMidiDrums());     // what the sketch's drum sounds follow
         proc.updateSketch (SongSavantProcessor::SketchMode::section,
                            std::make_shared<const SketchSong> (sketchOfSection (plan, proc.song.arrangement, section, parts, &proc.song.patterns, &mine, role)));
     }
@@ -807,7 +959,7 @@ namespace ss::ui
         ghostColours.clear();
         for (auto& p : parts)
         {
-            if (p.role == role || ! editable (p)) continue;
+            if (p.role == role || ! melodic (p) || isDrums()) continue;
             const auto c = kindColour (kindForPart (p));
             for (auto& n : sectionNotes (plan, proc.song.arrangement, section, p, generalMidiDrums(), &proc.song.patterns))
             {
@@ -819,7 +971,16 @@ namespace ss::ui
 
     void PianoRollPage::preview (int note)
     {
-        if (const auto* p = part()) proc.sketch.preview (note, editor.lastVelocity, p->type, p->instrument);
+        if (const auto* p = part())
+        {
+            if (isDrums())
+            {
+                const auto gm = drumsFromLanes ({ { 0.0, 0.25, note, 100 } }, generalMidiDrums());
+                if (! gm.empty()) proc.sketch.preview (gm.front().note, editor.lastVelocity, PartType::drums, Kind::drums);
+                return;
+            }
+            proc.sketch.preview (note, editor.lastVelocity, p->type, p->instrument);
+        }
     }
 
     juce::File PianoRollPage::writeMidi()
@@ -827,7 +988,9 @@ namespace ss::ui
         const auto* p = part();
         if (p == nullptr) return {};
         const auto name = p->role + " - " + patternName();
-        NamedPart np { p->label + " (" + patternName() + ")", sequenceFromNotes (playPattern (editor.pattern(), editor.visibleBars(), plan.key)) };
+        auto notes = playPattern (editor.pattern(), editor.visibleBars(), plan.key);
+        if (isDrums()) notes = drumsFromLanes (notes, kit);
+        NamedPart np { p->label + " (" + patternName() + ")", sequenceFromNotes (notes), isDrums() ? drumTag (kit) : juce::String() };
         const auto file = paths::tempDir().getChildFile ("Starter Parts").getChildFile (juce::File::createLegalFileName (
             name + " - " + keyName (plan.key) + " " + juce::String (juce::roundToInt (plan.bpm)) + " BPM.mid"));
         return writeMidiFile (plan, { np }, file, {}, editor.visibleBars()) ? file : juce::File();
@@ -1095,12 +1258,13 @@ namespace ss::ui
             case 6: target = &chopBtn;
                 m.addItem (1, "Into beats");
                 m.addItem (2, "Into 8ths");
-                m.addItem (3, "Into 16ths");
+                m.addItem (3, isDrums() ? "Into 16ths (a roll)" : "Into 16ths");
                 m.addItem (4, "Into 8th triplets");
+                if (isDrums()) m.addItem (5, "Into 32nds (a fast roll)");
                 break;
             case 7: target = &flipBtn;
                 m.addItem (1, "Back to front");
-                m.addItem (2, "Upside down (kept in the key)");
+                if (! isDrums()) m.addItem (2, "Upside down (kept in the key)");
                 break;
             default: return;
         }
@@ -1127,8 +1291,8 @@ namespace ss::ui
             case 5: editor.legato(); break;
             case 6:
             {
-                const double pieces[] = { 1.0, 0.5, 0.25, 1.0 / 3.0 };
-                editor.chop (pieces[juce::jlimit (1, 4, choice) - 1]);
+                const double pieces[] = { 1.0, 0.5, 0.25, 1.0 / 3.0, 0.125 };
+                editor.chop (pieces[juce::jlimit (1, 5, choice) - 1]);
                 break;
             }
             case 7: if (choice == 2) editor.flipPitch (plan.key); else editor.flipTime(); break;
@@ -1146,7 +1310,9 @@ namespace ss::ui
         if (p == nullptr) return;
         auto idea = plan;
         idea.seed = plan.seed + (juce::uint32) (++ideas) * 7919u;
-        editor.replaceAll (suggestedNotes (idea, proc.song.arrangement.sections[(size_t) section], *p, generalMidiDrums()));
+        auto fresh = suggestedNotes (idea, proc.song.arrangement.sections[(size_t) section], *p, kit);
+        if (isDrums()) fresh = drumsToLanes (fresh, kit);
+        editor.replaceAll (fresh);
         edited();
         grid->repaint();
     }
@@ -1160,7 +1326,8 @@ namespace ss::ui
         if (choice == 1)
         {
             // Song Savant's suggestion again: it follows NEW IDEA from now on (until you change it)
-            auto suggestion = suggestedNotes (plan, a.sections[(size_t) section], *p, generalMidiDrums());
+            auto suggestion = suggestedNotes (plan, a.sections[(size_t) section], *p, kit);
+            if (isDrums()) suggestion = drumsToLanes (suggestion, kit);
             editor.replaceAll (suggestion);
             proc.song.forgetPattern (section, role);
             seenEdits = editor.edits();
@@ -1176,8 +1343,8 @@ namespace ss::ui
         {
             const int k = choice - 200;
             if (k < 0 || k >= (int) parts.size()) return;
-            auto notes = sectionNotes (plan, a, section, parts[(size_t) k], generalMidiDrums(), &proc.song.patterns);
-            if (notes.empty()) notes = playPattern (proc.song.patternAt (section, parts[(size_t) k], generalMidiDrums()), bars, plan.key);
+            auto notes = sectionNotes (plan, a, section, parts[(size_t) k], kit, &proc.song.patterns);
+            if (notes.empty()) notes = playPattern (proc.song.patternAt (section, parts[(size_t) k], kit), bars, plan.key);
             editor.replaceAll (notes);
         }
         else if (choice >= 100)
@@ -1186,7 +1353,7 @@ namespace ss::ui
             const auto name = names[choice - 100];
             const auto uses = sectionsUsing (a, role, name);
             if (uses.empty()) return;
-            editor.replaceAll (playPattern (proc.song.patternAt (uses.front(), *p, generalMidiDrums()), bars, plan.key));
+            editor.replaceAll (playPattern (proc.song.patternAt (uses.front(), *p, kit), bars, plan.key));
         }
         edited();
     }
@@ -1195,7 +1362,7 @@ namespace ss::ui
     {
         const auto* p = part();
         if (p == nullptr) return;
-        proc.song.makeDifferent (s, *p, generalMidiDrums());
+        proc.song.makeDifferent (s, *p, kit);
         open (role, s);
     }
 
@@ -1246,7 +1413,7 @@ namespace ss::ui
         if (sections.getNumItems() > 0) m.addSubMenu ("A copy of another section", sections);
         juce::PopupMenu others;
         for (int k = 0; k < (int) parts.size(); ++k)
-            if (parts[(size_t) k].role != role && editable (parts[(size_t) k]))
+            if (parts[(size_t) k].role != role && melodic (parts[(size_t) k]) && ! isDrums())
                 others.addItem (200 + k, "The " + parts[(size_t) k].role.toLowerCase() + "'s notes here");
         if (others.getNumItems() > 0) m.addSubMenu ("A copy of another part", others);
         m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&startBtn), [safe = juce::Component::SafePointer<PianoRollPage> (this)] (int r)
@@ -1344,13 +1511,20 @@ namespace ss::ui
         drawPanel (g, panelArea, 14.0f);
         g.setColour (p.gold);
         g.setFont (sans (11.5f, true));
-        g.drawText ("CHORD STAMP", stampLabel, juce::Justification::centredLeft, false);
+        if (! stampLabel.isEmpty()) g.drawText ("CHORD STAMP", stampLabel, juce::Justification::centredLeft, false);
         g.drawText ("SHAPE THE NOTES", shapeLabel.withTrimmedBottom (14.0f), juce::Justification::centredLeft, false);
         g.drawText ("IDEAS", ideaLabel, juce::Justification::centredLeft, false);
         g.setColour (p.dim);
         g.setFont (sans (10.5f));
         g.drawText ("the selected notes (or all of them)", shapeLabel.withTrimmedTop (16.0f), juce::Justification::centredLeft, true);
 
+        if (status.isNotEmpty())
+        {
+            g.setColour (p.good);
+            g.setFont (sans (12.5f, true));
+            g.drawText (status, hintArea, juce::Justification::centredLeft, true);
+            return;
+        }
         g.setColour (p.dim);
         g.setFont (sans (12.0f));
         g.drawText ("Click: add a note  |  drag: move  |  drag its end: longer / shorter  |  double-click or right-click: delete  |  Ctrl + drag: select  |  "
@@ -1438,6 +1612,29 @@ namespace ss::ui
         panelArea = area;
         auto in = area.reduced (12.0f, 10.0f);
         auto row = [&in] (float h) { auto r = in.removeFromTop (h); in.removeFromTop (5.0f); return r; };
+        // the drums: no chords, no strums, no keys; quantize, humanize, chop (rolls), flip and new ideas
+        const bool drums = isDrums();
+        for (auto* c : std::initializer_list<juce::Component*> { &stampBtn, &moreBtn, &triadBtn, &seventhBtn, &spreadBtn, &strumBtn, &arpBtn,
+                                                                 &legatoBtn, &keyUpBtn, &keyDownBtn })
+            c->setVisible (! drums);
+        for (auto* c : chordChips) c->setVisible (! drums);
+        if (drums)
+        {
+            stampLabel = {};
+            shapeLabel = row (30.0f);
+            const float half = (in.getWidth() - 6.0f) / 2.0f;
+            for (auto pair : { std::pair<PillButton*, PillButton*> { &quantizeBtn, &humanizeBtn }, { &chopBtn, &flipBtn } })
+            {
+                auto r = row (28.0f);
+                pair.first->setBounds (r.removeFromLeft (half).toNearestInt());
+                r.removeFromLeft (6.0f);
+                pair.second->setBounds (r.toNearestInt());
+            }
+            in.removeFromTop (8.0f);
+            ideaLabel = row (16.0f);
+            ideaBtn.setBounds (row (30.0f).toNearestInt());
+            return;
+        }
         stampLabel = row (16.0f);
         stampBtn.setBounds (row (28.0f).toNearestInt());
         // the chord chips, as many to a row as fit, then MORE

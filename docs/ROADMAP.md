@@ -450,7 +450,26 @@ Built in steps, each one a build the owner can try:
       halfway), **humanize** (a little or more; timing in ms, velocity +-6 or 12), **legato**, **chop** (beats, 8ths,
       16ths, 8th triplets), **flip** (back to front; upside down, kept in the key), **in key +/-** (the song's scale).
     - **A new idea for this part**: the part's suggestion with another seed, over what's there (undo brings it back).
-  - Drums aren't in the piano roll yet (next: a step grid and the roll for drums).
+  - **1.3.0: drums in the piano roll, and patterns dropped in** *(the owner asked for drums next, and to drag drum
+    patterns between Groove Grabber and Song Savant both ways, November 2026)*.
+    - **A row per drum**, not a keyboard (`Source/core/DrumLanes.*`): Crash, Ride, Open Hat, Closed Hat, Pedal Hat,
+      High / Mid / Low Tom, Clap, Snare, Rim, Kick, 808, Shaker, Perc, top to bottom. Drum patterns are kept by drum,
+      on General MIDI notes with the 808 on 35 (`Pattern::drums`, never moved by a key change), and turned into the
+      drum card's own notes only when played or written (`drumsFromLanes`: a Groove Grabber kit's pads, the 808 on 52;
+      a mapped kit's drum map; or General MIDI, where the 808 falls back to the kick). So a pattern survives a change
+      of kit. Moving a hit up or down goes a row at a time (`PatternEditor::setRows` / `shifted`). New hits are 16ths.
+    - The drum tools: QUANTIZE, HUMANIZE, CHOP (with 16th and 32nd rolls) and FLIP (back to front); no chord stamp,
+      strum, arpeggio, legato, in-key or ghost notes. A new idea writes another beat in the style.
+    - **Dropping a MIDI pattern in** (`readMidiFile`, `PatternEditor::pasteOver`, one undo step): on the roll (from the
+      bar it lands on, replacing the bars it covers), on an ARRANGE box (that part in that section, from bar 1) or on a
+      SONG card (the part's first chorus, from bar 1). Notes are moved to start from their first bar. Drums are read
+      by drum: the file's "drums:" text, the drum card's own map, then Groove Grabber's pads or General MIDI
+      (`laneForNote`), so a file from either app lands right. Hits it can't place are left out.
+    - **Every drum MIDI file says its layout**: a text event "drums: <the kit's drum map>" (the card's MIDI tag, ALL
+      PARTS, ARRANGE's boxes and parts, WHOLE SONG, the roll's drag tag). Groove Grabber 1.0.21 writes "drums: Groove
+      Grabber's pads" and reads both; dropping a pattern on its SAUCE page makes it one of MY GROOVES (up to four
+      bars, on 16ths).
+    - Still to come for drums: hearing the real kit (Phase 3), and a step-grid view.
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is

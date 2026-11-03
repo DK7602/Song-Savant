@@ -78,6 +78,7 @@ namespace ss
     {
         juce::String name;
         juce::MidiMessageSequence notes;
+        juce::String text;                  // a text event at its start (a drum track: "drums: <its drum map>")
     };
     // A MIDI file with the tempo, time and key signature, and one track per part. Markers (in ticks) name places in
     // the song (sections); `bars` is its length when it isn't the plan's.

@@ -31,6 +31,12 @@ namespace ss
         int visibleBars() const                                { return visible; }
         void setVisibleBars (int);                             // the section got longer: the pattern repeats into the new bars
 
+        // The rows, top to bottom, when they aren't every semitone (the drums: a row per drum). Moving a note up or down
+        // then goes a row at a time.
+        void setRows (std::vector<int> topToBottom)            { rows = std::move (topToBottom); }
+        const std::vector<int>& getRows() const                { return rows; }
+        int shifted (int note, int up) const;                  // up (or down) `up` rows: semitones, or drums
+
         double snap = 0.25;                                    // in beats (a 16th); 0 = no snap
         double lastLength = 1.0;                               // a new note is as long as the last one you made or stretched
         int lastVelocity = 100;
@@ -50,6 +56,8 @@ namespace ss
         NoteClip copySelected() const;
         void paste (const NoteClip&, double atBar = -1.0);     // at the bar starting at `atBar` beats (-1: where it came from)
         void duplicateSelected();                              // a copy right after the selection
+        // A whole pattern dropped in: the bars it covers (from the bar starting at `atBar`), replaced by its notes
+        void pasteOver (const std::vector<PatternNote>&, int bars, double atBar);
 
         // ---- the building tools: one step each, on the selected notes (or every note you can see when none is selected)
         // A chord at a click: its root at or just below the note clicked, the intervals stacked above (selected after)
@@ -69,11 +77,12 @@ namespace ss
         void selectNone();
         void selectAll();                                      // the notes you can see
         void selectBox (double beatA, double beatB, int pitchA, int pitchB, bool addToSelection);
+        void selectBox (double beatA, double beatB, const std::vector<int>& notesInBox, bool addToSelection);   // (the drums' rows)
         int numSelected() const;
 
         // ---- dragging: begin, update as the mouse moves (from where it started), end (one undo for the whole drag)
         void beginDrag();
-        void dragMove (double beats, int semitones);           // every selected note
+        void dragMove (double beats, int up);                  // every selected note (`up`: semitones, or rows for the drums)
         void dragResize (double beats);                        // every selected note's end
         // that note's velocity; when it's selected, every selected note moves up or down by the same amount, from where it was
         void dragVelocity (int index, int velocity);
@@ -92,6 +101,7 @@ namespace ss
         double selectionStart() const;
         Pattern pat;
         int visible = 8;
+        std::vector<int> rows;
         std::vector<EditNote> items;
         std::vector<std::vector<EditNote>> undos, redos;
         std::vector<EditNote> dragFrom;

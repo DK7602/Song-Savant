@@ -9,10 +9,15 @@ class SongSavantProcessor;
 
 namespace ss::ui
 {
-    class PartCard : public juce::Component, public juce::SettableTooltipClient
+    class PartCard : public juce::Component, public juce::SettableTooltipClient, public juce::FileDragAndDropTarget
     {
     public:
         std::function<void()> onSelect, onPrev, onNext, onLock, onDragPart, onPlayPart, onEdit;
+        std::function<void (const juce::File&)> onDropFile;   // a MIDI pattern dropped on the card: the piano roll
+        bool isInterestedInFileDrag (const juce::StringArray&) override;
+        void fileDragEnter (const juce::StringArray&, int, int) override   { dropHover = true; repaint(); }
+        void fileDragExit (const juce::StringArray&) override              { dropHover = false; repaint(); }
+        void filesDropped (const juce::StringArray&, int, int) override;
         void show (const PaletteSlot*, const Sound*, bool selected, const juce::String& partInfo = {});
         // heard: this card's part is playing (a little level meter); alone: it's playing on its own (its button: stop)
         void setPlaying (bool heard, bool alone);
@@ -29,7 +34,7 @@ namespace ss::ui
     private:
         const PaletteSlot* slot = nullptr;
         const Sound* sound = nullptr;
-        bool isSelected = false, pressedOnMidi = false, dragging = false, heard = false, alone = false, canEdit = false, mine = false;
+        bool isSelected = false, pressedOnMidi = false, dragging = false, heard = false, alone = false, canEdit = false, mine = false, dropHover = false;
         juce::String partInfo;                      // the starter part, when the card has one
         juce::Rectangle<float> prevArea, nextArea, lockArea, midiArea, playArea, editArea;
     };
@@ -72,6 +77,7 @@ namespace ss::ui
         bool checkGrooveGrabberKits();
         void showForm();                              // shows the song's form again (after the Masterclass changed it)
         std::function<void (const juce::String& role)> onEditPart;   // a card's EDIT: the piano roll
+        std::function<void (const juce::String& role, const juce::File&)> onDropPart;   // a MIDI pattern dropped on a card
         void visibilityChanged() override;
 
     private:

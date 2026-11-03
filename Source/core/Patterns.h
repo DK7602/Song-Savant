@@ -24,6 +24,7 @@ namespace ss
     {
         int bars = 8;
         int key = 0;                              // the song's key when it was written: 0..11 major, 12..23 minor
+        bool drums = false;                       // a drum pattern: kept by drum (DrumLanes), never moved to another key
         std::vector<PatternNote> notes;           // in order of start
         double lengthBeats() const                { return bars * 4.0; }
         bool operator== (const Pattern&) const = default;

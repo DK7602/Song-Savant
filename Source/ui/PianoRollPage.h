@@ -1,7 +1,7 @@
 // Song Savant - the piano roll: edit a part's pattern in a section, or make your own from an empty grid.
 //
 // Pick the part and the section across the top; the keyboard is down the left (the song's key brighter, each bar's
-// chord lit gold), the notes in the middle, how hard each plays (velocity) underneath. Click to add a note, drag it
+// chord lit gold; for the drums, a row per drum), the notes in the middle, how hard each plays (velocity) underneath. Click to add a note, drag it
 // to move it, drag its end to stretch it, right-click to delete; drag a box around notes to select them; Ctrl+C / V
 // / D / Z / Y. The other parts show faintly (ghost notes). Hear it looped, alone or with the band, and drag it into
 // the DAW. Every change is kept with the song straight away: ARRANGE and WHOLE SONG play your version.
@@ -17,7 +17,7 @@ class SongSavantProcessor;
 
 namespace ss::ui
 {
-    class PianoRollPage : public juce::Component, private juce::Timer
+    class PianoRollPage : public juce::Component, public juce::FileDragAndDropTarget, private juce::Timer
     {
     public:
         explicit PianoRollPage (SongSavantProcessor&);
@@ -28,8 +28,19 @@ namespace ss::ui
         std::function<void()> onDone;                    // DONE (or Esc with nothing selected)
 
         void paint (juce::Graphics&) override;
+        void paintOverChildren (juce::Graphics&) override;
         void resized() override;
         bool keyPressed (const juce::KeyPress&) override;
+
+        // A MIDI file dropped in (a pattern from Groove Grabber, the DAW, Song Savant): it replaces the bars it covers,
+        // from the bar it lands on (from bar 1 when `atBeat` < 0). One step to undo. False when it isn't a MIDI pattern.
+        bool dropFile (const juce::File&, double atBeat = -1.0);
+        bool isInterestedInFileDrag (const juce::StringArray&) override;
+        void fileDragEnter (const juce::StringArray&, int, int) override   { dropHover = true; repaint(); }
+        void fileDragExit (const juce::StringArray&) override              { dropHover = false; repaint(); }
+        void filesDropped (const juce::StringArray&, int x, int y) override;
+        bool isDrums() const;
+        const juce::String& getStatus() const            { return status; }
         void visibilityChanged() override;
         void themeChanged();
 
@@ -74,6 +85,9 @@ namespace ss::ui
         void findGhosts();                               // the other parts in this section (worked out once, not at every repaint)
         std::vector<PatternNote> ghostNotes;
         std::vector<juce::Colour> ghostColours;
+        DrumNotes kit;                                   // the drum card's own notes (its drum map, or Groove Grabber's pads)
+        juce::String status;                             // what just happened (a dropped file), shown for a moment
+        bool dropHover = false;
 
         SongSavantProcessor& proc;
         std::vector<ArrangementPart> parts;

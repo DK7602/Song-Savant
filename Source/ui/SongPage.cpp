@@ -5,6 +5,7 @@
 #include "core/KitMap.h"
 #include "core/GrooveGrabberLink.h"
 #include "core/StyleGuide.h"
+#include "core/DrumLanes.h"
 
 namespace ss::ui
 {
@@ -17,6 +18,21 @@ namespace ss::ui
         partInfo = info;
         setTooltip (partInfo.isNotEmpty() ? "Starter part: " + partInfo + ". Drag the MIDI tag into Cubase." : juce::String());
         repaint();
+    }
+
+    bool PartCard::isInterestedInFileDrag (const juce::StringArray& files)
+    {
+        if (! canEdit || partInfo.isEmpty()) return false;
+        for (auto& f : files) if (isMidiFile (juce::File (f))) return true;
+        return false;
+    }
+
+    void PartCard::filesDropped (const juce::StringArray& files, int, int)
+    {
+        dropHover = false;
+        repaint();
+        for (auto& f : files)
+            if (isMidiFile (juce::File (f))) { if (onDropFile) onDropFile (juce::File (f)); return; }
     }
 
     void PartCard::setEditing (bool e, bool m)
@@ -54,8 +70,8 @@ namespace ss::ui
         if (isSelected) juce::DropShadow (p.gold.withAlpha (0.35f), 14, {}).drawForPath (g, box);
         g.setGradientFill (juce::ColourGradient (p.panelHi.withAlpha (over ? 1.0f : 0.9f), r.getX(), r.getY(), p.panel, r.getX(), r.getBottom(), false));
         g.fillPath (box);
-        g.setColour (isSelected ? p.gold : p.blue.withAlpha (0.45f));
-        g.strokePath (box, juce::PathStrokeType (isSelected ? 1.8f : 1.0f));
+        g.setColour (isSelected || dropHover ? p.gold : p.blue.withAlpha (0.45f));
+        g.strokePath (box, juce::PathStrokeType (dropHover ? 3.0f : isSelected ? 1.8f : 1.0f));
         if (slot == nullptr) return;
 
         auto in = r.reduced (12.0f, 10.0f);
@@ -561,7 +577,8 @@ namespace ss::ui
                 if (ap.role == slot.part.role)
                 {
                     // your own part where you made one in the piano roll, else the suggestion
-                    parts.push_back ({ ap.label, starterPart (plan, proc.song.arrangement, &proc.song.patterns, ap, drums) });
+                    parts.push_back ({ ap.label, starterPart (plan, proc.song.arrangement, &proc.song.patterns, ap, drums),
+                                       ap.type == PartType::drums ? drumTag (drums) : juce::String() });
                 }
         }
         if (parts.empty()) return {};
@@ -688,8 +705,9 @@ namespace ss::ui
                         type == PartType::none ? juce::String()
                         : mine ? "your own part (from the piano roll, the " + proc.song.arrangement.sections[(size_t) main].patternFor (role) + ")"
                                : describePart (plan, type, drums, snd != nullptr ? snd->kind : slot.part.kinds.front()));
-            card->setEditing (type == PartType::bass || type == PartType::chords || type == PartType::pad || type == PartType::hook, mine);
+            card->setEditing (type != PartType::none, mine);
             card->onEdit = [this, role] { if (onEditPart) onEditPart (role); };
+            card->onDropFile = [this, role] (const juce::File& f) { if (onDropPart) onDropPart (role, f); };
             card->onDragPart = [this, i] { dragPart (i); };
             card->onPlayPart = [this, i] { playPart (i); };
             card->onSelect = [this, role]

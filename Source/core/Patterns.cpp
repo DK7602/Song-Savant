@@ -54,6 +54,7 @@ namespace ss
             px->setAttribute ("name", k.fromFirstOccurrenceOf ("|", false, false));
             px->setAttribute ("bars", p.bars);
             px->setAttribute ("key", p.key);
+            if (p.drums) px->setAttribute ("drums", true);
             // the notes, compact: "start length note velocity;" (beats to 1/1000)
             juce::String notes;
             for (auto& n : p.notes)
@@ -71,6 +72,7 @@ namespace ss
             Pattern p;
             p.bars = juce::jlimit (1, 64, px->getIntAttribute ("bars", 8));
             p.key = juce::jlimit (0, 23, px->getIntAttribute ("key", 0));
+            p.drums = px->getBoolAttribute ("drums", false);
             for (auto& item : juce::StringArray::fromTokens (px->getStringAttribute ("notes"), ";", ""))
             {
                 const auto f = juce::StringArray::fromTokens (item, " ", "");
@@ -157,7 +159,7 @@ namespace ss
 
     std::vector<PatternNote> playPattern (const Pattern& p, int bars, int key)
     {
-        const auto notes = moveToKey (p.notes, p.key, key);
+        const auto notes = p.drums ? p.notes : moveToKey (p.notes, p.key, key);
         const double len = juce::jmax (1, p.bars) * 4.0, total = juce::jmax (1, bars) * 4.0;
         std::vector<PatternNote> out;
         for (double offset = 0.0; offset < total - 1.0e-9; offset += len)

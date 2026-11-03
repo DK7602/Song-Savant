@@ -26,6 +26,7 @@
 #include "core/SketchPlayer.h"
 #include "core/SongSession.h"
 #include "core/PatternEdit.h"
+#include "core/DrumLanes.h"
 #include <map>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <algorithm>
@@ -934,7 +935,7 @@ namespace
 
         // the MIDI file: a tempo track and one track per part
         const auto file = ss::paths::tempDir().getChildFile ("Starter parts test.mid");
-        std::vector<ss::NamedPart> parts { { "Drums", ss::makePart (plan, ss::PartType::drums) }, { "Bass", bass } };
+        std::vector<ss::NamedPart> parts { { "Drums", ss::makePart (plan, ss::PartType::drums), {} }, { "Bass", bass, {} } };
         check (ss::writeMidiFile (plan, parts, file), "writes a MIDI file");
         juce::MidiFile back;
         juce::FileInputStream in (file);
@@ -955,7 +956,7 @@ namespace
                     const auto p = ss::planParts (ss::readBrief ("", (ss::Genre) g, st->id));
                     std::vector<ss::NamedPart> all;
                     for (auto t : { ss::PartType::drums, ss::PartType::bass, ss::PartType::chords, ss::PartType::pad, ss::PartType::hook })
-                        all.push_back ({ ss::partTypeName (t), ss::makePart (p, t) });
+                        all.push_back ({ ss::partTypeName (t), ss::makePart (p, t), {} });
                     ss::writeMidiFile (p, all, juce::File (dump).getChildFile (st->id + ".mid"));
                 }
     }
@@ -1674,6 +1675,93 @@ namespace
         check (ed.pattern() == held, "and undo puts it all back");
     }
 
+    void testDrumPatterns()
+    {
+        section ("Drums in the piano roll, and drum patterns between the apps");
+        using ss::PatternNote;
+        // the drums, by name: Groove Grabber's pads, General MIDI, and files that don't say
+        check (ss::laneForNote (52) == "808" && ss::laneForNote (53) == "perc" && ss::laneForNote (54) == "shaker" && ss::laneForNote (42) == "hat",
+               "Groove Grabber's pads: 52 is the 808, 53 and 54 its percussion");
+        check (ss::laneForNote (52, "General MIDI") == "crash" && ss::laneForNote (70) == "shaker" && ss::laneForNote (99).isEmpty(),
+               "a General MIDI file: 52 is a cymbal; notes that aren't drums are left out");
+        const auto gg = ss::grooveGrabberDrums(), gm = ss::generalMidiDrums();
+        const std::vector<PatternNote> onPads { { 0, 0.25, 36, 110 }, { 0, 0.25, 52, 100 }, { 1, 0.25, 38, 100 }, { 0.5, 0.25, 54, 70 } };
+        const auto lanes = ss::drumsToLanes (onPads, gg);
+        juce::Array<int> laneNotes;
+        for (auto& n : lanes) laneNotes.add (n.note);
+        check (lanes.size() == 4 && laneNotes.contains (35) && laneNotes.contains (70), "a Groove Grabber pattern kept by drum (the 808, the shaker)");
+        auto backOnPads = ss::drumsFromLanes (lanes, gg);
+        ss::sortNotes (backOnPads);
+        auto sortedPads = onPads;
+        ss::sortNotes (sortedPads);
+        check (backOnPads == sortedPads, "and back on the pads, note for note");
+        juce::Array<int> onGm;
+        for (auto& n : ss::drumsFromLanes (lanes, gm)) onGm.add (n.note);
+        check (onGm.contains (36) && onGm.contains (70) && ! onGm.contains (52) && onGm.size() == 4,
+               "on a General MIDI kit the 808 plays on the kick, the shaker on GM's shaker");
+
+        // a dropped MIDI file: its drum map, its notes from its first bar, how long it is
+        const auto plan = ss::planParts (ss::readBrief ("trap 140 BPM in A minor"));
+        auto dir = ss::paths::tempDir().getChildFile ("tests/drops");
+        dir.createDirectory();
+        const auto file = dir.getChildFile ("From Groove Grabber.mid");
+        ss::NamedPart np { "Drums", ss::sequenceFromNotes (onPads, 16.0), ss::drumTag (gg) };      // starting at bar 5
+        check (ss::writeMidiFile (plan, { np }, file, {}, 8), "a drum pattern written with its drum map");
+        const auto dropped = ss::readMidiFile (file);
+        check (dropped.has_value() && dropped->drumSource == "Groove Grabber's pads" && dropped->notes.size() == 4
+               && std::abs (dropped->notes.front().start) < 1e-9 && dropped->bars == 1,
+               "read back: Groove Grabber's pads, from its first bar, 1 bar long");
+        check (! ss::readMidiFile (dir.getChildFile ("nothing.mid")).has_value() && ss::isMidiFile (file) && ! ss::isMidiFile (dir.getChildFile ("a.wav")),
+               "only MIDI files are taken");
+
+        // the drums' rows in the editor: up and down a drum at a time
+        ss::PatternEditor ed;
+        std::vector<int> rows;
+        for (auto& l : ss::drumLanes()) rows.push_back (l.note);
+        ed.setRows (rows);
+        ss::Pattern p;
+        p.bars = 2;
+        p.drums = true;
+        p.notes = { { 0, 0.25, 36, 100 }, { 1, 0.25, 38, 100 } };
+        ed.load (p, 2);
+        ed.select (0, false);
+        ed.transposeSelected (1);
+        check (ed.notes()[0].n.note == 37, "a kick moved up one row is the rim (the row above)");
+        ed.beginDrag();
+        ed.dragMove (0.0, 50);
+        ed.endDrag();
+        check (ed.notes()[0].n.note == 49, "dragged right up it stops on the top row (the crash)");
+        ed.selectBox (0.0, 8.0, std::vector<int> { 38 }, false);
+        check (ed.numSelected() == 1 && ed.notes()[1].selected, "a box over the snare's row selects the snare");
+        ed.pasteOver (lanes, 1, 4.0);
+        check (ed.notes().size() == 2 + 4, "a dropped pattern goes into the bar it lands on (bar 2)");
+        ed.pasteOver (lanes, 1, 0.0);
+        check (ed.notes().size() == 4 + 4, "dropped on bar 1, it replaces what was there");
+
+        // the song: a drum pattern is kept by drum, plays on the drum card's kit, and never moves with the key
+        std::vector<ss::ArrangementPart> parts { { "Drums", "Drums - Nashville Knock", ss::PartType::drums, ss::Kind::drums, false },
+                                                 { "Bass", "Bass", ss::PartType::bass, ss::Kind::bass, false } };
+        ss::SongSession song;
+        song.form.description = "trap 140 BPM in A minor";
+        song.arrangement = ss::makeArrangement (song.partsPlan(), parts, {}, ss::SongShape::full);
+        const int chorus = ss::mainSection (song.arrangement, "Drums");
+        auto drums = song.patternAt (chorus, parts[0], gg);
+        bool byDrum = drums.drums && ! drums.notes.empty();
+        for (auto& n : drums.notes) byDrum = byDrum && ss::laneName (n.note).isNotEmpty();
+        check (byDrum, "the drum card's suggestion opens kept by drum (" + juce::String ((int) drums.notes.size()) + " hits)");
+        drums.notes = lanes;
+        song.storePattern (chorus, parts[0], drums);
+        song.form.description = "trap 140 BPM in C minor";
+        check (song.patternAt (chorus, parts[0], gg).notes == lanes, "a new key leaves the drums alone");
+        const auto onKit = ss::sectionNotes (song.partsPlan(), song.arrangement, chorus, parts[0], gg, &song.patterns);
+        juce::Array<int> kitNotes;
+        for (auto& n : onKit) kitNotes.add (n.note);
+        check (kitNotes.contains (52) && kitNotes.contains (54), "ARRANGE and WHOLE SONG play your drums on the kit's pads (808 on 52)");
+        const auto whole = ss::arrangePart (song.partsPlan(), song.arrangement, parts[0], gg, &song.patterns);
+        check (whole.front().text == "drums: Groove Grabber's pads", "a drum track says which drum map it's on (for Groove Grabber to read)");
+        dir.deleteRecursively();
+    }
+
     void testTransport()
     {
         section ("The transport (ARRANGE) and one part on its own (SONG)");
@@ -2174,7 +2262,7 @@ namespace
                         check (in.openedOk() && mf.readFrom (in) && mf.getNumTracks() >= 5 && ar.getArrangement().sections.size() >= 5,
                                "the Arrange page maps the song and writes it whole: " + whole.getFileName());
                     }
-                    if (name.startsWith ("piano-roll") || name == "arrange-yours" || name == "song-yours")
+                    if ((name.startsWith ("piano-roll") && ! name.startsWith ("piano-roll-drums")) || name == "arrange-yours" || name == "song-yours")
                     {
                         // the Bass card's EDIT: the piano roll opens on its first chorus
                         auto& v = e->getView();
@@ -2243,6 +2331,37 @@ namespace
                                 check (bit.existsAsFile() && bit.getFileName().contains ("Bass - Chorus (bar"), "one box drags as MIDI: " + bit.getFileName());
                             }
                         }
+                    }
+                    if (name.startsWith ("piano-roll-drums"))
+                    {
+                        // the drum card's EDIT: the drums by name; then a Groove Grabber pattern dropped on bar 3
+                        auto& v = e->getView();
+                        const bool opened = v.showPianoRoll ("Drums", -1);
+                        auto& roll = v.getPianoRoll();
+                        auto& de = roll.getEditor();
+                        bool byDrum = ! de.notes().empty();
+                        for (auto& n : de.notes()) byDrum = byDrum && ss::laneName (n.n.note).isNotEmpty();
+                        check (opened && roll.isDrums() && de.getRows().size() == ss::drumLanes().size() && byDrum,
+                               "the drums open in the piano roll, a row per drum (" + juce::String ((int) de.notes().size()) + " hits)");
+                        const auto pads = ss::grooveGrabberDrums();
+                        std::vector<ss::PatternNote> groove;
+                        for (int k = 0; k < 8; ++k) groove.push_back ({ k * 0.5, 0.25, 42, k % 2 == 0 ? 100 : 70 });
+                        for (double b : { 0.0, 2.5 }) groove.push_back ({ b, 0.25, 36, 110 });
+                        groove.push_back ({ 0.0, 0.5, 52, 100 });
+                        groove.push_back ({ 1.0, 0.25, 38, 110 });
+                        groove.push_back ({ 3.0, 0.25, 38, 110 });
+                        const auto f = ss::paths::tempDir().getChildFile ("tests/Dropped groove.mid");
+                        f.getParentDirectory().createDirectory();
+                        ss::writeMidiFile (proc.song.partsPlan(), { ss::NamedPart { "Groove", ss::sequenceFromNotes (groove), ss::drumTag (pads) } }, f, {}, 1);
+                        const bool dropped = roll.dropFile (f, 8.5);
+                        int at808 = 0;
+                        for (auto& n : de.notes()) if (n.n.note == 35 && n.n.start >= 8.0 && n.n.start < 12.0) ++at808;
+                        check (dropped && at808 == 1 && roll.getStatus().startsWith ("Dropped"), "a Groove Grabber pattern dropped on bar 3, its 808 and all: " + roll.getStatus());
+                        check (proc.song.isMine (roll.getSection(), "Drums"), "the drums are yours now");
+                        const auto midi = roll.writeMidi();
+                        const auto back = ss::readMidiFile (midi);
+                        check (back.has_value() && back->drumSource.isNotEmpty(), "the drums' drag tag says which drum map it's on: " + (back.has_value() ? back->drumSource : juce::String()));
+                        f.deleteFile();
                     }
                     if (name == "arrange-scrolled")
                     {
@@ -2399,6 +2518,7 @@ namespace
         shoot ("piano-roll", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-small", false, 1060, 780, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-tools", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
+        shoot ("piano-roll-drums", false, 1240, 820, 0, {}, "trap 142 BPM in A minor");
         shoot ("piano-roll-tools-small", false, 1060, 780, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("arrange-yours", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("song-yours", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
@@ -2469,6 +2589,7 @@ int main (int argc, char** argv)
     testPatterns();
     testPatternEditor();
     testBuildingTools();
+    testDrumPatterns();
     testPalettes (fc);
     testCancelAndJob (fc);
 

@@ -46,6 +46,14 @@ namespace ss
         ++editCount;
     }
 
+    int PatternEditor::shifted (int note, int up) const
+    {
+        if (rows.empty()) return juce::jlimit (0, 127, note + up);
+        for (size_t i = 0; i < rows.size(); ++i)
+            if (rows[i] == note) return rows[(size_t) juce::jlimit (0, (int) rows.size() - 1, (int) i - up)];
+        return note;
+    }
+
     double PatternEditor::snapNearest (double beats) const
     {
         return snap > 0.0 ? std::round (beats / snap) * snap : beats;
@@ -135,7 +143,7 @@ namespace ss
         if (numSelected() == 0 || semitones == 0) return;
         checkpoint();
         for (auto& i : items)
-            if (i.selected) i.n.note = juce::jlimit (0, 127, i.n.note + semitones);
+            if (i.selected) i.n.note = shifted (i.n.note, semitones);
         changed();
     }
 
@@ -173,6 +181,25 @@ namespace ss
         {
             n.start += at;
             if (n.start >= total - tiny) continue;                 // past the section's end
+            n.length = juce::jmin (n.length, total - n.start);
+            items.push_back ({ n, true });
+        }
+        changed();
+    }
+
+    void PatternEditor::pasteOver (const std::vector<PatternNote>& notes, int bars, double atBar)
+    {
+        const double total = visible * 4.0;
+        const double at = juce::jlimit (0.0, juce::jmax (0.0, total - 4.0), std::floor (juce::jmax (0.0, atBar) / 4.0 + tiny) * 4.0);
+        const double to = juce::jmin (total, at + juce::jmax (1, bars) * 4.0);
+        checkpoint();
+        items.erase (std::remove_if (items.begin(), items.end(), [at, to] (const EditNote& e) { return e.n.start >= at - tiny && e.n.start < to - tiny; }),
+                     items.end());
+        for (auto& i : items) i.selected = false;
+        for (auto n : notes)
+        {
+            n.start += at;
+            if (n.start >= to - tiny) continue;                    // past the section's end
             n.length = juce::jmin (n.length, total - n.start);
             items.push_back ({ n, true });
         }
@@ -482,6 +509,17 @@ namespace ss
         }
     }
 
+    void PatternEditor::selectBox (double beatA, double beatB, const std::vector<int>& notesInBox, bool addToSelection)
+    {
+        const double b0 = juce::jmin (beatA, beatB), b1 = juce::jmax (beatA, beatB);
+        for (auto& i : items)
+        {
+            const bool inside = std::find (notesInBox.begin(), notesInBox.end(), i.n.note) != notesInBox.end()
+                                && i.n.start < b1 && i.n.start + i.n.length > b0;
+            i.selected = inside || (addToSelection && i.selected);
+        }
+    }
+
     int PatternEditor::numSelected() const
     {
         int n = 0;
@@ -496,29 +534,35 @@ namespace ss
         dragging = true;
     }
 
-    void PatternEditor::dragMove (double beats, int semitones)
+    void PatternEditor::dragMove (double beats, int up)
     {
         if (! dragging) beginDrag();
         const double total = visible * 4.0;
-        // keep the whole selection inside the section
+        // keep the whole selection inside the section, and inside the rows
         double lo = 1.0e9, hi = -1.0e9;
         int nlo = 127, nhi = 0;
+        auto rowOf = [this] (int note)
+        {
+            for (size_t r = 0; r < rows.size(); ++r) if (rows[r] == note) return (int) r;
+            return -1;
+        };
         for (auto& i : dragFrom)
             if (i.selected)
             {
                 lo = juce::jmin (lo, i.n.start);
                 hi = juce::jmax (hi, i.n.start);
-                nlo = juce::jmin (nlo, i.n.note);
-                nhi = juce::jmax (nhi, i.n.note);
+                const int v = rows.empty() ? i.n.note : (int) rows.size() - 1 - rowOf (i.n.note);   // higher = up
+                nlo = juce::jmin (nlo, v);
+                nhi = juce::jmax (nhi, v);
             }
         if (lo > hi) return;
         beats = juce::jlimit (-lo, total - shortest - hi, beats);
-        semitones = juce::jlimit (-nlo, 127 - nhi, semitones);
+        up = juce::jlimit (-nlo, (rows.empty() ? 127 : (int) rows.size() - 1) - nhi, up);
         for (size_t k = 0; k < items.size() && k < dragFrom.size(); ++k)
             if (dragFrom[k].selected)
             {
                 items[k].n.start = dragFrom[k].n.start + beats;
-                items[k].n.note = dragFrom[k].n.note + semitones;
+                items[k].n.note = shifted (dragFrom[k].n.note, up);
                 items[k].n.length = juce::jmin (dragFrom[k].n.length, total - items[k].n.start);
             }
     }

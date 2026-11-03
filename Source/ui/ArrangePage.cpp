@@ -1,6 +1,7 @@
 #include "ArrangePage.h"
 #include "PluginProcessor.h"
 #include "core/Paths.h"
+#include "core/DrumLanes.h"
 
 namespace ss::ui
 {
@@ -37,7 +38,43 @@ namespace ss::ui
 
     bool ArrangementGrid::editable (const ArrangementPart& p)
     {
-        return p.type == PartType::bass || p.type == PartType::chords || p.type == PartType::pad || p.type == PartType::hook;
+        return p.type != PartType::none;
+    }
+
+    // a MIDI pattern dragged over the map: dropped on a box, it opens that part of that section in the piano roll
+    bool ArrangementGrid::isInterestedInFileDrag (const juce::StringArray& files)
+    {
+        for (auto& f : files) if (isMidiFile (juce::File (f))) return parts != nullptr && ! parts->empty();
+        return false;
+    }
+
+    void ArrangementGrid::fileDragMove (const juce::StringArray&, int x, int y)
+    {
+        int s, p;
+        bool h;
+        hitTestAt ({ (float) x, (float) y }, s, p, h);
+        if (p < 0 && x < (int) labelW && y >= (int) headerH && parts != nullptr) { p = (int) (((float) y - headerH) / rowH); s = -1; }
+        if (p >= (int) (parts != nullptr ? parts->size() : 0)) p = -1;
+        if (s != dropSection || p != dropPart) { dropSection = s; dropPart = p; repaint(); }
+    }
+
+    void ArrangementGrid::fileDragExit (const juce::StringArray&)
+    {
+        dropSection = -2;
+        dropPart = -1;
+        repaint();
+    }
+
+    void ArrangementGrid::filesDropped (const juce::StringArray& files, int x, int y)
+    {
+        fileDragMove (files, x, y);
+        const int s = dropSection, p = dropPart;
+        dropSection = -2;
+        dropPart = -1;
+        repaint();
+        if (p < 0 || parts == nullptr || ! editable ((*parts)[(size_t) p]) || onDropFile == nullptr) return;
+        for (auto& f : files)
+            if (isMidiFile (juce::File (f))) { onDropFile (s, p, juce::File (f)); return; }
     }
 
     int ArrangementGrid::layout (int width, int height)
@@ -177,7 +214,9 @@ namespace ss::ui
             // a double-click on a part that can be edited: the piano roll (the first click's switch is put back)
             if (e.getNumberOfClicks() >= 2 && parts != nullptr && editable ((*parts)[(size_t) p]) && onEditCell)
             {
-                onCell (s, p);
+                // put the first click's change back: on / off, or the drums' step (round the five of them)
+                const int back = (*parts)[(size_t) p].type == PartType::drums ? drumModes().size() - 1 : 1;
+                for (int k = 0; k < back; ++k) onCell (s, p);
                 onEditCell (s, p);
                 return;
             }
@@ -215,6 +254,22 @@ namespace ss::ui
                 g.fillPath (marker);
             }
         } playheadOnTop { *this, g };
+
+        // a MIDI pattern being dragged over a box: where it will go
+        struct DropTarget
+        {
+            const ArrangementGrid& grid;
+            juce::Graphics& g;
+            ~DropTarget()
+            {
+                if (grid.dropPart < 0 || grid.dropSection < -1 || grid.columnX.empty()) return;
+                juce::Rectangle<float> r;
+                if (grid.dropSection >= 0) r = grid.cellArea (grid.dropSection, grid.dropPart);
+                else r = { 0.0f, headerH + grid.rowH * (float) grid.dropPart, labelW - 10.0f, grid.rowH };
+                g.setColour (pal().gold);
+                g.drawRoundedRectangle (r.expanded (1.0f), 6.0f, 2.5f);
+            }
+        } dropOnTop { *this, g };
 
         // the bar ruler: a tick for every bar, a taller one where each section starts
         if (! columnX.empty())
@@ -403,6 +458,10 @@ namespace ss::ui
         {
             if (const auto f = writeBit (s, part); f.existsAsFile())
                 juce::DragAndDropContainer::performExternalDragDropOfFiles ({ f.getFullPathName() }, false, &grid);
+        };
+        grid.onDropFile = [this] (int s, int part, const juce::File& f)
+        {
+            if (part >= 0 && part < (int) parts.size() && onDropPattern) onDropPattern (parts[(size_t) part].role, s, f);
         };
         grid.onDragPart = [this] (int part)
         {

@@ -907,6 +907,7 @@ namespace ss
         {
             juce::MidiMessageSequence t;
             t.addEvent (juce::MidiMessage::textMetaEvent (3, part.name), 0);
+            if (part.text.isNotEmpty()) t.addEvent (juce::MidiMessage::textMetaEvent (1, part.text), 0);
             t.addSequence (part.notes, 0);
             t.addEvent (juce::MidiMessage::endOfTrack(), end);
             t.sort();

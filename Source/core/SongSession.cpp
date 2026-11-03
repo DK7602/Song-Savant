@@ -1,4 +1,5 @@
 #include "SongSession.h"
+#include "DrumLanes.h"
 
 namespace ss
 {
@@ -68,12 +69,14 @@ namespace ss
         if (const auto* mine = patterns.find (part.role, s.patternFor (part.role)))
         {
             p = *mine;
-            p.notes = moveToKey (p.notes, mine->key, plan.key);
+            if (! p.drums) p.notes = moveToKey (p.notes, mine->key, plan.key);
             p.key = plan.key;
             return p;
         }
         p.bars = s.bars;
+        p.drums = part.type == PartType::drums;
         p.notes = suggestedNotes (plan, s, part, drums);
+        if (p.drums) p.notes = drumsToLanes (p.notes, drums);      // drums are kept by drum, not by the kit's notes
         return p;
     }
 
@@ -82,6 +85,7 @@ namespace ss
         if (section < 0 || section >= (int) arrangement.sections.size()) return;
         const auto name = arrangement.sections[(size_t) section].patternFor (part.role);
         p.key = partsPlan().key;
+        p.drums = part.type == PartType::drums;
         patterns.set (part.role, name, std::move (p));
         for (int i : sectionsUsing (arrangement, part.role, name))
         {
