@@ -1568,6 +1568,112 @@ namespace
         check (! player.isPlaying() && peak > 0.02f, "a note you place sounds straight away (" + juce::String (peak, 3) + ")");
     }
 
+    void testBuildingTools()
+    {
+        section ("The piano roll's building tools");
+        using ss::PatternNote;
+        ss::Pattern p;
+        p.bars = 2;
+        ss::PatternEditor ed;
+        ed.load (p, 2);
+        ed.snap = 0.25;
+        ed.lastLength = 4.0;
+        // chord stamp: D major at a click on F#4 (66): its root at or below (D4, 62), the rest stacked above
+        check (ed.stampChord (0.1, 66, 2, { 0, 4, 7 }) == 3 && ed.numSelected() == 3, "a chord stamp places the whole chord, selected");
+        juce::Array<int> notes;
+        for (auto& e : ed.notes()) notes.add (e.n.note);
+        check (notes.contains (62) && notes.contains (66) && notes.contains (69) && std::abs (ed.notes()[0].n.start) < 1e-9,
+               "D major from D4 (62 66 69), on the beat before the click");
+        // strum: low string first, each a little later, the ends kept
+        ed.strum (0.05, false);
+        double starts[3] {};
+        for (auto& e : ed.notes()) starts[e.n.note == 62 ? 0 : e.n.note == 66 ? 1 : 2] = e.n.start;
+        check (std::abs (starts[0]) < 1e-9 && std::abs (starts[1] - 0.05) < 1e-9 && std::abs (starts[2] - 0.1) < 1e-9
+               && std::abs (ed.notes()[2].n.start + ed.notes()[2].n.length - 4.0) < 1e-9, "strum down: low to high, the ends stay");
+        ed.undo();
+        ed.strum (0.05, true);
+        for (auto& e : ed.notes()) starts[e.n.note == 62 ? 0 : e.n.note == 66 ? 1 : 2] = e.n.start;
+        check (std::abs (starts[2]) < 1e-9 && std::abs (starts[0] - 0.1) < 1e-9, "strum up: high to low");
+        ed.undo();
+        // arpeggiate: a 4-beat chord in 16ths, going up: 16 notes, D F# A D F# A...
+        ed.arpeggiate (0.25, 1);
+        auto pat = ed.pattern();
+        check (pat.notes.size() == 16 && pat.notes[0].note == 62 && pat.notes[1].note == 66 && pat.notes[2].note == 69 && pat.notes[3].note == 62
+               && std::abs (pat.notes[5].start - 1.25) < 1e-9 && std::abs (pat.notes[5].length - 0.25) < 1e-9, "arpeggiate up in 16ths");
+        ed.undo();
+        ed.arpeggiate (0.5, 0);
+        pat = ed.pattern();
+        check (pat.notes.size() == 8 && pat.notes[2].note == 69 && pat.notes[3].note == 66 && pat.notes[4].note == 62, "up and back down (in 8ths)");
+        ed.undo();
+        ed.arpeggiate (1.0, -1);
+        pat = ed.pattern();
+        check (pat.notes.size() == 4 && pat.notes[0].note == 69 && pat.notes[2].note == 62, "down, in beats");
+        ed.undo();
+
+        // quantize, humanize, legato on a loose line
+        ss::Pattern loose;
+        loose.bars = 1;
+        loose.notes = { { 0.07, 0.3, 60, 90 }, { 1.12, 0.3, 62, 90 }, { 1.9, 0.3, 64, 90 }, { 3.03, 0.3, 65, 90 } };
+        ed.load (loose, 1);
+        ed.quantize (0.25, 1.0);
+        pat = ed.pattern();
+        check (std::abs (pat.notes[0].start) < 1e-9 && std::abs (pat.notes[1].start - 1.0) < 1e-9 && std::abs (pat.notes[2].start - 2.0) < 1e-9
+               && std::abs (pat.notes[3].start - 3.0) < 1e-9, "quantize: every note onto the grid");
+        ed.undo();
+        ed.quantize (0.25, 0.5);
+        check (std::abs (ed.pattern().notes[0].start - 0.035) < 1e-9, "quantize halfway keeps some feel");
+        ed.undo();
+        ed.humanize (0.02, 8, 7);
+        bool moved = false, inRange = true;
+        pat = ed.pattern();
+        for (size_t k = 0; k < pat.notes.size(); ++k)
+        {
+            moved = moved || std::abs (pat.notes[k].start - loose.notes[k].start) > 1e-6 || pat.notes[k].velocity != 90;
+            inRange = inRange && std::abs (pat.notes[k].start - loose.notes[k].start) <= 0.02 + 1e-9 && std::abs (pat.notes[k].velocity - 90) <= 8;
+        }
+        check (moved && inRange, "humanize: a little looser, never far");
+        ed.undo();
+        ed.legato();
+        pat = ed.pattern();
+        check (std::abs (pat.notes[0].length - 1.05) < 1e-9 && std::abs (pat.notes[1].length - 0.78) < 1e-9 && std::abs (pat.notes[3].length - 0.3) < 1e-9,
+               "legato: each note lasts until the next one");
+        ed.undo();
+
+        // move in key (C major): C D E F up one step: D E F G; B-flat (out of key) goes to B
+        ed.moveInKey (1, 0);
+        pat = ed.pattern();
+        check (pat.notes[0].note == 62 && pat.notes[1].note == 64 && pat.notes[2].note == 65 && pat.notes[3].note == 67, "move in key: up the scale");
+        ed.moveInKey (-2, 0);
+        check (ed.pattern().notes[0].note == 59, "and down (D down two steps: B)");
+        ed.undo();
+        ed.undo();
+        // only the selected notes, when some are
+        ed.select (0, false);
+        ed.moveInKey (1, 9 + 12);                  // A minor
+        pat = ed.pattern();
+        check (pat.notes[0].note == 62 && pat.notes[1].note == 62, "a tool works on the selected notes only, when some are selected");
+        ed.undo();
+        ed.selectNone();
+
+        // chop, flip
+        ss::Pattern held;
+        held.bars = 1;
+        held.notes = { { 0, 2, 60, 90 }, { 2, 2, 67, 90 } };
+        ed.load (held, 1);
+        ed.chop (0.5);
+        check (ed.pattern().notes.size() == 8 && std::abs (ed.pattern().notes[1].start - 0.5) < 1e-9, "chop: long notes into 8ths");
+        ed.undo();
+        ed.flipTime();
+        pat = ed.pattern();
+        check (pat.notes[0].note == 67 && std::abs (pat.notes[1].start - 2.0) < 1e-9, "flip back to front");
+        ed.undo();
+        ed.flipPitch (0);
+        pat = ed.pattern();
+        check (pat.notes[0].note == 67 && pat.notes[1].note == 60, "flip upside down (in key)");
+        ed.undo();
+        check (ed.pattern() == held, "and undo puts it all back");
+    }
+
     void testTransport()
     {
         section ("The transport (ARRANGE) and one part on its own (SONG)");
@@ -2074,22 +2180,57 @@ namespace
                         auto& v = e->getView();
                         const bool opened = v.showPianoRoll ("Bass", -1);
                         auto& roll = v.getPianoRoll();
-                        auto& ed = roll.getEditor();
-                        const auto before = ed.notes().size();
+                        auto& pe = roll.getEditor();
+                        const auto before = pe.notes().size();
                         const auto& a = proc.song.arrangement;
                         const bool chorus = roll.getSection() >= 0 && a.sections[(size_t) roll.getSection()].name.containsIgnoreCase ("chorus");
                         check (opened && roll.isVisible() && before > 0 && chorus && ! v.getSong().isVisible(),
                                "EDIT on the Bass card opens the piano roll on its chorus, with the suggestion in it (" + juce::String ((int) before) + " notes)");
-                        ed.lastLength = 2.0;
-                        ed.addNote (12.0, 45);                       // an A in bar 4
+                        pe.lastLength = 2.0;
+                        pe.addNote (12.0, 45);                       // an A in bar 4
                         roll.edited();
-                        check (proc.song.isMine (roll.getSection(), "Bass") && ed.notes().size() == before + 1, "a note added: the chorus bass is yours now");
-                        ed.selectBox (16.0, 24.0, 20, 70, false);    // bars 5 and 6 selected
+                        check (proc.song.isMine (roll.getSection(), "Bass") && pe.notes().size() == before + 1, "a note added: the chorus bass is yours now");
+                        pe.selectBox (16.0, 24.0, 20, 70, false);    // bars 5 and 6 selected
                         const auto midi = roll.writeMidi();
                         check (midi.existsAsFile() && midi.getFileName().contains ("Bass - Chorus"), "its drag chip: " + midi.getFileName());
                         roll.togglePlay();
                         check (proc.isSketchPlaying (SongSavantProcessor::SketchMode::section), "play: the section, looped");
                         roll.togglePlay();
+                        if (name.startsWith ("piano-roll-tools"))
+                        {
+                            // the building tools, through the page: open the keys, stamp the bar's chord, strum it
+                            v.showPianoRoll ("Keys", roll.getSection());
+                            auto& ke = roll.getEditor();
+                            ke.clear();
+                            roll.edited();
+                            ke.lastLength = 4.0;
+                            roll.setStamp (true);
+                            roll.stampAt (0.0, 62);                       // bar 1 (D): D F# A from D4
+                            juce::Array<int> stamped;
+                            for (auto& n : ke.notes()) stamped.add (n.n.note);
+                            check (ke.notes().size() == 3 && stamped.contains (62) && stamped.contains (66) && stamped.contains (69),
+                                   "the stamp places the bar's own chord (D in bar 1)");
+                            roll.stampAt (4.0, 61);                       // bar 2 (A): A from the A below
+                            roll.shape (1, 1);                            // strum the selected chord, gently
+                            bool strummed = false;
+                            for (auto& n : ke.notes()) strummed = strummed || (n.selected && n.n.start > 4.001);
+                            check (ke.notes().size() == 6 && strummed, "STRUM spreads the chord just stamped");
+                            roll.pickStampChord (2);                      // the song's second chord, from the chips
+                            roll.stampAt (8.0, 64);
+                            check (ke.notes().size() == 9 && roll.numStampChords() >= 3, "a chord from the chips");
+                            ke.selectNone();
+                            roll.shape (2, 2);                            // arpeggiate everything in 16ths
+                            check (ke.notes().size() > 30, "ARPEGGIATE breaks every chord up (" + juce::String ((int) ke.notes().size()) + " notes)");
+                            roll.shape (3, 1);
+                            roll.setStamp (false);
+                            check (proc.song.isMine (roll.getSection(), "Keys"), "the keys are yours, with every tool kept with the song");
+                            const auto before2 = ke.pattern();
+                            roll.newIdea();
+                            check (ke.pattern().notes.size() > 0 && ! (ke.pattern() == before2) && ke.canUndo(), "A NEW IDEA FOR THIS PART: another take (undo brings yours back)");
+                            ke.undo();
+                            roll.edited();
+                            ke.selectBox (4.0, 8.0, 0, 127, false);
+                        }
                         if (name == "arrange-yours" || name == "song-yours")
                         {
                             roll.makeDifferent (ss::sectionsUsing (a, "Bass", "Chorus").back());
@@ -2257,6 +2398,8 @@ namespace
         shoot ("arrange-playing", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
         shoot ("piano-roll", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-small", false, 1060, 780, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
+        shoot ("piano-roll-tools", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
+        shoot ("piano-roll-tools-small", false, 1060, 780, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("arrange-yours", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("song-yours", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("song-playing", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
@@ -2325,6 +2468,7 @@ int main (int argc, char** argv)
     testTransport();
     testPatterns();
     testPatternEditor();
+    testBuildingTools();
     testPalettes (fc);
     testCancelAndJob (fc);
 

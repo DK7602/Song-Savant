@@ -5,6 +5,8 @@
 // to move it, drag its end to stretch it, right-click to delete; drag a box around notes to select them; Ctrl+C / V
 // / D / Z / Y. The other parts show faintly (ghost notes). Hear it looped, alone or with the band, and drag it into
 // the DAW. Every change is kept with the song straight away: ARRANGE and WHOLE SONG play your version.
+// The panel on the right builds parts: a chord stamp (the bar's chord, the song's chords, more in the key), strum,
+// arpeggiate, quantize, humanize, legato, move in key, chop, flip, and a new idea for the part in the song's style.
 #pragma once
 
 #include "Widgets.h"
@@ -39,6 +41,12 @@ namespace ss::ui
         void startFrom (int choice);                     // 1 the suggestion, 2 an empty grid, 100+ another pattern, 200+ another part
         void makeDifferent (int section);
         void setLength (int bars);
+        void stampAt (double beat, int pitch);           // the STAMP tool: the chord picked, at a click
+        void shape (int tool, int choice);               // a building tool on the selected notes (or all of them)
+        void newIdea();                                  // A NEW IDEA FOR THIS PART
+        void setStamp (bool on);
+        void pickStampChord (int index);                 // 0: the bar's own chord; then the chips, then MORE's
+        int numStampChords() const                       { return (int) stampChords.size(); }
         void togglePlay();
         juce::File writeMidi();                          // what the drag chip drags
         juce::Rectangle<int> gridBounds() const;
@@ -55,6 +63,11 @@ namespace ss::ui
         void showSnapMenu();
         void showStartMenu();
         void showDifferentMenu();
+        void buildChordChips();
+        void showMoreChords();
+        void showShapeMenu (int tool);
+        void layoutPanel (juce::Rectangle<float>);
+        std::vector<int> voiced (const Chord&) const;
         const ArrangementPart* part() const;
         void preview (int note);                         // hear a note straight away
         juce::String patternName() const;
@@ -88,10 +101,34 @@ namespace ss::ui
                    redoBtn { "REDO", PillButton::Style::outline },
                    doneBtn { "DONE", PillButton::Style::gold };
         TransportButton playBtn { TransportButton::Icon::play };
+
+        // the building tools, on the right
+        struct StampChord { juce::String name; std::optional<Chord> chord; };   // no chord: the bar's own
+        std::vector<StampChord> stampChords;
+        int stampIndex = 0, moreIndex = -1;              // moreIndex: a chord picked from MORE (its place in stampChords)
+        enum class Voicing { triad, seventh, spread } voicing = Voicing::triad;
+        juce::OwnedArray<PillButton> chordChips;
+        PillButton stampBtn { "STAMP CHORDS", PillButton::Style::subtle },
+                   moreBtn { "MORE", PillButton::Style::subtle },
+                   triadBtn { "TRIAD", PillButton::Style::subtle },
+                   seventhBtn { "7TH", PillButton::Style::subtle },
+                   spreadBtn { "SPREAD", PillButton::Style::subtle },
+                   strumBtn { "STRUM", PillButton::Style::outline },
+                   arpBtn { "ARPEGGIATE", PillButton::Style::outline },
+                   quantizeBtn { "QUANTIZE", PillButton::Style::outline },
+                   humanizeBtn { "HUMANIZE", PillButton::Style::outline },
+                   legatoBtn { "LEGATO", PillButton::Style::outline },
+                   chopBtn { "CHOP", PillButton::Style::outline },
+                   flipBtn { "FLIP", PillButton::Style::outline },
+                   keyUpBtn { "IN KEY +", PillButton::Style::outline },
+                   keyDownBtn { "IN KEY -", PillButton::Style::outline },
+                   ideaBtn { "A NEW IDEA FOR THIS PART", PillButton::Style::outline };
+        juce::Rectangle<float> panelArea, stampLabel, shapeLabel, ideaLabel;
+        int ideas = 0;
         DragChip dragChip { "THIS PART", DragChip::Kind::midi };
         std::unique_ptr<Grid> grid;
         juce::Rectangle<float> topLine, titleArea, hintArea;
-        enum class Tool { draw, select, erase } tool = Tool::draw;
+        enum class Tool { draw, select, erase, stamp } tool = Tool::draw;
         bool ghosts = true, alone = false;
     };
 }

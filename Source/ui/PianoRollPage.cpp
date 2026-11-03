@@ -209,7 +209,7 @@ namespace ss::ui
                 const int i = page.editor.noteAt (xBeat (pos.x), yPitch (pos.y));
                 if (i >= 0) shape = page.editor.nearEnd (i, xBeat (pos.x), 7.0 / pxPerBeat) ? juce::MouseCursor::LeftRightResizeCursor
                                                                                              : juce::MouseCursor::DraggingHandCursor;
-                else if (page.tool == Tool::draw) shape = juce::MouseCursor::CrosshairCursor;
+                else if (page.tool == Tool::draw || page.tool == Tool::stamp) shape = juce::MouseCursor::CrosshairCursor;
             }
             else if (vel.contains (pos)) shape = juce::MouseCursor::UpDownResizeCursor;
             setMouseCursor (shape);
@@ -252,6 +252,18 @@ namespace ss::ui
             }
             downBeat = beat;
             downPitch = pitch;
+            if (page.tool == Tool::stamp)
+            {
+                // the chord picked, here; drag straight away to move it
+                page.stampAt (beat, pitch);
+                grabbed = -1;
+                for (size_t k = 0; k < ed.notes().size(); ++k) if (ed.notes()[k].selected) grabbed = (int) k;
+                heard = grabbed >= 0 ? ed.notes()[(size_t) grabbed].n.note : -1;
+                ed.beginDrag();
+                drag = Drag::move;
+                repaint();
+                return;
+            }
             if (i >= 0 && e.getNumberOfClicks() >= 2 && page.tool == Tool::draw)
             {
                 ed.erase (i);                            // DRAW: a double-click on a note deletes it
@@ -618,6 +630,42 @@ namespace ss::ui
         drawBtn.onClick = [this] { tool = Tool::draw; updateButtons(); };
         selectBtn.onClick = [this] { tool = Tool::select; updateButtons(); };
         eraseBtn.onClick = [this] { tool = Tool::erase; updateButtons(); };
+
+        // the building tools, on the right
+        for (auto* b : { &stampBtn, &moreBtn, &triadBtn, &seventhBtn, &spreadBtn }) b->setComponentID ("tab");
+        stampBtn.setTooltip ("On: each click places a whole chord (the one picked below), as long as the last note you made");
+        stampBtn.onClick = [this] { setStamp (tool != Tool::stamp); };
+        moreBtn.setTooltip ("The other chords in the song's key, and a few richer ones");
+        moreBtn.onClick = [this] { showMoreChords(); };
+        triadBtn.setTooltip ("Three notes: root, third, fifth");
+        seventhBtn.setTooltip ("Four notes: with the 7th that fits the key");
+        spreadBtn.setTooltip ("Spread wide: root, fifth, and the third an octave up");
+        triadBtn.onClick = [this] { voicing = Voicing::triad; updateButtons(); };
+        seventhBtn.onClick = [this] { voicing = Voicing::seventh; updateButtons(); };
+        spreadBtn.onClick = [this] { voicing = Voicing::spread; updateButtons(); };
+        strumBtn.setTooltip ("Notes that start together play one after another, like a strummed guitar");
+        arpBtn.setTooltip ("Chords broken up into single notes: up, down, or up and back down");
+        quantizeBtn.setTooltip ("Line the notes' starts up with the grid (SNAP), all the way or halfway");
+        humanizeBtn.setTooltip ("A little looser: tiny changes in timing and how hard the notes play");
+        legatoBtn.setTooltip ("Each note (or chord) lasts until the next one starts");
+        chopBtn.setTooltip ("Cut long notes into repeated shorter ones");
+        flipBtn.setTooltip ("Back to front, or upside down (kept in the key)");
+        keyUpBtn.setTooltip ("Up to the next note of the song's key");
+        keyDownBtn.setTooltip ("Down to the next note of the song's key");
+        ideaBtn.setTooltip ("Song Savant writes another take on this part in the style (undo brings yours back)");
+        strumBtn.onClick = [this] { showShapeMenu (1); };
+        arpBtn.onClick = [this] { showShapeMenu (2); };
+        quantizeBtn.onClick = [this] { showShapeMenu (3); };
+        humanizeBtn.onClick = [this] { showShapeMenu (4); };
+        legatoBtn.onClick = [this] { shape (5, 1); };
+        chopBtn.onClick = [this] { showShapeMenu (6); };
+        flipBtn.onClick = [this] { showShapeMenu (7); };
+        keyUpBtn.onClick = [this] { shape (8, 1); };
+        keyDownBtn.onClick = [this] { shape (9, 1); };
+        ideaBtn.onClick = [this] { newIdea(); };
+        for (auto* b : { &stampBtn, &moreBtn, &triadBtn, &seventhBtn, &spreadBtn, &strumBtn, &arpBtn, &quantizeBtn, &humanizeBtn,
+                         &legatoBtn, &chopBtn, &flipBtn, &keyUpBtn, &keyDownBtn, &ideaBtn })
+            addAndMakeVisible (b);
         snapBtn.setTooltip ("What notes line up to as you draw, move and stretch them");
         snapBtn.onClick = [this] { showSnapMenu(); };
         zoomOutBtn.setTooltip ("See more bars (or Ctrl + mouse wheel)");
@@ -702,6 +750,7 @@ namespace ss::ui
         section = juce::jlimit (0, (int) a.sections.size() - 1, s < 0 ? juce::jmax (0, mainSection (a, role)) : s);
         proc.setSectionSolo (alone ? role : juce::String());
         load();
+        buildChordChips();
         buildTabs();
         updateSketch();
         grid->reset (true);
@@ -844,6 +893,12 @@ namespace ss::ui
 
     void PianoRollPage::updateButtons()
     {
+        stampBtn.setToggleState (tool == Tool::stamp, juce::dontSendNotification);
+        triadBtn.setToggleState (voicing == Voicing::triad, juce::dontSendNotification);
+        seventhBtn.setToggleState (voicing == Voicing::seventh, juce::dontSendNotification);
+        spreadBtn.setToggleState (voicing == Voicing::spread, juce::dontSendNotification);
+        for (int i = 0; i < chordChips.size(); ++i) chordChips[i]->setToggleState (i == stampIndex, juce::dontSendNotification);
+        moreBtn.setToggleState (moreIndex >= 0 && stampIndex == moreIndex, juce::dontSendNotification);
         drawBtn.setToggleState (tool == Tool::draw, juce::dontSendNotification);
         selectBtn.setToggleState (tool == Tool::select, juce::dontSendNotification);
         eraseBtn.setToggleState (tool == Tool::erase, juce::dontSendNotification);
@@ -892,6 +947,210 @@ namespace ss::ui
     }
 
     //==============================================================================
+    //==============================================================================
+    // The building tools
+    void PianoRollPage::buildChordChips()
+    {
+        stampChords.clear();
+        stampChords.push_back ({ "THIS BAR", std::nullopt });
+        if (section >= 0 && section < (int) proc.song.arrangement.sections.size())
+            for (auto& c : sectionChords (plan, proc.song.arrangement.sections[(size_t) section]))
+            {
+                bool seen = false;
+                for (auto& sc : stampChords) seen = seen || sc.name == c.name;
+                if (! seen && stampChords.size() < 7) stampChords.push_back ({ c.name, c });
+            }
+        stampIndex = 0;
+        moreIndex = -1;
+        moreBtn.setButtonText ("MORE");
+        chordChips.clear();
+        for (int i = 0; i < (int) stampChords.size(); ++i)
+        {
+            auto* b = chordChips.add (new PillButton (stampChords[(size_t) i].name, PillButton::Style::subtle));
+            b->setComponentID ("tab");
+            b->setWantsKeyboardFocus (false);
+            b->setTooltip (i == 0 ? "The song's chord in the bar you click" : "Stamp " + stampChords[(size_t) i].name);
+            b->onClick = [this, i] { pickStampChord (i); };
+            addAndMakeVisible (b);
+        }
+        updateButtons();
+        resized();
+    }
+
+    void PianoRollPage::pickStampChord (int index)
+    {
+        stampIndex = juce::jlimit (0, (int) stampChords.size() - 1, index);
+        setStamp (true);
+    }
+
+    void PianoRollPage::setStamp (bool on)
+    {
+        tool = on ? Tool::stamp : Tool::draw;
+        updateButtons();
+    }
+
+    void PianoRollPage::showMoreChords()
+    {
+        const int tonic = plan.tonic();
+        const bool minor = plan.minor(), flats = keyUsesFlats (plan.key);
+        std::vector<Chord> found;
+        juce::PopupMenu m;
+        m.addSectionHeader ("In " + keyName (plan.key));
+        const juce::StringArray numerals = minor ? juce::StringArray { "i", "ii°", "III", "iv", "v", "VI", "VII" }
+                                                 : juce::StringArray { "I", "ii", "iii", "IV", "V", "vi", "vii°" };
+        for (auto& n : numerals)
+            if (auto c = chordFromRoman (n, tonic, minor, flats))
+            {
+                found.push_back (*c);
+                m.addItem ((int) found.size(), c->name + "   (" + n + ")");
+            }
+        m.addSectionHeader ("Richer");
+        const std::vector<std::pair<int, const char*>> richer = minor
+            ? std::vector<std::pair<int, const char*>> { { 0, "m7" }, { 0, "sus2" }, { 5, "m7" }, { 8, "maj7" }, { 10, "7" }, { 7, "7" } }
+            : std::vector<std::pair<int, const char*>> { { 0, "sus2" }, { 0, "maj7" }, { 5, "maj7" }, { 7, "7" }, { 7, "sus4" }, { 2, "m7" }, { 9, "m7" } };
+        for (auto& [degree, suffix] : richer)
+            if (auto c = chordFromName (pitchName ((tonic + degree) % 12, flats) + suffix))
+            {
+                found.push_back (*c);
+                m.addItem ((int) found.size(), c->name);
+            }
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&moreBtn),
+                         [safe = juce::Component::SafePointer<PianoRollPage> (this), found] (int r)
+        {
+            if (safe == nullptr || r <= 0 || r > (int) found.size()) return;
+            auto& self = *safe;
+            const StampChord pick { found[(size_t) r - 1].name, found[(size_t) r - 1] };
+            if (self.moreIndex < 0) { self.stampChords.push_back (pick); self.moreIndex = (int) self.stampChords.size() - 1; }
+            else self.stampChords[(size_t) self.moreIndex] = pick;
+            self.moreBtn.setButtonText (pick.name);
+            self.resized();
+            self.pickStampChord (self.moreIndex);
+        });
+    }
+
+    std::vector<int> PianoRollPage::voiced (const Chord& c) const
+    {
+        auto iv = c.intervals;
+        if (iv.size() < 3) iv = { 0, 4, 7 };
+        std::sort (iv.begin(), iv.end());
+        const int third = iv[1], fifth = iv[2];
+        switch (voicing)
+        {
+            case Voicing::triad:
+                return { 0, third, fifth };
+            case Voicing::seventh:
+                if (iv.size() >= 4) return { iv[0], iv[1], iv[2], iv[3] };
+                return { 0, third, fifth, inScale (c.root + 11, plan.key) ? 11 : 10 };   // the 7th that's in the key
+            case Voicing::spread:
+                return { 0, fifth, 12 + third };
+        }
+        return iv;
+    }
+
+    void PianoRollPage::stampAt (double beat, int pitch)
+    {
+        const auto* p = part();
+        if (p == nullptr || stampChords.empty()) return;
+        std::optional<Chord> chord = stampChords[(size_t) juce::jlimit (0, (int) stampChords.size() - 1, stampIndex)].chord;
+        if (! chord.has_value())           // THIS BAR: the song's chord where you clicked
+        {
+            const auto chords = sectionChords (plan, proc.song.arrangement.sections[(size_t) section]);
+            if (chords.empty()) return;
+            chord = chords[(size_t) juce::jlimit (0, (int) chords.size() - 1, (int) std::floor (beat / 4.0))];
+        }
+        const auto intervals = voiced (*chord);
+        editor.stampChord (beat, pitch, chord->root % 12, intervals);
+        edited();
+        for (auto& e : editor.notes())
+            if (e.selected) preview (e.n.note);
+    }
+
+    void PianoRollPage::showShapeMenu (int which)
+    {
+        juce::PopupMenu m;
+        PillButton* target = nullptr;
+        switch (which)
+        {
+            case 1: target = &strumBtn;
+                m.addItem (1, "Down (the low note first), gentle");
+                m.addItem (2, "Down, wider");
+                m.addItem (3, "Up (the high note first), gentle");
+                m.addItem (4, "Up, wider");
+                break;
+            case 2: target = &arpBtn;
+                m.addItem (1, "Up, in 8ths");
+                m.addItem (2, "Up, in 16ths");
+                m.addItem (3, "Down, in 16ths");
+                m.addItem (4, "Up and back down, in 16ths");
+                m.addItem (5, "Up, in 8th triplets");
+                break;
+            case 3: target = &quantizeBtn;
+                m.addItem (1, "Onto the grid (" + snapName (editor.snap > 0.0 ? editor.snap : 0.25).toLowerCase() + ")");
+                m.addItem (2, "Halfway (keeps some feel)");
+                break;
+            case 4: target = &humanizeBtn;
+                m.addItem (1, "A little");
+                m.addItem (2, "More");
+                break;
+            case 6: target = &chopBtn;
+                m.addItem (1, "Into beats");
+                m.addItem (2, "Into 8ths");
+                m.addItem (3, "Into 16ths");
+                m.addItem (4, "Into 8th triplets");
+                break;
+            case 7: target = &flipBtn;
+                m.addItem (1, "Back to front");
+                m.addItem (2, "Upside down (kept in the key)");
+                break;
+            default: return;
+        }
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (target),
+                         [safe = juce::Component::SafePointer<PianoRollPage> (this), which] (int r) { if (safe != nullptr && r > 0) safe->shape (which, r); });
+    }
+
+    void PianoRollPage::shape (int which, int choice)
+    {
+        const double beatsPerSecond = juce::jmax (40.0, plan.bpm) / 60.0;
+        switch (which)
+        {
+            case 1: editor.strum ((choice == 2 || choice == 4 ? 0.045 : 0.02) * beatsPerSecond, choice >= 3); break;
+            case 2:
+            {
+                const double steps[] = { 0.5, 0.25, 0.25, 0.25, 1.0 / 3.0 };
+                const int directions[] = { 1, 1, -1, 0, 1 };
+                const int k = juce::jlimit (1, 5, choice) - 1;
+                editor.arpeggiate (steps[k], directions[k]);
+                break;
+            }
+            case 3: editor.quantize (editor.snap > 0.0 ? editor.snap : 0.25, choice == 2 ? 0.5 : 1.0); break;
+            case 4: editor.humanize ((choice == 2 ? 0.025 : 0.012) * beatsPerSecond, choice == 2 ? 12 : 6, (juce::uint32) (editor.edits() * 31 + 7)); break;
+            case 5: editor.legato(); break;
+            case 6:
+            {
+                const double pieces[] = { 1.0, 0.5, 0.25, 1.0 / 3.0 };
+                editor.chop (pieces[juce::jlimit (1, 4, choice) - 1]);
+                break;
+            }
+            case 7: if (choice == 2) editor.flipPitch (plan.key); else editor.flipTime(); break;
+            case 8: editor.moveInKey (1, plan.key); break;
+            case 9: editor.moveInKey (-1, plan.key); break;
+            default: return;
+        }
+        edited();
+        grid->repaint();
+    }
+
+    void PianoRollPage::newIdea()
+    {
+        const auto* p = part();
+        if (p == nullptr) return;
+        auto idea = plan;
+        idea.seed = plan.seed + (juce::uint32) (++ideas) * 7919u;
+        editor.replaceAll (suggestedNotes (idea, proc.song.arrangement.sections[(size_t) section], *p, generalMidiDrums()));
+        edited();
+        grid->repaint();
+    }
+
     void PianoRollPage::startFrom (int choice)
     {
         const auto* p = part();
@@ -1081,6 +1340,17 @@ namespace ss::ui
                         + (mine ? juce::String ("your pattern") : juce::String ("Song Savant's suggestion: change anything to make it yours")),
                     t, juce::Justification::centredLeft, true);
 
+        // the building tools
+        drawPanel (g, panelArea, 14.0f);
+        g.setColour (p.gold);
+        g.setFont (sans (11.5f, true));
+        g.drawText ("CHORD STAMP", stampLabel, juce::Justification::centredLeft, false);
+        g.drawText ("SHAPE THE NOTES", shapeLabel.withTrimmedBottom (14.0f), juce::Justification::centredLeft, false);
+        g.drawText ("IDEAS", ideaLabel, juce::Justification::centredLeft, false);
+        g.setColour (p.dim);
+        g.setFont (sans (10.5f));
+        g.drawText ("the selected notes (or all of them)", shapeLabel.withTrimmedTop (16.0f), juce::Justification::centredLeft, true);
+
         g.setColour (p.dim);
         g.setFont (sans (12.0f));
         g.drawText ("Click: add a note  |  drag: move  |  drag its end: longer / shorter  |  double-click or right-click: delete  |  Ctrl + drag: select  |  "
@@ -1158,6 +1428,46 @@ namespace ss::ui
         titleArea = r.removeFromTop (30.0f);
         hintArea = r.removeFromBottom (20.0f);
         r.removeFromBottom (4.0f);
+        layoutPanel (r.removeFromRight (226.0f));
+        r.removeFromRight (10.0f);
         grid->setBounds (r.toNearestInt());
+    }
+
+    void PianoRollPage::layoutPanel (juce::Rectangle<float> area)
+    {
+        panelArea = area;
+        auto in = area.reduced (12.0f, 10.0f);
+        auto row = [&in] (float h) { auto r = in.removeFromTop (h); in.removeFromTop (5.0f); return r; };
+        stampLabel = row (16.0f);
+        stampBtn.setBounds (row (28.0f).toNearestInt());
+        // the chord chips, as many to a row as fit, then MORE
+        auto line = row (26.0f);
+        auto place = [&] (juce::Component& c, const juce::String& text)
+        {
+            const float w = juce::jmax (40.0f, juce::GlyphArrangement::getStringWidth (sans (12.0f, true), text) + 22.0f);
+            if (w > line.getWidth()) line = row (26.0f);
+            c.setBounds (line.removeFromLeft (w).toNearestInt());
+            line.removeFromLeft (4.0f);
+        };
+        for (auto* c : chordChips) place (*c, c->getButtonText());
+        place (moreBtn, moreBtn.getButtonText());
+        auto voices = row (26.0f);
+        const float vw = (voices.getWidth() - 8.0f) / 3.0f;
+        for (auto* b : { &triadBtn, &seventhBtn, &spreadBtn }) { b->setBounds (voices.removeFromLeft (vw).toNearestInt()); voices.removeFromLeft (4.0f); }
+        in.removeFromTop (8.0f);
+        shapeLabel = row (30.0f);
+        const float half = (in.getWidth() - 6.0f) / 2.0f;
+        for (auto pair : { std::pair<PillButton*, PillButton*> { &strumBtn, &arpBtn }, { &quantizeBtn, &humanizeBtn }, { &legatoBtn, &chopBtn },
+                           { &flipBtn, nullptr }, { &keyUpBtn, &keyDownBtn } })
+        {
+            auto r = row (28.0f);
+            if (pair.second == nullptr) { pair.first->setBounds (r.toNearestInt()); continue; }
+            pair.first->setBounds (r.removeFromLeft (half).toNearestInt());
+            r.removeFromLeft (6.0f);
+            pair.second->setBounds (r.toNearestInt());
+        }
+        in.removeFromTop (8.0f);
+        ideaLabel = row (16.0f);
+        ideaBtn.setBounds (row (30.0f).toNearestInt());
     }
 }

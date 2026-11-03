@@ -439,8 +439,18 @@ Built in steps, each one a build the owner can try:
     that section, a part's name for the whole part (with markers); a pencil marks your patterns, a star a section's own.
   - 1.1.1 (the owner's first try): with several notes selected, dragging a velocity stem moves them all by the same
     amount from where each was (it used to set them all to one value); in DRAW a double-click on a note deletes it.
-  - Drums aren't in the piano roll yet (next: a step grid and the roll for drums), nor the building tools (1.2.0:
-    chord stamp, strum, arpeggiate, quantize, humanize, legato, move in key, chop, flip, ideas from the style).
+  - **1.2.0: the building tools**, a panel on the right of the piano roll (`PatternEditor` does the work, all tested;
+    each is one undo step, on the selected notes or all of them):
+    - **Chord stamp** (`stampChord`): STAMP CHORDS on, then each click places the chord picked, its root at or just
+      below the click, as long as the last note. THIS BAR (the song's chord in the clicked bar), the section's own
+      chords as chips, MORE (the key's chords with their numerals, and sus2 / sus4 / maj7 / 7 / m7); TRIAD, 7TH (the
+      7th in the key) or SPREAD (root, fifth, the third up an octave).
+    - **Strum** (down or up, about 20 or 45 ms a note, so the same at any tempo), **arpeggiate** (up, down, up and
+      back down; 8ths, 16ths, 8th triplets; for notes that start together), **quantize** (to the snap, all the way or
+      halfway), **humanize** (a little or more; timing in ms, velocity +-6 or 12), **legato**, **chop** (beats, 8ths,
+      16ths, 8th triplets), **flip** (back to front; upside down, kept in the key), **in key +/-** (the song's scale).
+    - **A new idea for this part**: the part's suggestion with another seed, over what's there (undo brings it back).
+  - Drums aren't in the piano roll yet (next: a step grid and the roll for drums).
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is

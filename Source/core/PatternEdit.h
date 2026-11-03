@@ -51,6 +51,19 @@ namespace ss
         void paste (const NoteClip&, double atBar = -1.0);     // at the bar starting at `atBar` beats (-1: where it came from)
         void duplicateSelected();                              // a copy right after the selection
 
+        // ---- the building tools: one step each, on the selected notes (or every note you can see when none is selected)
+        // A chord at a click: its root at or just below the note clicked, the intervals stacked above (selected after)
+        int stampChord (double beat, int pitch, int rootPitchClass, const std::vector<int>& intervals);
+        void strum (double perNote, bool up);                  // notes that start together, one after another (beats apart)
+        void arpeggiate (double step, int direction);          // chords broken up: 1 up, -1 down, 0 up and back down
+        void quantize (double grid, double amount);            // starts towards the grid: 1 all the way, 0.5 halfway
+        void humanize (double timing, int velocity, juce::uint32 seed);   // a little loose: up to `timing` beats, +-velocity
+        void legato();                                         // every note (chord) lasts until the next one starts
+        void moveInKey (int steps, int key);                   // up / down the song's scale (key 0..11 major, 12..23 minor)
+        void chop (double piece);                              // long notes cut into pieces about this long
+        void flipTime();                                       // back to front
+        void flipPitch (int key);                              // upside down, kept in the key
+
         // ---- selecting (not an edit: nothing to undo)
         void select (int index, bool addToSelection);
         void selectNone();
@@ -74,6 +87,7 @@ namespace ss
 
     private:
         void checkpoint();                                     // what to go back to with undo
+        std::vector<size_t> targets() const;                   // what a tool works on
         void changed()                                         { ++editCount; }
         double selectionStart() const;
         Pattern pat;

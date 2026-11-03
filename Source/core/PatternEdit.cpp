@@ -210,6 +210,250 @@ namespace ss
     }
 
     //==============================================================================
+    // The building tools (1.2.0)
+    std::vector<size_t> PatternEditor::targets() const
+    {
+        std::vector<size_t> out;
+        const double total = visible * 4.0;
+        for (size_t k = 0; k < items.size(); ++k) if (items[k].selected) out.push_back (k);
+        if (out.empty())
+            for (size_t k = 0; k < items.size(); ++k) if (items[k].n.start < total - tiny) out.push_back (k);
+        return out;
+    }
+
+    namespace
+    {
+        bool inKey (int note, int key)
+        {
+            static const int major[] = { 0, 2, 4, 5, 7, 9, 11 }, minor[] = { 0, 2, 3, 5, 7, 8, 10 };
+            const int d = ((note - key % 12) % 12 + 12) % 12;
+            for (int i = 0; i < 7; ++i) if ((key >= 12 ? minor[i] : major[i]) == d) return true;
+            return false;
+        }
+
+        // notes that start together (a chord): groups of indices, in time order
+        std::vector<std::vector<size_t>> chordsOf (const std::vector<EditNote>& items, const std::vector<size_t>& which)
+        {
+            auto sorted = which;
+            std::stable_sort (sorted.begin(), sorted.end(), [&items] (size_t a, size_t b)
+            {
+                return std::abs (items[a].n.start - items[b].n.start) > 0.01 ? items[a].n.start < items[b].n.start : items[a].n.note < items[b].n.note;
+            });
+            std::vector<std::vector<size_t>> groups;
+            for (auto k : sorted)
+            {
+                if (groups.empty() || std::abs (items[groups.back().front()].n.start - items[k].n.start) > 0.01) groups.push_back ({});
+                groups.back().push_back (k);
+            }
+            return groups;
+        }
+    }
+
+    int PatternEditor::stampChord (double beat, int pitch, int rootPitchClass, const std::vector<int>& intervals)
+    {
+        if (intervals.empty()) return 0;
+        const double total = visible * 4.0;
+        const double start = juce::jlimit (0.0, total - shortest, snapDown (beat));
+        // the chord's root at or just below where you clicked, the rest stacked above it
+        const int root = pitch - (((pitch - rootPitchClass) % 12) + 12) % 12;
+        checkpoint();
+        for (auto& i : items) i.selected = false;
+        int added = 0;
+        for (int iv : intervals)
+        {
+            PatternNote n;
+            n.start = start;
+            n.length = juce::jmax (shortest, juce::jmin (lastLength, total - start));
+            n.note = juce::jlimit (0, 127, root + iv);
+            n.velocity = lastVelocity;
+            items.push_back ({ n, true });
+            ++added;
+        }
+        changed();
+        return added;
+    }
+
+    void PatternEditor::strum (double perNote, bool up)
+    {
+        const auto which = targets();
+        if (which.empty()) return;
+        checkpoint();
+        for (auto& g : chordsOf (items, which))
+        {
+            if (g.size() < 2) continue;
+            // a down strum hits the low string first, an up strum the high one
+            std::vector<size_t> order = g;
+            std::sort (order.begin(), order.end(), [this, up] (size_t a, size_t b) { return up ? items[a].n.note > items[b].n.note : items[a].n.note < items[b].n.note; });
+            for (size_t k = 0; k < order.size(); ++k)
+            {
+                auto& n = items[order[k]].n;
+                const double by = perNote * (double) k;
+                const double end = n.start + n.length;
+                n.start += by;
+                n.length = juce::jmax (shortest, end - n.start);
+            }
+        }
+        changed();
+    }
+
+    void PatternEditor::arpeggiate (double step, int direction)
+    {
+        const auto which = targets();
+        if (which.empty() || step <= 0.0) return;
+        checkpoint();
+        std::vector<EditNote> made;
+        std::vector<bool> gone (items.size(), false);
+        for (auto& g : chordsOf (items, which))
+        {
+            if (g.size() < 2) continue;
+            std::vector<PatternNote> notes;
+            double length = 0.0;
+            for (auto k : g) { notes.push_back (items[k].n); length = juce::jmax (length, items[k].n.length); gone[k] = true; }
+            std::sort (notes.begin(), notes.end(), [] (const PatternNote& a, const PatternNote& b) { return a.note < b.note; });
+            std::vector<PatternNote> order = notes;
+            if (direction < 0) std::reverse (order.begin(), order.end());
+            if (direction == 0 && notes.size() > 2)
+                for (size_t k = notes.size() - 2; k >= 1; --k) order.push_back (notes[k]);      // up and back down
+            const int steps = juce::jmax (1, (int) std::floor (length / step + tiny));
+            for (int s = 0; s < steps; ++s)
+            {
+                auto n = order[(size_t) s % order.size()];
+                n.start = notes.front().start + s * step;
+                n.length = step;
+                made.push_back ({ n, true });
+            }
+        }
+        std::vector<EditNote> keep;
+        for (size_t k = 0; k < items.size(); ++k) if (! gone[k]) keep.push_back (items[k]);
+        for (auto& m : made) keep.push_back (m);
+        items = keep;
+        changed();
+    }
+
+    void PatternEditor::quantize (double grid, double amount)
+    {
+        const auto which = targets();
+        if (which.empty()) return;
+        if (grid <= 0.0) grid = 0.25;
+        checkpoint();
+        const double total = visible * 4.0;
+        for (auto k : which)
+        {
+            auto& n = items[k].n;
+            const double to = std::round (n.start / grid) * grid;
+            n.start = juce::jlimit (0.0, total - shortest, n.start + (to - n.start) * amount);
+        }
+        changed();
+    }
+
+    void PatternEditor::humanize (double timing, int velocity, juce::uint32 seed)
+    {
+        const auto which = targets();
+        if (which.empty()) return;
+        checkpoint();
+        juce::Random random ((juce::int64) seed);
+        const double total = visible * 4.0;
+        for (auto k : which)
+        {
+            auto& n = items[k].n;
+            n.start = juce::jlimit (0.0, total - shortest, n.start + (random.nextDouble() * 2.0 - 1.0) * timing);
+            n.velocity = juce::jlimit (1, 127, n.velocity + random.nextInt (juce::Range<int> (-velocity, velocity + 1)));
+        }
+        changed();
+    }
+
+    void PatternEditor::legato()
+    {
+        const auto which = targets();
+        if (which.empty()) return;
+        checkpoint();
+        const auto groups = chordsOf (items, which);
+        for (size_t g = 0; g + 1 < groups.size(); ++g)
+        {
+            const double next = items[groups[g + 1].front()].n.start;
+            for (auto k : groups[g]) items[k].n.length = juce::jmax (shortest, next - items[k].n.start);
+        }
+        changed();
+    }
+
+    void PatternEditor::moveInKey (int steps, int key)
+    {
+        const auto which = targets();
+        if (which.empty() || steps == 0) return;
+        checkpoint();
+        for (auto k : which)
+        {
+            int n = items[k].n.note;
+            for (int s = 0; s < std::abs (steps); ++s)
+            {
+                do n += steps > 0 ? 1 : -1;
+                while (! inKey (n, key) && n > 0 && n < 127);
+            }
+            items[k].n.note = juce::jlimit (0, 127, n);
+        }
+        changed();
+    }
+
+    void PatternEditor::chop (double piece)
+    {
+        const auto which = targets();
+        if (which.empty() || piece <= 0.0) return;
+        checkpoint();
+        std::vector<EditNote> made;
+        std::vector<bool> gone (items.size(), false);
+        for (auto k : which)
+        {
+            const auto& n = items[k].n;
+            const int parts = (int) std::round (n.length / piece);
+            if (parts < 2) continue;
+            gone[k] = true;
+            for (int p = 0; p < parts; ++p)
+            {
+                auto m = n;
+                m.start = n.start + p * (n.length / parts);
+                m.length = n.length / parts;
+                made.push_back ({ m, items[k].selected });
+            }
+        }
+        std::vector<EditNote> keep;
+        for (size_t k = 0; k < items.size(); ++k) if (! gone[k]) keep.push_back (items[k]);
+        for (auto& m : made) keep.push_back (m);
+        items = keep;
+        changed();
+    }
+
+    void PatternEditor::flipTime()
+    {
+        const auto which = targets();
+        if (which.size() < 2) return;
+        double from = 1.0e9, to = 0.0;
+        for (auto k : which) { from = juce::jmin (from, items[k].n.start); to = juce::jmax (to, items[k].n.start + items[k].n.length); }
+        checkpoint();
+        for (auto k : which)
+        {
+            auto& n = items[k].n;
+            n.start = from + (to - (n.start + n.length));
+        }
+        changed();
+    }
+
+    void PatternEditor::flipPitch (int key)
+    {
+        const auto which = targets();
+        if (which.size() < 2) return;
+        int lo = 127, hi = 0;
+        for (auto k : which) { lo = juce::jmin (lo, items[k].n.note); hi = juce::jmax (hi, items[k].n.note); }
+        checkpoint();
+        for (auto k : which)
+        {
+            int n = lo + hi - items[k].n.note;
+            while (! inKey (n, key) && n > 0) --n;                  // into the key
+            items[k].n.note = juce::jlimit (0, 127, n);
+        }
+        changed();
+    }
+
+    //==============================================================================
     void PatternEditor::select (int index, bool addToSelection)
     {
         if (! addToSelection) for (auto& i : items) i.selected = false;

@@ -257,7 +257,7 @@ The panel at the bottom explains how songs in your style are usually built.
 
 ## The piano roll: your own parts
 
-The piano roll is where you change a part note by note, or write your own from an empty grid, then hear it and drag it into your DAW. It edits the melodic parts: bass, keys, guitar, pad, strings and lead. (Drums come in a later version: for now, change them in Groove Grabber or in your DAW.)
+The piano roll is where you change a part note by note, or write your own from an empty grid (with chord stamps, strums, arpeggios and the other building tools on the right), then hear it and drag it into your DAW. It edits the melodic parts: bass, keys, guitar, pad, strings and lead. (Drums come in a later version: for now, change them in Groove Grabber or in your DAW.)
 
 **Opening it:** click **EDIT** on a card (it opens the part's first chorus), or **double-click a box** on ARRANGE (that part in that section). **DONE** (or Esc) goes back.
 
@@ -307,6 +307,34 @@ The piano roll is where you change a part note by note, or write your own from a
 | Esc | Select nothing (again: DONE) |
 
 **Copying a whole section:** Ctrl+A, Ctrl+C, pick another section, Ctrl+V. Or use **START FROM** > A copy of another section.
+
+**The building tools** (the panel on the right)
+
+*Chord stamp:* turn on **STAMP CHORDS**, pick a chord, and every click on the grid places the whole chord: its root at (or just below) the note you click, as long as the last note you made. Drag right away to move it. You hear it as it lands.
+
+| Choice | What it stamps |
+| --- | --- |
+| THIS BAR | The song's own chord in the bar you click: click along the bars and the chords follow the song |
+| The song's chords (D, A, Bm...) | That chord, wherever you click |
+| MORE | The other chords in your key (with their numbers: I, ii, IV...), and a few richer ones: sus2, sus4, maj7, 7, m7 |
+| TRIAD / 7TH / SPREAD | Three notes; four, with the 7th that fits the key; or spread wide (root, fifth, and the third an octave up) |
+
+Click **STAMP CHORDS** again (or DRAW) to go back to single notes.
+
+*Shape the notes:* these change the **selected notes**, or **every note** when none is selected. Each is one step: Ctrl+Z puts it back.
+
+| Tool | What it does |
+| --- | --- |
+| STRUM | Notes that start together play one after another, like a guitar: down (the low note first) or up, gentle or wider |
+| ARPEGGIATE | Breaks each chord into single notes: up, down, or up and back down, in 8ths, 16ths or 8th triplets |
+| QUANTIZE | Lines the notes' starts up with the grid (the SNAP), all the way or halfway (keeps some feel) |
+| HUMANIZE | A little looser: tiny changes in timing and in how hard each note plays (a little, or more) |
+| LEGATO | Each note (or chord) lasts until the next one starts: no gaps |
+| CHOP | Cuts long notes into repeated beats, 8ths, 16ths or 8th triplets |
+| FLIP | Back to front, or upside down (kept in the key) |
+| IN KEY + / IN KEY - | Moves the notes up or down to the next note of your song's key (a note outside the key goes to the nearest one in it) |
+
+*Ideas:* **A NEW IDEA FOR THIS PART** writes another take on this part in your song's style (a new bass line, a new hook...), over what's there. Click it again for another; Ctrl+Z brings yours back.
 
 **What happens to your notes**
 
@@ -467,6 +495,9 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | Write your own part | The piano roll: START FROM > An empty grid, then click to add notes |
 | The same change in every chorus | Edit the Chorus pattern once (MAKE ONE DIFFERENT for one that isn't) |
 | Copy notes | The piano roll: select, Ctrl+C, then Ctrl+V (another bar, section or part) |
+| Place whole chords | The piano roll: STAMP CHORDS, pick THIS BAR (or a chord), click the grid |
+| Strum, arpeggiate, quantize, humanize... | The piano roll's panel on the right (the selected notes, or all of them) |
+| Another take on one part | The piano roll: A NEW IDEA FOR THIS PART |
 | One part of one section into your DAW | Drag its box on ARRANGE (or the piano roll's drag tag) |
 | One part, the whole song | Drag the part's name on ARRANGE |
 | The whole song into your DAW | ARRANGE: drag WHOLE SONG |
