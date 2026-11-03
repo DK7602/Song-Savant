@@ -26,12 +26,18 @@ namespace ss::ui
     }
 
     //==============================================================================
-    void ArrangementGrid::show (const Arrangement* a, const std::vector<ArrangementPart>* p, const PartsPlan* pl)
+    void ArrangementGrid::show (const Arrangement* a, const std::vector<ArrangementPart>* p, const PartsPlan* pl, const PatternBook* b)
     {
         arr = a;
         parts = p;
         plan = pl;
+        book = b;
         repaint();
+    }
+
+    bool ArrangementGrid::editable (const ArrangementPart& p)
+    {
+        return p.type == PartType::bass || p.type == PartType::chords || p.type == PartType::pad || p.type == PartType::hook;
     }
 
     int ArrangementGrid::layout (int width, int height)
@@ -126,8 +132,11 @@ namespace ss::ui
             setMouseCursor ((s >= 0 && (h || p >= 0)) || ruler ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
             setTooltip (ruler ? "Click or drag here to move the playhead"
                         : h && s >= 0 ? "Change this section: length, copy, move, remove"
-                        : p >= 0 && parts != nullptr && (*parts)[(size_t) p].type == PartType::drums ? "Click: no drums, light, groove, build, full"
-                        : p >= 0 ? "Click to switch this part on or off here" : juce::String());
+                        : p >= 0 && parts != nullptr && (*parts)[(size_t) p].type == PartType::drums
+                              ? "Click: no drums, light, groove, build, full  |  drag it into your DAW for just this bit"
+                        : p >= 0 ? "Click: switch this part on or off here  |  double-click: open it in the piano roll  |  drag it into your DAW for just this bit"
+                        : e.position.x < labelW && e.position.y >= headerH ? "Drag a part's name into your DAW for the whole part"
+                        : juce::String());
             repaint();
         }
     }
@@ -136,22 +145,44 @@ namespace ss::ui
     {
         onRuler = e.position.y < rulerH && e.position.x >= labelW && ! columnX.empty();
         if (onRuler && onSeek) onSeek (beatsAt (e.position.x));
+        bool h;
+        hitTestAt (e.position, pressSection, pressPart, h);
+        if (h) pressPart = -1;
+        pressLabel = e.position.x < labelW - 10.0f && e.position.y >= headerH && parts != nullptr
+                     && (int) ((e.position.y - headerH) / rowH) < (int) parts->size();
+        if (pressLabel) pressPart = (int) ((e.position.y - headerH) / rowH);
+        draggedOut = false;
     }
 
     void ArrangementGrid::mouseDrag (const juce::MouseEvent& e)
     {
-        if (onRuler && onSeek) onSeek (beatsAt (e.position.x));
+        if (onRuler) { if (onSeek) onSeek (beatsAt (e.position.x)); return; }
+        if (draggedOut || e.getDistanceFromDragStart() < 6 || pressPart < 0) return;
+        draggedOut = true;               // into the DAW: this box, or the whole part
+        if (pressLabel) { if (onDragPart) onDragPart (pressPart); }
+        else if (pressSection >= 0 && onDragCell) onDragCell (pressSection, pressPart);
     }
 
     void ArrangementGrid::mouseUp (const juce::MouseEvent& e)
     {
         if (onRuler) { onRuler = false; return; }
+        if (draggedOut) { draggedOut = false; return; }
         int s, p;
         bool h;
         hitTestAt (e.position, s, p, h);
         if (s < 0) return;
         if (h && onSection) onSection (s, localAreaToGlobal (headerArea (s).toNearestInt()));
-        else if (p >= 0 && onCell) onCell (s, p);
+        else if (p >= 0 && onCell)
+        {
+            // a double-click on a part that can be edited: the piano roll (the first click's switch is put back)
+            if (e.getNumberOfClicks() >= 2 && parts != nullptr && editable ((*parts)[(size_t) p]) && onEditCell)
+            {
+                onCell (s, p);
+                onEditCell (s, p);
+                return;
+            }
+            onCell (s, p);
+        }
     }
 
     void ArrangementGrid::setPlayhead (double beats, bool playing)
@@ -288,6 +319,30 @@ namespace ss::ui
                     g.setFont (sans (10.5f, true));
                     g.drawText (label, cell, juce::Justification::centred, true);
                 }
+                // your own pattern here (a pencil), and a section with a pattern of its own (a star)
+                const auto pattern = sec.patternFor (part.role);
+                const bool own = pattern != sec.name;
+                const bool mine = book != nullptr && book->find (part.role, pattern) != nullptr;
+                if ((mine || own) && cell.getWidth() > 30.0f)
+                {
+                    auto corner = juce::Rectangle<float> (cell.getRight() - 16.0f, cell.getY() + 3.0f, 12.0f, 12.0f);
+                    g.setColour (juce::Colours::white.withAlpha (0.9f));
+                    if (mine)
+                    {
+                        juce::Path pencil;
+                        pencil.addRectangle (-1.6f, -6.0f, 3.2f, 9.0f);
+                        pencil.addTriangle (-1.6f, 3.0f, 1.6f, 3.0f, 0.0f, 6.0f);
+                        pencil.applyTransform (juce::AffineTransform::rotation (0.7f).translated (corner.getCentreX(), corner.getCentreY()));
+                        g.fillPath (pencil);
+                        corner = corner.translated (-14.0f, 0.0f);
+                    }
+                    if (own)
+                    {
+                        juce::Path star;
+                        star.addStar (corner.getCentre(), 5, 2.4f, 6.0f);
+                        g.fillPath (star);
+                    }
+                }
             }
         }
     }
@@ -340,6 +395,20 @@ namespace ss::ui
             changed();
         };
         grid.onSection = [this] (int s, juce::Rectangle<int> area) { sectionMenu (s, area); };
+        grid.onEditCell = [this] (int s, int part)
+        {
+            if (part >= 0 && part < (int) parts.size() && onEditPattern) onEditPattern (parts[(size_t) part].role, s);
+        };
+        grid.onDragCell = [this] (int s, int part)
+        {
+            if (const auto f = writeBit (s, part); f.existsAsFile())
+                juce::DragAndDropContainer::performExternalDragDropOfFiles ({ f.getFullPathName() }, false, &grid);
+        };
+        grid.onDragPart = [this] (int part)
+        {
+            if (const auto f = writeBit (-1, part); f.existsAsFile())
+                juce::DragAndDropContainer::performExternalDragDropOfFiles ({ f.getFullPathName() }, false, &grid);
+        };
         view.setComponentID ("map");
         view.setViewedComponent (&grid, false);
         view.setScrollBarsShown (false, true);
@@ -431,7 +500,8 @@ namespace ss::ui
         plan = proc.song.partsPlan();
 
         // what to draw it for: only redraw (and rewrite the file) when something changed
-        juce::String now = proc.song.arrangement.toXml()->toString() + "|" + plan.chordLine() + "|" + juce::String (plan.bpm) + "|" + juce::String (plan.key);
+        juce::String now = proc.song.arrangement.toXml()->toString() + "|" + plan.chordLine() + "|" + juce::String (plan.bpm) + "|" + juce::String (plan.key)
+                           + "|" + juce::String (proc.song.patterns.changeCount()) + "/" + juce::String (proc.song.patterns.size());
         for (auto& p : parts) now << "|" << p.label;
         if (now == seen) return;
         seen = now;
@@ -441,14 +511,14 @@ namespace ss::ui
         for (int i = 0; i < names.size(); ++i) shapeBox.addItem (names[i], i + 1);
         shapeBox.setSelectedItemIndex (juce::jlimit (0, names.size() - 1, (int) proc.song.songShape), juce::dontSendNotification);
 
-        grid.show (hasPalette ? &proc.song.arrangement : nullptr, &parts, &plan);
+        grid.show (hasPalette ? &proc.song.arrangement : nullptr, &parts, &plan, &proc.song.patterns);
         shapeBox.setVisible (hasPalette);
         resetBtn.setVisible (hasPalette);
         wholeSong.setVisible (hasPalette);
         for (auto* b : { &toStartBtn, &rewindBtn, &playBtn, &pauseBtn, &forwardBtn, &toEndBtn }) b->setVisible (hasPalette);
         if (hasPalette)         // what the transport plays: the same song as WHOLE SONG
             proc.updateSketch (SongSavantProcessor::SketchMode::song,
-                               std::make_shared<const SketchSong> (sketchOfSong (plan, proc.song.arrangement, parts)));
+                               std::make_shared<const SketchSong> (sketchOfSong (plan, proc.song.arrangement, parts, &proc.song.patterns)));
         if (hasPalette)
         {
             const int bars = proc.song.arrangement.totalBars();
@@ -471,10 +541,30 @@ namespace ss::ui
     {
         auto* pal = proc.song.currentPalette();
         if (pal == nullptr || proc.song.arrangement.empty()) return {};
-        const auto song = arrangeParts (plan, proc.song.arrangement, parts, drumNotesFor (*pal, catalog.get()));
+        const auto song = arrangeParts (plan, proc.song.arrangement, parts, drumNotesFor (*pal, catalog.get()), &proc.song.patterns);
         const auto file = paths::tempDir().getChildFile ("Starter Parts").getChildFile (juce::File::createLegalFileName (
             "Whole song - " + keyName (plan.key) + " " + juce::String (juce::roundToInt (plan.bpm)) + " BPM.mid"));
         return writeArrangement (plan, proc.song.arrangement, song, file) ? file : juce::File();
+    }
+
+    juce::File ArrangePage::writeBit (int section, int partIndex)
+    {
+        auto* pal = proc.song.currentPalette();
+        const auto& a = proc.song.arrangement;
+        if (pal == nullptr || a.empty() || partIndex < 0 || partIndex >= (int) parts.size() || section >= (int) a.sections.size()) return {};
+        const auto& part = parts[(size_t) partIndex];
+        const auto song = arrangePart (plan, a, part, drumNotesFor (*pal, catalog.get()), &proc.song.patterns, section);
+        juce::String name = part.role + " - whole song";
+        if (section >= 0)
+        {
+            int bar = 1;
+            for (int i = 0; i < section; ++i) bar += a.sections[(size_t) i].bars;
+            name = part.role + " - " + a.sections[(size_t) section].name + " (bar " + juce::String (bar) + ")";
+        }
+        const auto file = paths::tempDir().getChildFile ("Starter Parts").getChildFile (juce::File::createLegalFileName (
+            name + " - " + keyName (plan.key) + " " + juce::String (juce::roundToInt (plan.bpm)) + " BPM.mid"));
+        if (section < 0) return writeArrangement (plan, a, song, file) ? file : juce::File();      // with the section markers
+        return writeMidiFile (plan, song, file, {}, a.sections[(size_t) section].bars) ? file : juce::File();
     }
 
     void ArrangePage::sectionMenu (int s, juce::Rectangle<int> area)

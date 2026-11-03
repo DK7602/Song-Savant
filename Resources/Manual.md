@@ -13,7 +13,8 @@ The workflow, start to finish:
 3. **Starter parts:** drag a card's **MIDI** tag (or **ALL PARTS**) into your DAW for parts already in your key and tempo.
 4. **Drums:** send the song to **Groove Grabber** for kits made from your own samples, tuned to your key.
 5. **ARRANGE:** lay the parts out across the song (intro, verse, chorus...) and drag the **WHOLE SONG** into your DAW, with a marker for each section.
-6. **MASTERCLASS:** learn how your style is built: its sounds, drums, bass, chords in your key, arrangement and mix.
+6. **The piano roll:** change any part in any section, or write your own from an empty grid (a card's **EDIT**, or double-click a box on ARRANGE).
+7. **MASTERCLASS:** learn how your style is built: its sounds, drums, bass, chords in your key, arrangement and mix.
 
 Song Savant never suggests a sound you don't own, and it never changes or moves your files. It only reads them.
 
@@ -92,6 +93,8 @@ Each palette has a **card for every part** the style uses. A country song gets d
 - **The arrows** at the bottom step through the choices for that part ("2 of 7").
 - **The lock** (top right of the picture) keeps that sound. Locked parts stay when you click **NEW PALETTES**.
 - **The MIDI tag** on the picture is the starter part for that card: drag it into your DAW (see SONG: starter MIDI parts).
+- **EDIT** (top left of the picture, on the bass, keys, guitar, pad, strings and lead cards) opens the part in the piano roll (see The piano roll: your own parts).
+- **YOUR PART** (under EDIT) means you've changed this part in the piano roll: the card plays and drags your version.
 
 Click a card to see its details in the panel at the bottom:
 
@@ -141,7 +144,9 @@ Every card that plays notes has a starter part: 8 bars in your song's key and te
 
 **To use them all:** drag **ALL PARTS** (next to NEW IDEA) into your DAW. You get one track per part, named after the part and its sound. The chip shows the chords and tempo.
 
-**NEW IDEA** writes another take: the style's next chord progression, a varied drum pattern and a new hook. Click it as often as you like.
+**NEW IDEA** writes another take: the style's next chord progression, a varied drum pattern and a new hook. Click it as often as you like. Parts you've changed in the piano roll (YOUR PART) stay as you made them.
+
+**Your own parts.** Click a card's **EDIT** to change its part in the piano roll. Once you have, the card's MIDI tag, its play button, PLAY ALL and ALL PARTS all use your version: the card stands for the song's first chorus (or the first section the part plays in).
 
 **PLAY ALL** (next to NEW IDEA) lets you hear every starter part together before you drag them in, and the **play button** on each card (bottom right of its picture) plays that card's part on its own: see Hearing your song.
 
@@ -234,8 +239,11 @@ The ARRANGE page lays your palette's parts out across the whole song. Make your 
 **Changing it**
 
 - **Click a box** to switch a part on or off in that section.
+- **Double-click a box** (bass, keys, guitar, pad, strings, lead) to open that part of that section in the piano roll.
+- **Drag a box** into your DAW for just that part in that section, or **drag a part's name** (on the left) for that part across the whole song, with the section markers.
+- **A pencil** on a box means it plays your own pattern (from the piano roll). **A star** means that section has a pattern of its own (MAKE ONE DIFFERENT).
 - **The drums** step through no drums, **light**, **groove**, **build** and **full** as you click: light is a sparse pattern, groove the main beat, build adds energy into the next section, and full is everything with a crash.
-- **Click a section's name** for its menu: **Length** (2 to 32 bars), **Copy this section** (right after it), **Move left**, **Move right**, **Remove this section**.
+- **Click a section's name** for its menu: **Length** (2 to 32 bars), **Copy this section** (right after it, playing the same patterns), **Move left**, **Move right**, **Remove this section**.
 - **The shape box** (top) picks the song's shape: **The full song**, **A short song** (one verse and chorus fewer, shorter intro and outro), or **Key Compass: ...** (your Key Compass song's own sections and chords).
 - **RESET MAP** (it used to say START OVER) puts the map back the way it came for that shape, undoing your changes to it. It doesn't play anything.
 
@@ -246,6 +254,67 @@ Your changes stay while the song stays the same. Swapping a sound (a different d
 **The transport** (the round buttons under the title: to the start, rewind, play / stop, pause, fast forward, to the end) plays the whole song with the sketch sounds, with a gold line moving across the map. Click or drag on the bar ruler above the sections to move it. See Hearing your song.
 
 The panel at the bottom explains how songs in your style are usually built.
+
+## The piano roll: your own parts
+
+The piano roll is where you change a part note by note, or write your own from an empty grid, then hear it and drag it into your DAW. It edits the melodic parts: bass, keys, guitar, pad, strings and lead. (Drums come in a later version: for now, change them in Groove Grabber or in your DAW.)
+
+**Opening it:** click **EDIT** on a card (it opens the part's first chorus), or **double-click a box** on ARRANGE (that part in that section). **DONE** (or Esc) goes back.
+
+**Sections and patterns.** Every section name has its own pattern for each part: change the chorus bass once, and **every chorus** plays it. A section that should be different (a bigger last chorus, say) can have its own pattern: **MAKE ONE DIFFERENT** asks which one, and it starts as a copy you can change. It shows a star on ARRANGE and in the SECTION row.
+
+**Across the top**
+
+| Control | What it does |
+| --- | --- |
+| PART | The part you're editing. A star (*) means you've changed it somewhere. |
+| SECTION | The pattern you're editing (Intro, Verse, Chorus...). Dim ones: the part doesn't play there yet; draw a note to bring it in. |
+| 8 BARS | How long this section is (every section that plays this pattern). Longer: your pattern repeats into the new bars. Shorter: it stops early, and the notes after the end are kept in case you make it longer again. |
+| MAKE ONE DIFFERENT | Gives one of the sections that share this pattern a pattern of its own |
+| START FROM | Start this pattern again from Song Savant's suggestion, an empty grid, a copy of another section, or a copy of another part's notes here |
+| The drag tag (BASS - CHORUS) | Drag this part of this section into your DAW as MIDI |
+| DRAW / SELECT / ERASE | What a click does (see below) |
+| SNAP | What notes line up to: a bar, 1/2, a beat, 1/8, 1/16, 1/32, triplets, or off |
+| - / + | Zoom out and in (or Ctrl + mouse wheel) |
+| GHOSTS | Shows the other parts' notes faintly behind yours, so you see how they fit |
+| Play (gold) | Plays this section, looped. Space does too. |
+| ALONE / WITH THE BAND | Hear just this part, or with everything else in the section |
+| UNDO / REDO | Ctrl+Z / Ctrl+Y |
+
+**The grid.** The keyboard is down the left: click a key to hear it. The rows of your song's key are brighter, and in each bar the notes of that bar's chord are lit gold (the brightest is the chord's root), so you can see which notes fit. The chords run along the top. Under the notes, the **velocity** lane shows how hard each note plays.
+
+**Editing with the mouse**
+
+- **Click** an empty spot: a new note (as long as the last one you made). You hear it.
+- **Drag** a note to move it; **drag its right end** to make it longer or shorter.
+- **Right-click** a note to delete it (or drag with the right button over several). With **ERASE** picked, a normal click deletes.
+- **Ctrl + drag** (or **SELECT**) on an empty spot draws a box: the notes in it are selected. Shift adds to what's selected. Dragging a selected note moves them all.
+- **Velocity:** drag a note's stem up or down. With several notes selected, they all change together.
+- Mouse wheel: up and down; Shift + wheel: across; Ctrl + wheel: zoom.
+
+**Keys**
+
+| Keys | What they do |
+| --- | --- |
+| Ctrl+C / Ctrl+X | Copy / cut the selected notes |
+| Ctrl+V | Paste them into the bar under the mouse (or where they came from), in this section or another, in this part or another |
+| Ctrl+D | A copy right after the selection |
+| Ctrl+A | Select every note |
+| Delete | Delete the selected notes |
+| Up / Down arrow | Move the selected notes up or down a semitone (with Shift: an octave) |
+| Ctrl+Z / Ctrl+Y | Undo / redo |
+| Space | Play / stop |
+| Esc | Select nothing (again: DONE) |
+
+**Copying a whole section:** Ctrl+A, Ctrl+C, pick another section, Ctrl+V. Or use **START FROM** > A copy of another section.
+
+**What happens to your notes**
+
+- They're kept with the song **as you make them** (saved in your project, or by the app). There's no save button to forget.
+- ARRANGE, WHOLE SONG, the card's MIDI tag, PLAY ALL and ALL PARTS all play your version.
+- **NEW IDEA and NEW PALETTES leave them alone.** The parts you haven't touched still change with NEW IDEA.
+- **Change the key** and your notes move with it (to minor or major too). Change the tempo and they keep their place in the bar.
+- **START FROM > Song Savant's suggestion** puts a pattern back to the suggestion (and it follows NEW IDEA again). Undo brings yours back.
 
 ## MASTERCLASS: learn a style
 
@@ -366,6 +435,7 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | The drum part plays the wrong drums | Check which notes it uses (hover the drum card's MIDI tag). For Analog Lab and HALion kits, make a drum map on DRUM MAPS. |
 | Cubase freezes when you quit after using Groove Grabber | Install Groove Grabber 1.0.15 or newer. If it still happens, force-close Cubase and send Documents\Groove Grabber\Groove Grabber log.txt: its last lines show where it got stuck. |
 | Your Groove Grabber kit didn't land on the drum card | Song Savant needs to be open when you click SAVE KIT, and the kit has to be built for the song you sent. Saved kits always show up among the drum choices. |
+| In the piano roll, Space or Ctrl+C work Cubase instead of Song Savant | Click the piano roll's grid first, so Song Savant's window has the keyboard. |
 | Nothing plays when I click play | In the app: Options (top left) > Audio/MIDI Settings, and pick your output. In Cubase: check Song Savant's track isn't muted or turned down. |
 | Dragging MIDI into Cubase made a silent track | Drop it on the lane of a track that has the instrument, or set the new MIDI track's output to that instrument. |
 | The markers didn't appear in Cubase | Cubase puts them on a Marker track; add one if your project has none (Project > Add Track > Marker). |
@@ -393,6 +463,12 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | Drums from your own samples | Drum card, SEND TO GROOVE GRABBER, then USE IT and SAVE KIT in Groove Grabber |
 | Start from a Key Compass song | KEY COMPASS on the SONG page |
 | Change who plays where | ARRANGE: click boxes; click a section's name for its menu |
+| Change a part note by note | A card's EDIT, or double-click a box on ARRANGE: the piano roll |
+| Write your own part | The piano roll: START FROM > An empty grid, then click to add notes |
+| The same change in every chorus | Edit the Chorus pattern once (MAKE ONE DIFFERENT for one that isn't) |
+| Copy notes | The piano roll: select, Ctrl+C, then Ctrl+V (another bar, section or part) |
+| One part of one section into your DAW | Drag its box on ARRANGE (or the piano roll's drag tag) |
+| One part, the whole song | Drag the part's name on ARRANGE |
 | The whole song into your DAW | ARRANGE: drag WHOLE SONG |
 | Learn your style | MASTERCLASS |
 | Name a kit's pads in Cubase | DRUM MAPS: drop the kit's preset, then load the .drm in MIDI > Drum Map Setup |

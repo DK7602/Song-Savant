@@ -19,6 +19,14 @@ namespace ss::ui
         repaint();
     }
 
+    void PartCard::setEditing (bool e, bool m)
+    {
+        if (e == canEdit && m == mine) return;
+        canEdit = e;
+        mine = m;
+        repaint();
+    }
+
     void PartCard::setPlaying (bool h, bool a)
     {
         if (h == heard && a == alone && ! heard) return;
@@ -112,11 +120,35 @@ namespace ss::ui
             auto icon = juce::Rectangle<float> (is, is).withCentre (playArea.getCentre());
             TransportButton::drawIcon (g, TransportButton::Icon::play, alone, alone ? icon : icon.translated (1.0f, 0.0f));
         }
+        editArea = {};
+        if (canEdit && partInfo.isNotEmpty())
+        {
+            // EDIT: the piano roll
+            editArea = juce::Rectangle<float> (art.getX() + 6.0f, art.getY() + 6.0f, 38.0f, 18.0f);   // top left: room on any card
+            const bool hot = editArea.contains (getMouseXYRelative().toFloat()) && isMouseOver (true);
+            g.setColour ((hot ? p.gold : p.panel).withAlpha (hot ? 0.95f : 0.85f));
+            g.fillRoundedRectangle (editArea, 9.0f);
+            g.setColour (hot ? p.goldText : p.gold);
+            g.drawRoundedRectangle (editArea.reduced (0.5f), 9.0f, 1.0f);
+            g.setFont (sans (10.5f, true));
+            g.drawText ("EDIT", editArea, juce::Justification::centred);
+        }
+        const float meterX = editArea.isEmpty() ? art.getX() + 9.0f : editArea.getRight() + 6.0f;
+        if (mine)
+        {
+            // your own part (from the piano roll), under EDIT
+            auto tag = juce::Rectangle<float> (art.getX() + 6.0f, art.getY() + (editArea.isEmpty() ? 6.0f : 28.0f), 64.0f, 15.0f);
+            g.setColour (p.purple.withAlpha (0.92f));
+            g.fillRoundedRectangle (tag, 7.5f);
+            g.setColour (juce::Colours::white);
+            g.setFont (sans (9.5f, true));
+            g.drawText ("YOUR PART", tag, juce::Justification::centred);
+        }
         if (heard)
         {
             // a small moving level meter: this part is playing
             const auto t = (double) juce::Time::getMillisecondCounter() / 1000.0;
-            auto meter = juce::Rectangle<float> (art.getX() + 9.0f, art.getY() + 8.0f, 16.0f, 13.0f);
+            auto meter = juce::Rectangle<float> (meterX, art.getY() + 8.0f, 16.0f, 13.0f);
             g.setColour (p.gold);
             for (int b = 0; b < 3; ++b)
             {
@@ -195,6 +227,7 @@ namespace ss::ui
         if (dragging) { dragging = false; return; }
         const auto pos = e.position;
         if (playArea.contains (pos) && ! pressedOnMidi) { if (onPlayPart) onPlayPart(); return; }
+        if (editArea.contains (pos) && ! pressedOnMidi) { if (onEdit) onEdit(); return; }
         if (prevArea.contains (pos)) { if (onPrev) onPrev(); }
         else if (nextArea.contains (pos)) { if (onNext) onNext(); }
         else if (lockArea.contains (pos)) { if (onLock) onLock(); }
@@ -518,22 +551,30 @@ namespace ss::ui
         if (pal == nullptr) return {};
         const auto plan = proc.song.partsPlan();
         const auto drums = drumNotes();
+        const auto all = arrangementParts (*pal, catalog.get());
         std::vector<NamedPart> parts;
         for (int i = 0; i < (int) pal->slots.size(); ++i)
         {
             if (card >= 0 && i != card) continue;
             const auto& slot = pal->slots[(size_t) i];
-            const auto type = partTypeFor (slot.part);
-            if (type == PartType::none) continue;
-            const Sound* snd = catalog != nullptr && slot.current().isValid() ? &catalog->sounds[(size_t) slot.current().sound] : nullptr;
-            parts.push_back ({ slot.part.role + (snd != nullptr ? " - " + snd->name : juce::String()),
-                               makePart (plan, type, drums, snd != nullptr ? snd->kind : slot.part.kinds.front()) });
+            for (auto& ap : all)
+                if (ap.role == slot.part.role)
+                {
+                    // your own part where you made one in the piano roll, else the suggestion
+                    parts.push_back ({ ap.label, starterPart (plan, proc.song.arrangement, &proc.song.patterns, ap, drums) });
+                }
         }
         if (parts.empty()) return {};
+        const int bars = starterBars (plan, proc.song.arrangement, &proc.song.patterns, all);
         const auto what = card >= 0 ? pal->slots[(size_t) card].part.role : juce::String ("Starter parts");
         const auto file = paths::tempDir().getChildFile ("Starter Parts")
                               .getChildFile (juce::File::createLegalFileName (what + " - " + keyName (plan.key) + " " + juce::String (juce::roundToInt (plan.bpm)) + " BPM.mid"));
-        return writeMidiFile (plan, parts, file) ? file : juce::File();
+        return writeMidiFile (plan, parts, file, {}, bars) ? file : juce::File();
+    }
+
+    void SongPage::visibilityChanged()
+    {
+        if (isVisible()) refresh();         // back from the piano roll: the cards play your parts
     }
 
     void SongPage::dragPart (int card)
@@ -641,8 +682,14 @@ namespace ss::ui
             auto* card = cards[i];
             const auto role = slot.part.role;
             const auto type = partTypeFor (slot.part);
+            const int main = mainSection (proc.song.arrangement, role);
+            const bool mine = type != PartType::none && proc.song.isMine (main, role);
             card->show (&slot, snd, role == selectedRole,
-                        type == PartType::none ? juce::String() : describePart (plan, type, drums, snd != nullptr ? snd->kind : slot.part.kinds.front()));
+                        type == PartType::none ? juce::String()
+                        : mine ? "your own part (from the piano roll, the " + proc.song.arrangement.sections[(size_t) main].patternFor (role) + ")"
+                               : describePart (plan, type, drums, snd != nullptr ? snd->kind : slot.part.kinds.front()));
+            card->setEditing (type == PartType::bass || type == PartType::chords || type == PartType::pad || type == PartType::hook, mine);
+            card->onEdit = [this, role] { if (onEditPart) onEditPart (role); };
             card->onDragPart = [this, i] { dragPart (i); };
             card->onPlayPart = [this, i] { playPart (i); };
             card->onSelect = [this, role]
@@ -667,7 +714,8 @@ namespace ss::ui
         playBtn.setVisible (pal != nullptr);
         if (pal != nullptr)     // what PLAY ALL plays: the same starter parts as ALL PARTS
             proc.updateSketch (SongSavantProcessor::SketchMode::loop,
-                               std::make_shared<const SketchSong> (sketchOfParts (plan, arrangementParts (*pal, catalog.get()))));
+                               std::make_shared<const SketchSong> (sketchOfParts (plan, arrangementParts (*pal, catalog.get()),
+                                                                                  &proc.song.arrangement, &proc.song.patterns)));
         showPlaying();
         if (pal != nullptr)
             allParts.setFile (writeStarterParts (-1), plan.chordLine() + "  |  " + juce::String (juce::roundToInt (plan.bpm)) + " BPM", "No parts yet");

@@ -124,6 +124,12 @@ namespace ss
         return it != play.end() ? it->second : juce::String();
     }
 
+    juce::String ArrangementSection::patternFor (const juce::String& role) const
+    {
+        auto it = patterns.find (role);
+        return it != patterns.end() && it->second.isNotEmpty() ? it->second : name;
+    }
+
     int Arrangement::totalBars() const
     {
         int n = 0;
@@ -149,6 +155,12 @@ namespace ss
                 px->setAttribute ("role", role);
                 px->setAttribute ("mode", mode);
             }
+            for (auto& [role, pattern] : s.patterns)
+            {
+                auto* px = sx->createNewChildElement ("OwnPattern");
+                px->setAttribute ("role", role);
+                px->setAttribute ("name", pattern);
+            }
         }
         return x;
     }
@@ -167,6 +179,7 @@ namespace ss
             s.chords = juce::StringArray::fromTokens (sx->getStringAttribute ("chords"), " ", "");
             s.chords.removeEmptyStrings();
             for (auto* px : sx->getChildWithTagNameIterator ("Play")) s.play[px->getStringAttribute ("role")] = px->getStringAttribute ("mode");
+            for (auto* px : sx->getChildWithTagNameIterator ("OwnPattern")) s.patterns[px->getStringAttribute ("role")] = px->getStringAttribute ("name");
             a.sections.push_back (s);
         }
         return a;
@@ -312,30 +325,127 @@ namespace ss
         return out;
     }
 
-    std::vector<NamedPart> arrangeParts (const PartsPlan& plan, const Arrangement& a, const std::vector<ArrangementPart>& parts, const DrumNotes& drums)
+    //==============================================================================
+    juce::StringArray patternNames (const Arrangement& a, const juce::String& role)
+    {
+        juce::StringArray names;
+        for (auto& s : a.sections) names.addIfNotAlreadyThere (s.patternFor (role));
+        return names;
+    }
+
+    std::vector<int> sectionsUsing (const Arrangement& a, const juce::String& role, const juce::String& pattern)
+    {
+        std::vector<int> out;
+        for (size_t i = 0; i < a.sections.size(); ++i)
+            if (a.sections[i].patternFor (role) == pattern) out.push_back ((int) i);
+        return out;
+    }
+
+    juce::String makeSectionDifferent (Arrangement& a, int section, const juce::String& role)
+    {
+        if (section < 0 || section >= (int) a.sections.size()) return {};
+        auto& s = a.sections[(size_t) section];
+        // "Chorus 3": the third chorus (the next free number if that's taken)
+        int nth = 0;
+        for (int i = 0; i <= section; ++i) if (a.sections[(size_t) i].name == s.name) ++nth;
+        const auto taken = patternNames (a, role);
+        auto name = s.name + " " + juce::String (nth);
+        for (int k = nth + 1; taken.contains (name); ++k) name = s.name + " " + juce::String (k);
+        s.patterns[role] = name;
+        return name;
+    }
+
+    void setPatternBars (Arrangement& a, const juce::String& role, const juce::String& pattern, int bars)
+    {
+        for (int i : sectionsUsing (a, role, pattern)) setSectionBars (a, i, bars);
+    }
+
+    int mainSection (const Arrangement& a, const juce::String& role)
+    {
+        int first = -1;
+        for (size_t i = 0; i < a.sections.size(); ++i)
+        {
+            const auto& s = a.sections[i];
+            if (s.modeFor (role).isEmpty()) continue;
+            const auto kind = sectionKind (s.name);
+            if (kind == "chorus" || kind == "drop") return (int) i;
+            if (first < 0) first = (int) i;
+        }
+        return first;
+    }
+
+    std::vector<PatternNote> suggestedNotes (const PartsPlan& plan, const ArrangementSection& s, const ArrangementPart& part, const DrumNotes& drums)
+    {
+        auto sp = plan;
+        sp.bars = s.bars;
+        sp.chords = sectionChords (plan, s);
+        if (part.type == PartType::drums)
+        {
+            const auto mode = s.modeFor (part.role);
+            applyDrumMode (sp.guide.groove, mode.isNotEmpty() ? mode : juce::String ("groove"));
+        }
+        return notesFromSequence (makePart (sp, part.type, drums, part.instrument));
+    }
+
+    std::vector<PatternNote> sectionNotes (const PartsPlan& plan, const Arrangement& a, int section, const ArrangementPart& part,
+                                           const DrumNotes& drums, const PatternBook* book)
+    {
+        if (section < 0 || section >= (int) a.sections.size()) return {};
+        const auto& s = a.sections[(size_t) section];
+        if (s.modeFor (part.role).isEmpty()) return {};
+        if (book != nullptr)
+            if (const auto* p = book->find (part.role, s.patternFor (part.role)))
+                return playPattern (*p, s.bars, plan.key);
+        return suggestedNotes (plan, s, part, drums);
+    }
+
+    juce::MidiMessageSequence starterPart (const PartsPlan& plan, const Arrangement& a, const PatternBook* book,
+                                           const ArrangementPart& part, const DrumNotes& drums)
+    {
+        if (book != nullptr && ! book->empty())
+            if (const int main = mainSection (a, part.role); main >= 0)
+            {
+                const auto& s = a.sections[(size_t) main];
+                if (const auto* p = book->find (part.role, s.patternFor (part.role)))
+                    return sequenceFromNotes (playPattern (*p, s.bars, plan.key));
+            }
+        return makePart (plan, part.type, drums, part.instrument);
+    }
+
+    int starterBars (const PartsPlan& plan, const Arrangement& a, const PatternBook* book, const std::vector<ArrangementPart>& parts)
+    {
+        int bars = juce::jmax (1, plan.bars);
+        if (book == nullptr || book->empty()) return bars;
+        for (auto& p : parts)
+            if (const int main = mainSection (a, p.role); main >= 0)
+                if (book->find (p.role, a.sections[(size_t) main].patternFor (p.role)) != nullptr)
+                    bars = juce::jmax (bars, a.sections[(size_t) main].bars);
+        return bars;
+    }
+
+    std::vector<NamedPart> arrangePart (const PartsPlan& plan, const Arrangement& a, const ArrangementPart& part, const DrumNotes& drums,
+                                        const PatternBook* book, int section)
+    {
+        NamedPart np { part.label, {} };
+        int bar = 0;
+        for (int i = 0; i < (int) a.sections.size(); ++i)
+        {
+            const auto& s = a.sections[(size_t) i];
+            if (section < 0 || section == i)
+                np.notes.addSequence (sequenceFromNotes (sectionNotes (plan, a, i, part, drums, book), section < 0 ? bar * 4.0 : 0.0), 0.0);
+            bar += s.bars;
+        }
+        np.notes.sort();
+        np.notes.updateMatchedPairs();
+        return { np };
+    }
+
+    std::vector<NamedPart> arrangeParts (const PartsPlan& plan, const Arrangement& a, const std::vector<ArrangementPart>& parts,
+                                         const DrumNotes& drums, const PatternBook* book)
     {
         std::vector<NamedPart> out;
         for (auto& part : parts)
-        {
-            NamedPart np { part.label, {} };
-            int bar = 0;
-            for (auto& s : a.sections)
-            {
-                const auto mode = s.modeFor (part.role);
-                if (mode.isNotEmpty())
-                {
-                    auto sp = plan;
-                    sp.bars = s.bars;
-                    sp.chords = sectionChords (plan, s);
-                    if (part.type == PartType::drums) applyDrumMode (sp.guide.groove, mode);
-                    np.notes.addSequence (makePart (sp, part.type, drums, part.instrument), (double) bar * barTicks);
-                }
-                bar += s.bars;
-            }
-            np.notes.sort();
-            np.notes.updateMatchedPairs();
-            out.push_back (std::move (np));
-        }
+            out.push_back (arrangePart (plan, a, part, drums, book).front());
         return out;
     }
 

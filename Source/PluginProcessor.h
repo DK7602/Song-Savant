@@ -9,6 +9,7 @@
 #include "core/KitMapJob.h"
 #include "core/Report.h"
 #include "core/SketchPlayer.h"
+#include "core/PatternEdit.h"
 
 class SongSavantProcessor : public juce::AudioProcessor
 {
@@ -37,11 +38,11 @@ public:
     juce::File saveReport();                 // writes Documents/Song Savant/Setup Report.txt (if there's a result)
     juce::String reportText() const;
 
-    // hearing the parts: PLAY ALL and each card's play button on the Song page (the starter parts, looped), and the
-    // transport on the Arrange page (the whole song)
+    // hearing the parts: PLAY ALL and each card's play button on the Song page (the starter parts, looped), the
+    // transport on the Arrange page (the whole song), and the piano roll (the section being edited, looped)
     ss::SketchPlayer sketch;
-    enum class SketchMode { loop, song };
-    void playSketch (SketchMode);                       // the loop from its start; the song from the playhead
+    enum class SketchMode { loop, song, section };
+    void playSketch (SketchMode);                       // a loop from its start; the song from the playhead
     void stopSketch()                                   { sketch.stop(); }
     bool isSketchPlaying (SketchMode m) const           { return sketch.isPlaying() && sketchMode == m; }
     void updateSketch (SketchMode, std::shared_ptr<const ss::SketchSong>);   // the latest parts for that button
@@ -50,6 +51,8 @@ public:
     bool setSketchSolo (const juce::String& role);
     const juce::String& getSketchSolo() const           { return soloRole; }
     bool sketchHasPart (const juce::String& role) const;   // the starter parts have one for this card
+    void setSectionSolo (const juce::String& role)      { sectionSolo = role; applySolo(); }   // the piano roll: ALONE (or "")
+    ss::NoteClip noteClip;                              // what the piano roll copied (Ctrl+C), for any part or section
 
     // The Arrange page's transport, for the whole song. PLAY plays from the playhead (from the top when it's at the
     // end); STOP stops and the playhead goes back to where it started; PAUSE stops where it is. Moving the playhead
@@ -92,8 +95,10 @@ public:
 private:
     void applySolo();
     SketchMode sketchMode = SketchMode::loop;
-    std::shared_ptr<const ss::SketchSong> loopSketch, songSketch;
+    std::shared_ptr<const ss::SketchSong> loopSketch, songSketch, sectionSketch;
+    std::shared_ptr<const ss::SketchSong>& sketchFor (SketchMode m)   { return m == SketchMode::loop ? loopSketch : m == SketchMode::song ? songSketch : sectionSketch; }
     juce::String soloRole;                               // the Song page's one part on its own ("" every part)
+    juce::String sectionSolo;                            // the piano roll's part, when it plays ALONE
     double songCursor = 0.0;                             // where the song's playhead waits (beats)
     std::atomic<double> hostBpm { 0.0 };
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SongSavantProcessor)

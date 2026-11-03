@@ -41,6 +41,18 @@ namespace ss
         void updateArrangement (const std::vector<ArrangementPart>&);   // made again when the style, the parts or the shape changed
         void resetArrangement (const std::vector<ArrangementPart>&);    // back to the shape as it comes
 
+        // Your own parts, made in the piano roll: one pattern per part and section name (saved with the song). They stay
+        // until you reset them (NEW IDEA and new palettes leave them alone) and move with the song's key.
+        PatternBook patterns;
+        bool isMine (int section, const juce::String& role) const;
+        // What the piano roll opens: your pattern (in the song's key) or the suggestion (the section's length)
+        Pattern patternAt (int section, const ArrangementPart&, const DrumNotes&) const;
+        // Yours from now on, in every section that plays this pattern (switched on where the part was off)
+        void storePattern (int section, const ArrangementPart&, Pattern);
+        void forgetPattern (int section, const juce::String& role);     // back to Song Savant's suggestion
+        // The section gets a pattern of its own (a copy of what it played): its name ("Chorus 3")
+        juce::String makeDifferent (int section, const ArrangementPart&, const DrumNotes&);
+
         SongBrief makeBrief() const;                  // the description, with the form's choices on top
         void find (const Catalog&);                   // fresh palettes for the form
         void newPalettes (const Catalog&);            // new takes; locked parts of the current palette stay

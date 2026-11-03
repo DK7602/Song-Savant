@@ -51,6 +51,61 @@ namespace ss
             resetArrangement (parts);
     }
 
+    //==============================================================================
+    bool SongSession::isMine (int section, const juce::String& role) const
+    {
+        if (section < 0 || section >= (int) arrangement.sections.size()) return false;
+        return patterns.find (role, arrangement.sections[(size_t) section].patternFor (role)) != nullptr;
+    }
+
+    Pattern SongSession::patternAt (int section, const ArrangementPart& part, const DrumNotes& drums) const
+    {
+        const auto plan = partsPlan();
+        Pattern p;
+        p.key = plan.key;
+        if (section < 0 || section >= (int) arrangement.sections.size()) return p;
+        const auto& s = arrangement.sections[(size_t) section];
+        if (const auto* mine = patterns.find (part.role, s.patternFor (part.role)))
+        {
+            p = *mine;
+            p.notes = moveToKey (p.notes, mine->key, plan.key);
+            p.key = plan.key;
+            return p;
+        }
+        p.bars = s.bars;
+        p.notes = suggestedNotes (plan, s, part, drums);
+        return p;
+    }
+
+    void SongSession::storePattern (int section, const ArrangementPart& part, Pattern p)
+    {
+        if (section < 0 || section >= (int) arrangement.sections.size()) return;
+        const auto name = arrangement.sections[(size_t) section].patternFor (part.role);
+        p.key = partsPlan().key;
+        patterns.set (part.role, name, std::move (p));
+        for (int i : sectionsUsing (arrangement, part.role, name))
+        {
+            auto& mode = arrangement.sections[(size_t) i].play[part.role];
+            if (mode.isEmpty()) mode = part.type == PartType::drums ? "groove" : "on";
+        }
+    }
+
+    void SongSession::forgetPattern (int section, const juce::String& role)
+    {
+        if (section < 0 || section >= (int) arrangement.sections.size()) return;
+        patterns.remove (role, arrangement.sections[(size_t) section].patternFor (role));
+    }
+
+    juce::String SongSession::makeDifferent (int section, const ArrangementPart& part, const DrumNotes& drums)
+    {
+        if (section < 0 || section >= (int) arrangement.sections.size()) return {};
+        const bool mine = isMine (section, part.role);
+        const auto copy = patternAt (section, part, drums);
+        const auto name = makeSectionDifferent (arrangement, section, part.role);
+        if (mine) patterns.set (part.role, name, copy);     // your notes come with it; the suggestion stays the suggestion
+        return name;
+    }
+
     std::unique_ptr<juce::XmlElement> SongSession::toXml() const
     {
         auto x = std::make_unique<juce::XmlElement> ("Song");
@@ -64,6 +119,7 @@ namespace ss
         x->setAttribute ("partsSeed", (int) partsSeed);
         x->setAttribute ("songShape", (int) songShape);
         if (! arrangement.empty()) x->addChildElement (arrangement.toXml().release());
+        if (! patterns.empty()) x->addChildElement (patterns.toXml().release());
         for (int i = 0; i < form.sections.size(); ++i)
         {
             auto* sx = x->createNewChildElement ("SongSection");
@@ -106,6 +162,8 @@ namespace ss
         songShape = (SongShape) juce::jlimit (0, 2, x.getIntAttribute ("songShape", 0));
         arrangement = {};
         if (auto* ax = x.getChildByName ("Arrangement")) arrangement = Arrangement::fromXml (*ax);
+        patterns.clear();
+        if (auto* px = x.getChildByName ("Patterns")) patterns = PatternBook::fromXml (*px);
         form.sections.clear();
         form.sectionChords.clear();
         for (auto* sx : x.getChildWithTagNameIterator ("SongSection"))

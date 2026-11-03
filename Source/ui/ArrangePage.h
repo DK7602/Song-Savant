@@ -15,7 +15,7 @@ namespace ss::ui
     class ArrangementGrid : public juce::Component, public juce::SettableTooltipClient
     {
     public:
-        void show (const Arrangement*, const std::vector<ArrangementPart>*, const PartsPlan*);
+        void show (const Arrangement*, const std::vector<ArrangementPart>*, const PartsPlan*, const PatternBook* = nullptr);
         void setPlayhead (double beats, bool playing);   // where the playhead is (-1: none), and whether it's moving
         double beatsAt (float x) const;          // the bar line nearest x on the ruler, in beats
         float xAt (double beats) const;          // where a point in the song is across the map (-1: nowhere)
@@ -24,12 +24,16 @@ namespace ss::ui
         void mouseMove (const juce::MouseEvent&) override;
         void mouseExit (const juce::MouseEvent&) override   { hoverSection = hoverPart = -1; hoverHeader = hoverRuler = false; repaint(); }
         void mouseDown (const juce::MouseEvent&) override;
+        static bool editable (const ArrangementPart&);
         void mouseDrag (const juce::MouseEvent&) override;
         void mouseUp (const juce::MouseEvent&) override;
 
         std::function<void (int section, int part)> onCell;
         std::function<void (int section, juce::Rectangle<int> screenArea)> onSection;
         std::function<void (double beats)> onSeek;                 // the ruler was clicked (or dragged)
+        std::function<void (int section, int part)> onEditCell;    // a box double-clicked: the piano roll
+        std::function<void (int section, int part)> onDragCell;    // a box dragged out: that part in that section, as MIDI
+        std::function<void (int part)> onDragPart;                 // a part's name dragged out: the whole part
 
         // the bar ruler along the top (click to move the playhead), then the sections' names, then a row per part
         static constexpr float labelW = 190.0f, rulerH = 20.0f, headerH = 90.0f;
@@ -42,7 +46,10 @@ namespace ss::ui
         const Arrangement* arr = nullptr;
         const std::vector<ArrangementPart>* parts = nullptr;
         const PartsPlan* plan = nullptr;
+        const PatternBook* book = nullptr;
         std::vector<float> columnX, columnW;
+        int pressSection = -1, pressPart = -1;
+        bool pressLabel = false, draggedOut = false;
         float rowH = 34.0f;
         double playhead = -1.0;
         bool playheadMoving = false, onRuler = false;
@@ -64,6 +71,8 @@ namespace ss::ui
         void refresh();                                      // the map for the song's current palette (also the tests)
         juce::File writeWholeSong();                         // the MIDI file to drag (also the tests)
         void togglePlay();                                   // PLAY / STOP (also the tests)
+        std::function<void (const juce::String& role, int section)> onEditPattern;   // a box double-clicked
+        juce::File writeBit (int section, int part);         // one box (section >= 0) or a whole part, as MIDI (also the tests)
         juce::String positionText() const;                   // "Bar 17 of 72  |  Verse  |  0:34 / 2:02" (also the tests)
         const Arrangement& getArrangement() const;
 

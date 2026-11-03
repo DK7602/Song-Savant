@@ -36,10 +36,13 @@ namespace ss
         bool loop = true;                     // the starter parts loop; the whole song plays once
     };
 
-    // The starter parts, one 8-bar loop (what ALL PARTS drags), or the whole song (what WHOLE SONG drags). The drums are
-    // played on General MIDI notes, which is what the sketch's drum sounds follow.
-    SketchSong sketchOfParts (const PartsPlan&, const std::vector<ArrangementPart>&);
-    SketchSong sketchOfSong (const PartsPlan&, const Arrangement&, const std::vector<ArrangementPart>&);
+    // The starter parts, one 8-bar loop (what ALL PARTS drags), or the whole song (what WHOLE SONG drags), or one
+    // section looped (the piano roll). Your own patterns play where you made them. The drums are played on General MIDI
+    // notes, which is what the sketch's drum sounds follow.
+    SketchSong sketchOfParts (const PartsPlan&, const std::vector<ArrangementPart>&, const Arrangement* = nullptr, const PatternBook* = nullptr);
+    SketchSong sketchOfSong (const PartsPlan&, const Arrangement&, const std::vector<ArrangementPart>&, const PatternBook* = nullptr);
+    SketchSong sketchOfSection (const PartsPlan&, const Arrangement&, int section, const std::vector<ArrangementPart>&,
+                                const PatternBook*, const std::vector<PatternNote>* editing = nullptr, const juce::String& editingRole = {});
 
     class SketchPlayer
     {
@@ -59,6 +62,8 @@ namespace ss
         int getSolo() const                   { return solo.load(); }
         bool isPlaying() const                { return armed.load(); }
         bool isFollowingHost() const          { return followingHost.load(); }   // the DAW is playing: it decides where
+        // One note heard straight away, playing or not (a note placed in the piano roll, a key tapped on its keyboard)
+        void preview (int note, int velocity, PartType, Kind instrument, double seconds = 0.45);
         double getPosition() const            { return position.load(); }   // beats into the song (-1: silent)
         std::atomic<float> volume { 0.8f };
 
@@ -78,6 +83,7 @@ namespace ss
             juce::uint32 seed = 1;
         };
         void startVoice (const SketchNote&, const SketchSong&, double lengthSamples, int offset);
+        void startVoice (int note, int velocity, int part, PartType, Kind, double lengthSamples, int offset);
         void render (juce::AudioBuffer<float>&, int from, int to);
         float toneSample (Voice&);
         float drumSample (Voice&);
@@ -100,5 +106,8 @@ namespace ss
         const SketchSong* cachedSong = nullptr;              // what the audio thread plays
         std::deque<std::shared_ptr<const SketchSong>> keep;  // the current song and the last few: the audio thread may
                                                              // still be reading one it picked up a moment ago
+        struct Preview { int note = 60, velocity = 100; PartType type = PartType::none; Kind instrument = Kind::other; double seconds = 0.4; };
+        std::array<Preview, 32> previews;                    // waiting to be heard: written by the message thread,
+        juce::AbstractFifo previewFifo { 32 };               // read by the audio thread
     };
 }

@@ -12,10 +12,12 @@ namespace ss::ui
     class PartCard : public juce::Component, public juce::SettableTooltipClient
     {
     public:
-        std::function<void()> onSelect, onPrev, onNext, onLock, onDragPart, onPlayPart;
+        std::function<void()> onSelect, onPrev, onNext, onLock, onDragPart, onPlayPart, onEdit;
         void show (const PaletteSlot*, const Sound*, bool selected, const juce::String& partInfo = {});
         // heard: this card's part is playing (a little level meter); alone: it's playing on its own (its button: stop)
         void setPlaying (bool heard, bool alone);
+        // EDIT (the piano roll) for the parts it can edit; `mine`: the part is your own (YOUR PART on the card)
+        void setEditing (bool canEdit, bool mine);
         bool isHeard() const                        { return heard; }
         void paint (juce::Graphics&) override;
         void mouseDown (const juce::MouseEvent&) override;
@@ -27,9 +29,9 @@ namespace ss::ui
     private:
         const PaletteSlot* slot = nullptr;
         const Sound* sound = nullptr;
-        bool isSelected = false, pressedOnMidi = false, dragging = false, heard = false, alone = false;
+        bool isSelected = false, pressedOnMidi = false, dragging = false, heard = false, alone = false, canEdit = false, mine = false;
         juce::String partInfo;                      // the starter part, when the card has one
-        juce::Rectangle<float> prevArea, nextArea, lockArea, midiArea, playArea;
+        juce::Rectangle<float> prevArea, nextArea, lockArea, midiArea, playArea, editArea;
     };
 
     // The other sounds a part could use: click one to switch
@@ -69,6 +71,8 @@ namespace ss::ui
         // drum card (checked every few seconds; also the tests). True when a kit went on the card.
         bool checkGrooveGrabberKits();
         void showForm();                              // shows the song's form again (after the Masterclass changed it)
+        std::function<void (const juce::String& role)> onEditPart;   // a card's EDIT: the piano roll
+        void visibilityChanged() override;
 
     private:
         void timerCallback() override;

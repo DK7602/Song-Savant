@@ -33,7 +33,7 @@ namespace ss
         constexpr double twoPi = juce::MathConstants<double>::twoPi;
     }
 
-    SketchSong sketchOfParts (const PartsPlan& plan, const std::vector<ArrangementPart>& parts)
+    SketchSong sketchOfParts (const PartsPlan& plan, const std::vector<ArrangementPart>& parts, const Arrangement* a, const PatternBook* book)
     {
         SketchSong s;
         s.bpm = plan.bpm;
@@ -43,19 +43,43 @@ namespace ss
         {
             if (p.type == PartType::none) continue;
             s.parts.push_back ({ p.label, p.type, p.instrument, p.role });
-            addNotes (s, makePart (plan, p.type, generalMidiDrums(), p.instrument), (int) s.parts.size() - 1);
+            const auto seq = a != nullptr ? starterPart (plan, *a, book, p, generalMidiDrums()) : makePart (plan, p.type, generalMidiDrums(), p.instrument);
+            addNotes (s, seq, (int) s.parts.size() - 1);
+        }
+        if (a != nullptr) s.lengthBeats = starterBars (plan, *a, book, parts) * 4.0;
+        sortNotes (s);
+        return s;
+    }
+
+    SketchSong sketchOfSection (const PartsPlan& plan, const Arrangement& a, int section, const std::vector<ArrangementPart>& parts,
+                                const PatternBook* book, const std::vector<PatternNote>* editing, const juce::String& editingRole)
+    {
+        SketchSong s;
+        s.bpm = plan.bpm;
+        s.loop = true;
+        if (section < 0 || section >= (int) a.sections.size()) return s;
+        s.lengthBeats = juce::jmax (1, a.sections[(size_t) section].bars) * 4.0;
+        for (auto& p : parts)
+        {
+            if (p.type == PartType::none) continue;
+            s.parts.push_back ({ p.label, p.type, p.instrument, p.role });
+            // the part being edited plays what's on the screen (switched on or not); the others what the song plays there
+            const auto notes = editing != nullptr && p.role == editingRole ? *editing : sectionNotes (plan, a, section, p, generalMidiDrums(), book);
+            for (auto& n : notes)
+                if (n.start < s.lengthBeats)
+                    s.notes.push_back ({ n.start, juce::jmin (n.length, s.lengthBeats - n.start), n.note, n.velocity, (int) s.parts.size() - 1 });
         }
         sortNotes (s);
         return s;
     }
 
-    SketchSong sketchOfSong (const PartsPlan& plan, const Arrangement& a, const std::vector<ArrangementPart>& parts)
+    SketchSong sketchOfSong (const PartsPlan& plan, const Arrangement& a, const std::vector<ArrangementPart>& parts, const PatternBook* book)
     {
         SketchSong s;
         s.bpm = plan.bpm;
         s.loop = false;
         s.lengthBeats = juce::jmax (1, a.totalBars()) * 4.0;
-        const auto song = arrangeParts (plan, a, parts, generalMidiDrums());
+        const auto song = arrangeParts (plan, a, parts, generalMidiDrums(), book);
         for (size_t i = 0; i < parts.size() && i < song.size(); ++i)
         {
             s.parts.push_back ({ parts[i].label, parts[i].type, parts[i].instrument, parts[i].role });
@@ -108,7 +132,20 @@ namespace ss
         for (auto& v : voices) release (v);
     }
 
+    void SketchPlayer::preview (int note, int velocity, PartType type, Kind instrument, double seconds)
+    {
+        const auto scope = previewFifo.write (1);
+        if (scope.blockSize1 > 0) previews[(size_t) scope.startIndex1] = { note, velocity, type, instrument, seconds };
+        else if (scope.blockSize2 > 0) previews[(size_t) scope.startIndex2] = { note, velocity, type, instrument, seconds };
+    }
+
     void SketchPlayer::startVoice (const SketchNote& n, const SketchSong& s, double lengthSamples, int offset)
+    {
+        const auto& part = s.parts[(size_t) juce::jlimit (0, (int) s.parts.size() - 1, n.part)];
+        startVoice (n.note, n.velocity, n.part, part.type, part.instrument, lengthSamples, offset);
+    }
+
+    void SketchPlayer::startVoice (int note, int velocity, int partIndex, PartType type, Kind instrument, double lengthSamples, int offset)
     {
         Voice* v = nullptr;
         for (auto& x : voices) if (! x.active) { v = &x; break; }
@@ -117,21 +154,20 @@ namespace ss
             v = &voices[0];
             for (auto& x : voices) if (x.env < v->env) v = &x;
         }
-        const auto& part = s.parts[(size_t) juce::jlimit (0, (int) s.parts.size() - 1, n.part)];
         *v = Voice();
         v->active = true;
-        v->drum = part.type == PartType::drums;
-        v->type = part.type;
-        v->instrument = part.instrument;
-        v->note = n.note;
-        v->part = n.part;
-        v->vel = juce::jlimit (0.05f, 1.0f, (float) n.velocity / 127.0f);
-        v->freq = juce::MidiMessage::getMidiNoteInHertz (n.note);
+        v->drum = type == PartType::drums;
+        v->type = type;
+        v->instrument = instrument;
+        v->note = note;
+        v->part = partIndex;
+        v->vel = juce::jlimit (0.05f, 1.0f, (float) velocity / 127.0f);
+        v->freq = juce::MidiMessage::getMidiNoteInHertz (note);
         v->gate = v->drum ? (int) (sampleRate * 2.5) : juce::jmax (1, (int) lengthSamples);
-        v->seed = (juce::uint32) n.note * 2654435761u + (juce::uint32) offset * 40503u + 7u;
+        v->seed = (juce::uint32) note * 2654435761u + (juce::uint32) offset * 40503u + 7u;
         v->t = -(double) offset / sampleRate;    // starts `offset` samples into the block
         // a closed or pedal hat cuts an open one off, like a real hi-hat
-        if (v->drum && (n.note == 42 || n.note == 44))
+        if (v->drum && (note == 42 || note == 44))
             for (auto& x : voices)
                 if (&x != v && x.active && x.drum && x.note == 46) x.gate = juce::jmin (x.gate, (int) (sampleRate * 0.02));
     }
@@ -260,6 +296,14 @@ namespace ss
         lastSolo = so;
         followingHost = following;
         if (! sounding) position = -1.0;
+
+        // notes to hear straight away (the piano roll), playing or not
+        {
+            const auto scope = previewFifo.read (previewFifo.getNumReady());
+            auto start = [this] (const Preview& p) { startVoice (p.note, p.velocity, -1, p.type, p.instrument, p.seconds * sampleRate, 0); };
+            for (int i = 0; i < scope.blockSize1; ++i) start (previews[(size_t) (scope.startIndex1 + i)]);
+            for (int i = 0; i < scope.blockSize2; ++i) start (previews[(size_t) (scope.startIndex2 + i)]);
+        }
         if (wasSounding && ! sounding) releaseAll();         // stopped (or the DAW did): what's sounding fades out
         wasSounding = sounding;
 

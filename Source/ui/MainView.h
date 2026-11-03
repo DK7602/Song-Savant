@@ -7,6 +7,7 @@
 #include "DrumMapsPage.h"
 #include "MasterclassPage.h"
 #include "ArrangePage.h"
+#include "PianoRollPage.h"
 #include "HelpPanel.h"
 #include "WelcomePanel.h"
 
@@ -32,6 +33,10 @@ namespace ss::ui
         DrumMapsPage& getDrumMaps()      { return drumMapsPage; }
         MasterclassPage& getMasterclass() { return masterclassPage; }
         ArrangePage& getArrange()        { return arrangePage; }
+        PianoRollPage& getPianoRoll()    { return pianoRoll; }
+        // The piano roll for a part (a card's role) in a section of the arrangement (-1: its first chorus). DONE goes
+        // back to the page it was opened from. False when there's nothing to edit there.
+        bool showPianoRoll (const juce::String& role, int section);
         HelpPanel& getHelp()             { return help; }
         WelcomePanel& getWelcome()       { return welcome; }
         void showHelp();                 // the manual (the ? button, F1)
@@ -64,6 +69,7 @@ namespace ss::ui
         DrumMapsPage drumMapsPage;
         MasterclassPage masterclassPage;
         ArrangePage arrangePage;
+        PianoRollPage pianoRoll;
         HelpPanel help;
         WelcomePanel welcome;
         juce::TooltipWindow tooltips { this, 500 };

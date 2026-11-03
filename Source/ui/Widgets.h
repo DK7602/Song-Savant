@@ -60,6 +60,7 @@ namespace ss::ui
         DragChip (const juce::String& title, Kind);
 
         void setFile (const juce::File&, const juce::String& label, const juce::String& unavailableReason);
+        void setTitle (const juce::String& t)    { title = t; repaint(); }
         bool hasFile() const   { return file.existsAsFile(); }
 
         void paint (juce::Graphics&) override;

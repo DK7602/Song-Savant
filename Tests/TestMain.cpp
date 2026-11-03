@@ -25,6 +25,7 @@
 #include "core/GrooveGrabberLink.h"
 #include "core/SketchPlayer.h"
 #include "core/SongSession.h"
+#include "core/PatternEdit.h"
 #include <map>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <algorithm>
@@ -1321,6 +1322,240 @@ namespace
         check (std::abs (s.partsPlan().bpm - 72.0) < 0.01, "unless the BPM box says otherwise");
     }
 
+    void testPatterns()
+    {
+        section ("Your own parts: patterns (the piano roll)");
+        using ss::PatternNote;
+        // keys: a pattern moves with the song's key
+        check (ss::keyShift (0, 9) == -3 && ss::keyShift (0, 2) == 2 && ss::keyShift (2, 0) == -2 && ss::keyShift (21, 14) == 5, "the nearest way between keys");
+        std::vector<PatternNote> cMajor { { 0, 1, 60, 100 }, { 1, 1, 64, 100 }, { 2, 1, 67, 100 }, { 3, 1, 71, 100 } };   // C E G B
+        const auto inD = ss::moveToKey (cMajor, 0, 2);
+        check (inD[0].note == 62 && inD[1].note == 66 && inD[3].note == 73, "C major to D major: up a tone");
+        const auto inCMinor = ss::moveToKey (cMajor, 0, 12);
+        check (inCMinor[0].note == 60 && inCMinor[1].note == 63 && inCMinor[2].note == 67 && inCMinor[3].note == 70,
+               "C major to C minor: the 3rd and 7th come down (C Eb G Bb)");
+        const auto back = ss::moveToKey (inCMinor, 12, 0);
+        check (back == cMajor, "and back to major");
+
+        // a section longer than its pattern repeats it; a shorter one stops early
+        ss::Pattern two;
+        two.bars = 2;
+        two.key = 2;
+        two.notes = { { 0, 2, 50, 90 }, { 4, 4, 54, 90 }, { 9, 1, 57, 90 } };          // the last is past bar 2: kept, not played
+        const auto four = ss::playPattern (two, 4, 2);
+        check (four.size() == 4 && std::abs (four[2].start - 8.0) < 1e-9 && four[3].note == 54, "a 2-bar pattern in a 4-bar section plays twice");
+        const auto one = ss::playPattern (two, 1, 2);
+        check (one.size() == 1 && std::abs (one[0].length - 2.0) < 1e-9, "in a 1-bar section it stops early");
+        const auto longer = ss::unrolled (two, 4);
+        check (longer.bars == 4 && longer.notes.size() == 4, "made longer, the pattern repeats into the new bars");
+
+        ss::PatternBook book;
+        book.set ("Bass", "Chorus", two);
+        const auto x = book.toXml();
+        const auto again = ss::PatternBook::fromXml (*x);
+        check (again == book && again.hasAny ("Bass") && ! again.hasAny ("Lead"), "your patterns are saved and read back");
+
+        // the arrangement: one pattern per section name, unless a section is made different
+        const auto plan = ss::planParts (ss::readBrief ("warm modern worship 72 BPM in D major"));
+        std::vector<ss::ArrangementPart> parts { { "Drums", "Drums", ss::PartType::drums, ss::Kind::drums, false },
+                                                 { "Bass", "Bass - Warm", ss::PartType::bass, ss::Kind::bass, false },
+                                                 { "Keys", "Keys", ss::PartType::chords, ss::Kind::piano, false },
+                                                 { "Lead", "Lead", ss::PartType::hook, ss::Kind::lead, false } };
+        auto a = ss::makeArrangement (plan, parts, {}, ss::SongShape::full);
+        const auto choruses = ss::sectionsUsing (a, "Bass", "Chorus");
+        check (choruses.size() >= 2 && ss::patternNames (a, "Bass").contains ("Verse") && ss::mainSection (a, "Bass") == choruses.front(),
+               "every Chorus shares one pattern; a card stands for the first chorus (" + juce::String ((int) choruses.size()) + " choruses)");
+        const int last = choruses.back();
+        const auto own = ss::makeSectionDifferent (a, last, "Bass");
+        check (own == "Chorus " + juce::String ((int) choruses.size()) && a.sections[(size_t) last].patternFor ("Bass") == own
+               && a.sections[(size_t) last].patternFor ("Keys") == "Chorus" && ss::sectionsUsing (a, "Bass", "Chorus").size() == choruses.size() - 1,
+               "the last chorus gets its own bass pattern (" + own + "); the keys still share theirs");
+        const auto ax = a.toXml();
+        check (ss::Arrangement::fromXml (*ax).sections[(size_t) last].patternFor ("Bass") == own, "and the arrangement remembers it");
+        ss::setPatternBars (a, "Bass", "Chorus", 16);
+        bool all16 = true;
+        for (int i : ss::sectionsUsing (a, "Bass", "Chorus")) all16 = all16 && a.sections[(size_t) i].bars == 16;
+        check (all16 && a.sections[(size_t) last].bars != 16, "a pattern's length: every section that plays it");
+
+        // what plays: yours where you made it, the suggestion elsewhere
+        ss::PatternBook mine;
+        ss::Pattern bassline;
+        bassline.bars = 4;
+        bassline.key = plan.key;
+        bassline.notes = { { 0, 4, 38, 101 }, { 4, 4, 45, 101 }, { 8, 4, 47, 101 }, { 12, 4, 43, 101 } };
+        mine.set ("Bass", "Chorus", bassline);
+        const int c1 = ss::sectionsUsing (a, "Bass", "Chorus").front();
+        const auto played = ss::sectionNotes (plan, a, c1, parts[1], ss::generalMidiDrums(), &mine);
+        bool yours = played.size() == 16;          // 4 bars of yours, repeated through a 16-bar chorus
+        for (auto& n : played) yours = yours && n.velocity == 101;
+        check (yours, "a chorus plays your pattern, repeated to fill it");
+        const auto verse = ss::sectionsUsing (a, "Bass", "Verse").front();
+        bool suggested = false;
+        for (auto& n : ss::sectionNotes (plan, a, verse, parts[1], ss::generalMidiDrums(), &mine)) suggested = suggested || n.velocity != 101;
+        check (suggested, "the verse still plays the suggestion");
+        const auto song = ss::arrangeParts (plan, a, parts, ss::generalMidiDrums(), &mine);
+        int ours = 0;
+        for (int i = 0; i < song[1].notes.getNumEvents(); ++i)
+            if (song[1].notes.getEventPointer (i)->message.isNoteOn() && song[1].notes.getEventPointer (i)->message.getVelocity() == 101) ++ours;
+        check (ours == 16 * (int) ss::sectionsUsing (a, "Bass", "Chorus").size(), "WHOLE SONG has your bass in every chorus that shares it (" + juce::String (ours) + " notes)");
+        const auto starter = ss::starterPart (plan, a, &mine, parts[1], ss::generalMidiDrums());
+        check (starter.getNumEvents() > 0 && starter.getEventPointer (0)->message.getVelocity() == 101 && ss::starterBars (plan, a, &mine, parts) == 16,
+               "the Bass card plays and drags your chorus bass");
+        const auto oneBox = ss::arrangePart (plan, a, parts[1], ss::generalMidiDrums(), &mine, c1);
+        check (oneBox.size() == 1 && oneBox[0].notes.getStartTime() < 1.0 && oneBox[0].notes.getEndTime() <= 16 * 1920.0 + 1.0,
+               "one box on its own: that part in that section, from its first beat");
+
+        // the song keeps them: switched on where they were off, in the song's key, through a new idea
+        ss::SongSession songS;
+        songS.form.description = "warm modern worship 72 BPM in D major";
+        songS.arrangement = ss::makeArrangement (songS.partsPlan(), parts, {}, ss::SongShape::full);
+        const auto& secs = songS.arrangement.sections;
+        int intro = -1;
+        for (int i = 0; i < (int) secs.size(); ++i) if (secs[(size_t) i].modeFor ("Bass").isEmpty()) { intro = i; break; }
+        check (intro >= 0, "a section where the bass is off (" + (intro >= 0 ? secs[(size_t) intro].name : juce::String ("none")) + ")");
+        if (intro >= 0)
+        {
+            auto p = songS.patternAt (intro, parts[1], ss::generalMidiDrums());
+            check (! songS.isMine (intro, "Bass") && ! p.notes.empty() && p.bars == secs[(size_t) intro].bars, "where it's off, the piano roll still offers the suggestion");
+            p.notes = { { 0, 2, 50, 77 } };
+            songS.storePattern (intro, parts[1], p);
+            check (songS.isMine (intro, "Bass") && songS.arrangement.sections[(size_t) intro].modeFor ("Bass") == "on", "drawing there brings the bass in");
+            ++songS.partsSeed;                    // NEW IDEA
+            check (songS.patternAt (intro, parts[1], ss::generalMidiDrums()).notes.front().velocity == 77, "NEW IDEA leaves your part alone");
+            songS.form.description = "warm modern worship 72 BPM in E major";
+            check (songS.patternAt (intro, parts[1], ss::generalMidiDrums()).notes.front().note == 52, "a new key moves your notes with it (D to E)");
+            const auto saved = songS.toXml();
+            ss::SongSession reread;
+            reread.fromXml (*saved);
+            check (reread.isMine (intro, "Bass") && reread.patterns == songS.patterns, "your parts are saved with the song");
+            songS.forgetPattern (intro, "Bass");
+            check (! songS.isMine (intro, "Bass"), "RESET: back to the suggestion");
+        }
+        const int lastChorus = ss::sectionsUsing (songS.arrangement, "Lead", "Chorus").back();
+        auto lead = songS.patternAt (lastChorus, parts[3], ss::generalMidiDrums());
+        lead.notes = { { 0, 1, 74, 88 } };
+        songS.storePattern (lastChorus, parts[3], lead);
+        const auto ownName = songS.makeDifferent (lastChorus, parts[3], ss::generalMidiDrums());
+        check (songS.patterns.find ("Lead", ownName) != nullptr && songS.patterns.find ("Lead", ownName)->notes.size() == 1,
+               "made different, the section starts with a copy of your notes (" + ownName + ")");
+    }
+
+    void testPatternEditor()
+    {
+        section ("The piano roll's editing");
+        using ss::PatternNote;
+        ss::Pattern p;
+        p.bars = 2;
+        p.notes = { { 0, 1, 60, 100 }, { 2, 1, 64, 100 } };
+        ss::PatternEditor ed;
+        ed.load (p, 2);
+        ed.snap = 0.25;
+        ed.lastLength = 0.5;
+        const int i = ed.addNote (1.37, 67);
+        check (std::abs (ed.notes()[(size_t) i].n.start - 1.25) < 1e-9 && std::abs (ed.notes()[(size_t) i].n.length - 0.5) < 1e-9 && ed.numSelected() == 1,
+               "a click adds a note at the snap before it, as long as the last one");
+        check (ed.noteAt (1.4, 67) == i && ed.noteAt (1.9, 67) < 0 && ed.nearEnd (i, 1.72, 0.1), "finding a note under the mouse, and its end");
+        ed.beginDrag();
+        ed.dragMove (1.0, 2);
+        check (ed.endDrag() && ed.pattern().notes.back().note == 69, "dragging moves it (and one undo puts it back)");
+        ed.undo();
+        check (ed.notes()[(size_t) i].n.note == 67 && std::abs (ed.notes()[(size_t) i].n.start - 1.25) < 1e-9, "undo");
+        ed.redo();
+        check (ed.notes()[(size_t) i].n.note == 69, "redo");
+        ed.select (i, false);
+        ed.beginDrag();
+        ed.dragResize (1.5);
+        ed.endDrag();
+        check (std::abs (ed.notes()[(size_t) i].n.length - 2.0) < 1e-9 && std::abs (ed.lastLength - 2.0) < 1e-9, "dragging its end stretches it (and new notes follow)");
+        ed.dragMove (100.0, 100);
+        ed.endDrag();
+        check (ed.notes()[(size_t) i].n.start + 1e-9 < 8.0 && ed.notes()[(size_t) i].n.note <= 127, "a note can't be dragged out of the section");
+        ed.undo();
+
+        ed.selectBox (0.0, 3.0, 59, 65, false);
+        check (ed.numSelected() == 2, "a box selects the notes inside it");
+        const auto clip = ed.copySelected();
+        ed.paste (clip, 4.5);                    // into bar 2
+        bool bar2 = false;
+        for (auto& e : ed.notes()) if (e.selected && std::abs (e.n.start - 4.0) < 1e-9 && e.n.note == 60) bar2 = true;
+        check (ed.notes().size() == 5 && ed.numSelected() == 2 && bar2, "Ctrl+V pastes them into the bar under the mouse, keeping their places in the bar");
+        ed.selectNone();
+        ed.select (0, false);
+        ed.duplicateSelected();
+        check (ed.notes().size() == 6 && std::abs (ed.notes().back().n.start - 1.0) < 1e-9, "Ctrl+D: a copy right after it");
+        ed.transposeSelected (12);
+        check (ed.notes().back().n.note == 72, "the arrow keys move selected notes up and down");
+        ed.selectAll();
+        ed.dragVelocity (0, 40);
+        ed.endDrag();
+        bool all40 = true;
+        for (auto& e : ed.notes()) all40 = all40 && e.n.velocity == 40;
+        check (all40, "velocity: dragging one selected note's stem sets them all");
+        ed.eraseSelected();
+        check (ed.notes().empty() && ed.canUndo(), "Delete removes them");
+        ed.undo();
+        check (ed.notes().size() == 6, "and undo brings them back");
+        ed.clear();
+        check (ed.notes().empty(), "an empty grid");
+
+        // a section made longer: the pattern repeats into it
+        ss::Pattern one;
+        one.bars = 1;
+        one.notes = { { 0, 1, 60, 90 } };
+        ed.load (one, 1);
+        ed.setVisibleBars (4);
+        check (ed.bars() == 4 && ed.notes().size() == 4, "a section made longer repeats your pattern into the new bars");
+        // notes past a shorter section are kept, not shown or selected
+        ss::Pattern longP;
+        longP.bars = 4;
+        longP.notes = { { 0, 1, 60, 90 }, { 12, 1, 62, 90 } };
+        ed.load (longP, 2);
+        ed.selectAll();
+        check (ed.numSelected() == 1 && ed.pattern().notes.size() == 2, "in a shorter section the notes after its end are kept");
+
+        // what the roll plays: the notes on the screen, with the band or alone
+        const auto plan = ss::planParts (ss::readBrief ("pop 120 BPM in C major"));
+        std::vector<ss::ArrangementPart> parts { { "Bass", "Bass", ss::PartType::bass, ss::Kind::bass, false },
+                                                 { "Keys", "Keys", ss::PartType::chords, ss::Kind::piano, false } };
+        const auto a = ss::makeArrangement (plan, parts, {}, ss::SongShape::full);
+        const std::vector<PatternNote> screen { { 0, 1, 40, 99 } };
+        const int chorus = ss::sectionsUsing (a, "Bass", "Chorus").front();
+        const auto sec = ss::sketchOfSection (plan, a, chorus, parts, nullptr, &screen, "Bass");
+        int bassNotes = 0, keysNotes = 0;
+        for (auto& n : sec.notes) (n.part == 0 ? bassNotes : keysNotes)++;
+        check (sec.loop && bassNotes == 1 && keysNotes > 0 && std::abs (sec.lengthBeats - a.sections[(size_t) chorus].bars * 4.0) < 1e-9,
+               "the piano roll plays the section looped: your notes, and the band");
+
+        // light enough for a DAW: 30 seconds of five parts take a small part of 30 seconds to make (here it's about 5%)
+        {
+            const auto trap = ss::planParts (ss::readBrief ("trap 140 BPM in A minor"));
+            std::vector<ss::ArrangementPart> five { { "Drums", "Drums", ss::PartType::drums, ss::Kind::drums, false },
+                                                    { "Bass", "Bass", ss::PartType::bass, ss::Kind::bass, false },
+                                                    { "Keys", "Keys", ss::PartType::chords, ss::Kind::piano, false },
+                                                    { "Pad", "Pad", ss::PartType::pad, ss::Kind::pad, false },
+                                                    { "Lead", "Lead", ss::PartType::hook, ss::Kind::lead, false } };
+            ss::SketchPlayer sp;
+            sp.prepare (48000.0);
+            sp.setSong (std::make_shared<const ss::SketchSong> (ss::sketchOfParts (trap, five)));
+            sp.play();
+            juce::AudioBuffer<float> b (2, 512);
+            const auto t0 = juce::Time::getMillisecondCounterHiRes();
+            const int blocks = (int) (48000.0 * 30.0 / 512.0);
+            for (int k = 0; k < blocks; ++k) sp.process (b, {});
+            const double share = (juce::Time::getMillisecondCounterHiRes() - t0) / 30000.0;
+            check (share < 0.25, "the sketch sounds are light: 30 s of five parts took " + juce::String (share * 100.0, 1) + "% of 30 s");
+        }
+
+        // a note placed is heard straight away, playing or not
+        ss::SketchPlayer player;
+        player.prepare (48000.0);
+        juce::AudioBuffer<float> buf (2, 480);
+        player.preview (60, 100, ss::PartType::hook, ss::Kind::lead);
+        float peak = 0.0f;
+        for (int k = 0; k < 20; ++k) { player.process (buf, {}); peak = juce::jmax (peak, buf.getMagnitude (0, 480)); }
+        check (! player.isPlaying() && peak > 0.02f, "a note you place sounds straight away (" + juce::String (peak, 3) + ")");
+    }
+
     void testTransport()
     {
         section ("The transport (ARRANGE) and one part on its own (SONG)");
@@ -1821,6 +2056,41 @@ namespace
                         check (in.openedOk() && mf.readFrom (in) && mf.getNumTracks() >= 5 && ar.getArrangement().sections.size() >= 5,
                                "the Arrange page maps the song and writes it whole: " + whole.getFileName());
                     }
+                    if (name.startsWith ("piano-roll") || name == "arrange-yours" || name == "song-yours")
+                    {
+                        // the Bass card's EDIT: the piano roll opens on its first chorus
+                        auto& v = e->getView();
+                        const bool opened = v.showPianoRoll ("Bass", -1);
+                        auto& roll = v.getPianoRoll();
+                        auto& ed = roll.getEditor();
+                        const auto before = ed.notes().size();
+                        const auto& a = proc.song.arrangement;
+                        const bool chorus = roll.getSection() >= 0 && a.sections[(size_t) roll.getSection()].name.containsIgnoreCase ("chorus");
+                        check (opened && roll.isVisible() && before > 0 && chorus && ! v.getSong().isVisible(),
+                               "EDIT on the Bass card opens the piano roll on its chorus, with the suggestion in it (" + juce::String ((int) before) + " notes)");
+                        ed.lastLength = 2.0;
+                        ed.addNote (12.0, 45);                       // an A in bar 4
+                        roll.edited();
+                        check (proc.song.isMine (roll.getSection(), "Bass") && ed.notes().size() == before + 1, "a note added: the chorus bass is yours now");
+                        ed.selectBox (16.0, 24.0, 20, 70, false);    // bars 5 and 6 selected
+                        const auto midi = roll.writeMidi();
+                        check (midi.existsAsFile() && midi.getFileName().contains ("Bass - Chorus"), "its drag chip: " + midi.getFileName());
+                        roll.togglePlay();
+                        check (proc.isSketchPlaying (SongSavantProcessor::SketchMode::section), "play: the section, looped");
+                        roll.togglePlay();
+                        if (name == "arrange-yours" || name == "song-yours")
+                        {
+                            roll.makeDifferent (ss::sectionsUsing (a, "Bass", "Chorus").back());
+                            v.showPage (name == "arrange-yours" ? 5 : 0);
+                            if (name == "arrange-yours") v.getArrange().refresh();
+                            check (! roll.isVisible(), "DONE: back to the page");
+                            if (name == "arrange-yours")
+                            {
+                                const auto bit = v.getArrange().writeBit (roll.getSection(), 1);
+                                check (bit.existsAsFile() && bit.getFileName().contains ("Bass - Chorus (bar"), "one box drags as MIDI: " + bit.getFileName());
+                            }
+                        }
+                    }
                     if (name == "arrange-scrolled")
                     {
                         auto& ar = e->getView().getArrange();
@@ -1911,7 +2181,7 @@ namespace
                     auto& man = v.getHelp().getManual();
                     juce::StringArray titles;
                     for (auto& sec : man.getSections()) titles.add (sec.title);
-                    check (v.getHelp().isVisible() && titles.size() >= 18 && man.numBlocks() > 120 && titles.contains ("Working with Groove Grabber")
+                    check (v.getHelp().isVisible() && titles.size() >= 18 && man.numBlocks() > 120 && titles.contains ("Working with Groove Grabber") && titles.contains ("The piano roll: your own parts")
                            && titles.contains ("DRUM MAPS: name a kit's pads") && titles.contains ("Quick reference card"),
                            "the manual opens with its contents: " + juce::String (titles.size()) + " chapters, " + juce::String (man.numBlocks()) + " blocks");
                     check (man.setSearch ("drum map") >= 5 && man.getMatchY (0) > 0, "searching the manual finds every mention of a word");
@@ -1973,6 +2243,10 @@ namespace
         shoot ("arrange-scrolled", false, 1060, 780, 5, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("arrange-empty", false, 1240, 820, 5);
         shoot ("arrange-playing", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
+        shoot ("piano-roll", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
+        shoot ("piano-roll-small", false, 1060, 780, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
+        shoot ("arrange-yours", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
+        shoot ("song-yours", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("song-playing", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("masterclass", false, 1240, 820, 4, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("masterclass-small", false, 1060, 780, 4, {}, "uk drill 142 bpm");
@@ -1997,6 +2271,7 @@ namespace
         shoot ("drum-maps-kit-light", false, 1240, 820, 3);
         shoot ("masterclass-light", false, 1240, 820, 4, {}, "modern country like Morgan Wallen in G");
         shoot ("arrange-light", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
+        shoot ("piano-roll-light", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         ss::ui::setLightTheme (false);
         check (! ss::ui::isLightTheme(), "back to dark");
         juce::ignoreUnused (r);
@@ -2036,6 +2311,8 @@ int main (int argc, char** argv)
     testGrooveGrabberLink (fc);
     testSketch();
     testTransport();
+    testPatterns();
+    testPatternEditor();
     testPalettes (fc);
     testCancelAndJob (fc);
 

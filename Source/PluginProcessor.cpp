@@ -87,14 +87,14 @@ void SongSavantProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 void SongSavantProcessor::playSketch (SketchMode m)
 {
     sketchMode = m;
-    sketch.setSong (m == SketchMode::loop ? loopSketch : songSketch);
+    sketch.setSong (sketchFor (m));
     applySolo();
     sketch.play (m == SketchMode::song ? juce::jlimit (0.0, songLength(), songCursor) : 0.0);
 }
 
 void SongSavantProcessor::updateSketch (SketchMode m, std::shared_ptr<const ss::SketchSong> s)
 {
-    (m == SketchMode::loop ? loopSketch : songSketch) = s;
+    sketchFor (m) = s;
     if (m == sketchMode)
     {
         sketch.setSong (std::move (s));
@@ -135,6 +135,8 @@ void SongSavantProcessor::applySolo()
         i = partIndex (loopSketch.get(), soloRole);
         if (i < 0) soloRole.clear();             // that card has no part now (a new palette): every part
     }
+    if (sketchMode == SketchMode::section && sectionSolo.isNotEmpty())
+        i = partIndex (sectionSketch.get(), sectionSolo);
     sketch.setSolo (i);
 }
 

@@ -5,6 +5,7 @@
 
 #include "StarterParts.h"
 #include "Palette.h"
+#include "Patterns.h"
 
 namespace ss
 {
@@ -30,7 +31,9 @@ namespace ss
         int progression = 0;                      // the style's progressions: 0 = the main one, 1 = the verse's, 2 = the bridge's
         juce::StringArray chords;                 // from a Key Compass song, one per bar (empty: the style's progression)
         std::map<juce::String, juce::String> play;// role -> "" (silent), "on"; the drums: "light", "groove", "build", "full"
+        std::map<juce::String, juce::String> patterns;   // role -> the section's own pattern, when it was made different
         juce::String modeFor (const juce::String& role) const;
+        juce::String patternFor (const juce::String& role) const;   // the pattern the part plays here: its own, or the section's name
     };
 
     // The song shapes on offer: the style's full song, a short one, and the Key Compass song's own sections
@@ -72,7 +75,28 @@ namespace ss
 
     std::vector<Chord> sectionChords (const PartsPlan&, const ArrangementSection&);
 
-    // The whole song: one track per part, each section's starter parts in place
-    std::vector<NamedPart> arrangeParts (const PartsPlan&, const Arrangement&, const std::vector<ArrangementPart>&, const DrumNotes&);
+    // ---- Patterns (the piano roll). A part plays one pattern per section name ("Chorus": every chorus), unless a
+    // section was made different. The patterns you edited are in a PatternBook; the rest are the suggestion.
+    juce::StringArray patternNames (const Arrangement&, const juce::String& role);        // in the order they first come
+    std::vector<int> sectionsUsing (const Arrangement&, const juce::String& role, const juce::String& pattern);
+    juce::String makeSectionDifferent (Arrangement&, int section, const juce::String& role); // its own pattern: its name
+    void setPatternBars (Arrangement&, const juce::String& role, const juce::String& pattern, int bars);  // every section using it
+    int mainSection (const Arrangement&, const juce::String& role);   // what a card's starter part stands for: its first chorus
+    // Song Savant's suggestion for a part in a section (beats from the section's start), whether it plays there or not
+    std::vector<PatternNote> suggestedNotes (const PartsPlan&, const ArrangementSection&, const ArrangementPart&, const DrumNotes&);
+    // What a part plays in a section: your pattern if you edited it, else the suggestion; nothing where it's switched off
+    std::vector<PatternNote> sectionNotes (const PartsPlan&, const Arrangement&, int section, const ArrangementPart&,
+                                           const DrumNotes&, const PatternBook*);
+    // A card's starter part (the SONG page): your pattern for its first chorus when you edited it, else the suggestion
+    juce::MidiMessageSequence starterPart (const PartsPlan&, const Arrangement&, const PatternBook*, const ArrangementPart&, const DrumNotes&);
+    // How long the starter parts are: the plan's 8 bars, or longer when one of your parts is
+    int starterBars (const PartsPlan&, const Arrangement&, const PatternBook*, const std::vector<ArrangementPart>&);
+
+    // The whole song: one track per part, each section's part in place (yours where you edited it)
+    std::vector<NamedPart> arrangeParts (const PartsPlan&, const Arrangement&, const std::vector<ArrangementPart>&, const DrumNotes&,
+                                         const PatternBook* = nullptr);
+    // One part only: in one section (`section` >= 0), or across the whole song
+    std::vector<NamedPart> arrangePart (const PartsPlan&, const Arrangement&, const ArrangementPart&, const DrumNotes&,
+                                        const PatternBook*, int section = -1);
     bool writeArrangement (const PartsPlan&, const Arrangement&, const std::vector<NamedPart>&, const juce::File&);
 }

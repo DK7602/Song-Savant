@@ -3,7 +3,7 @@
 
 namespace ss::ui
 {
-    MainView::MainView (SongSavantProcessor& p) : proc (p), songPage (p), libraryPage (p), setupPage (p), drumMapsPage (p), masterclassPage (p), arrangePage (p)
+    MainView::MainView (SongSavantProcessor& p) : proc (p), songPage (p), libraryPage (p), setupPage (p), drumMapsPage (p), masterclassPage (p), arrangePage (p), pianoRoll (p)
     {
         setLookAndFeel (&lookAndFeel);
         owl = owlImage();
@@ -19,7 +19,7 @@ namespace ss::ui
         addAndMakeVisible (themeBtn);
         songTab.onClick = [this] { showPage (song); };
         libraryTab.onClick = [this] { showPage (library); };
-        setupBtn.setTooltip ("Setup check: what Song Savant found on this computer, and the drag tests");
+        setupBtn.setTooltip ("Setup check: what Song Savant found on this computer");
         setupBtn.onClick = [this] { showPage (setupCheck); };
         addAndMakeVisible (setupBtn);
         helpBtn.setTooltip ("The manual (F1)");
@@ -35,6 +35,10 @@ namespace ss::ui
         addChildComponent (drumMapsPage);
         addChildComponent (masterclassPage);
         addChildComponent (arrangePage);
+        addChildComponent (pianoRoll);
+        pianoRoll.onDone = [this] { showPage (page); };
+        songPage.onEditPart = [this] (const juce::String& role) { showPianoRoll (role, -1); };
+        arrangePage.onEditPattern = [this] (const juce::String& role, int section) { showPianoRoll (role, section); };
         addChildComponent (help);              // over everything, when it's open
         welcome.onManual = [this] { showHelp(); };
         addChildComponent (welcome);
@@ -112,12 +116,24 @@ namespace ss::ui
         wordmark = wordmarkImage();
         sendLookAndFeelChange();
         songPage.themeChanged();
+        pianoRoll.themeChanged();
         libraryPage.themeChanged();
         drumMapsPage.themeChanged();
         masterclassPage.themeChanged();
         arrangePage.themeChanged();
         help.themeChanged();
         repaint();
+    }
+
+    bool MainView::showPianoRoll (const juce::String& role, int section)
+    {
+        if (! pianoRoll.open (role, section)) return false;
+        // the page it came from stays lit in the header; DONE goes back to it
+        for (auto* p : std::initializer_list<juce::Component*> { &songPage, &libraryPage, &setupPage, &drumMapsPage, &masterclassPage, &arrangePage })
+            p->setVisible (false);
+        pianoRoll.setVisible (true);
+        pianoRoll.grabKeyboardFocus();
+        return true;
     }
 
     void MainView::showPage (int which)
@@ -130,6 +146,7 @@ namespace ss::ui
         drumMapsPage.setVisible (page == drumMaps);
         masterclassPage.setVisible (page == masterclass);
         arrangePage.setVisible (page == arrange);
+        pianoRoll.setVisible (false);
         songTab.setToggleState (page == song, juce::dontSendNotification);
         libraryTab.setToggleState (page == library, juce::dontSendNotification);
         setupBtn.setToggleState (page == setupCheck, juce::dontSendNotification);
@@ -206,6 +223,7 @@ namespace ss::ui
         drumMapsPage.setBounds (r);
         masterclassPage.setBounds (r);
         arrangePage.setBounds (r);
+        pianoRoll.setBounds (r);
         help.setBounds (getLocalBounds());
         welcome.setBounds (getLocalBounds());
     }

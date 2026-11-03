@@ -408,6 +408,37 @@ Built in steps, each one a build the owner can try:
     show a small moving level meter. (`SketchPlayer::setSolo`, `SongSavantProcessor::setSketchSolo`, and the `song...`
     transport calls.)
   - START OVER on ARRANGE became **RESET MAP**: the owner read it as a transport button.
+- **The piano roll: your own parts** *(1.1.0; the owner asked for an FL Studio-style MIDI editor with full control,
+  November 2026: "simple but great", melodic parts first, separate sections, sketch sounds are fine for now)*.
+  - **Patterns per section name.** A part plays one pattern per section name ("Chorus": every chorus), unless a section
+    is made different (MAKE ONE DIFFERENT: its own pattern, "Chorus 3", starting as a copy; `ArrangementSection::patterns`).
+    Only edited patterns are stored (`PatternBook` in `SongSession::patterns`, saved with the song); the rest stay
+    Song Savant's suggestion, made fresh, so NEW IDEA still changes them and never touches yours. Keyed by the card's
+    role and the pattern name, so a new palette or a new arrangement keeps them where the names match.
+  - **Notes in beats**, with the song's key they were written in (`Source/core/Patterns.*`): a new key moves them
+    (the nearest way, and the 3rd, 6th and 7th between major and minor); the tempo can change freely.
+  - **Section length** (the roll's LENGTH, or ARRANGE's Length menu) is the sections'; a pattern has its own length.
+    A longer section repeats the pattern (made part of it the moment you edit); a shorter one stops early and the
+    notes after the end are kept.
+  - **The card on SONG stands for the part's first chorus** (`mainSection`, else the first section it plays in): its MIDI
+    tag, play button, PLAY ALL and ALL PARTS use your pattern there when you made one (YOUR PART on the card).
+  - **Editing** (`Source/core/PatternEdit.*`, no drawing, all tested): click adds a note at the snap before the mouse,
+    as long as the last one made; drag moves (the whole selection), the right end stretches, right-click (or ERASE)
+    deletes; Ctrl / SELECT draws a selection box; velocity lane; Ctrl+C / X / V (into the bar under the mouse) / D / A,
+    Delete, arrows (a semitone, Shift an octave), Ctrl+Z / Y (200 steps); snap from a bar to 1/32 and triplets.
+    The clipboard is the processor's, so notes copy between sections and parts.
+  - **The screen** (`Source/ui/PianoRollPage.*`): PART and SECTION rows, LENGTH, MAKE ONE DIFFERENT, START FROM (the
+    suggestion, an empty grid, another section, another part's notes here), the drag tag (that part of that section as
+    MIDI), DONE; the tools, snap, zoom, ghost notes (the other melodic parts, faint), play the section looped
+    (`SketchMode::section`, `sketchOfSection`) alone or with the band; the keyboard (key notes brighter, each bar's chord
+    gold, the chords along the top), velocity lane, scroll bars. Notes sound as you place them (`SketchPlayer::preview`,
+    a lock-free queue). Every change is stored with the song straight away: no save button.
+  - **Light in a DAW:** the grid's rows and lines are drawn once into a picture and only again when the view changes;
+    the playhead repaints a thin strip; ghost notes are worked out once per part / section, not per repaint; no threads.
+  - **ARRANGE:** double-click a box opens it (the first click's on / off is put back); drag a box out for that part in
+    that section, a part's name for the whole part (with markers); a pencil marks your patterns, a star a section's own.
+  - Drums aren't in the piano roll yet (next: a step grid and the roll for drums), nor the building tools (1.2.0:
+    chord stamp, strum, arpeggiate, quantize, humanize, legato, move in key, chop, flip, ideas from the style).
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is
