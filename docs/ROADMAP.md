@@ -408,6 +408,15 @@ Built in steps, each one a build the owner can try:
     show a small moving level meter. (`SketchPlayer::setSolo`, `SongSavantProcessor::setSketchSolo`, and the `song...`
     transport calls.)
   - START OVER on ARRANGE became **RESET MAP**: the owner read it as a transport button.
+- **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
+  presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
+  answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is
+  now the scan and **"Something missing?"**: the report (saved after every scan, for asking for help) and a few
+  things to try first. Gone with it: the drop target on that page, the test MIDI clip there, the scan's preset picks
+  and the preset it copied out of a library for the test, the report's "Drag tests" section, and the answers saved
+  with the project (old projects still open; the answers are ignored). `describeDroppedFile` and
+  `extractEmbeddedPreset` stay (tested) for later: reading a MIDI part dropped from the DAW, loading a factory
+  preset by drag. Also fixed: the ? and setup buttons showed a plain gold circle while their page was open.
 
 ### Phase 3: Hearing it
 - Preview sounds by loading the instrument in the background and recording a short phrase. Run it in a

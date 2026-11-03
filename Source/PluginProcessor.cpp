@@ -44,7 +44,7 @@ void SongSavantProcessor::startCatalog()
 juce::String SongSavantProcessor::reportText() const
 {
     auto r = scan.result();
-    return r != nullptr ? ss::buildReport (*r, scan.locations(), dragTests) : juce::String();
+    return r != nullptr ? ss::buildReport (*r, scan.locations()) : juce::String();
 }
 
 juce::File SongSavantProcessor::saveReport()
@@ -185,12 +185,6 @@ void SongSavantProcessor::getStateInformation (juce::MemoryBlock& dest)
     x.setAttribute ("version", SS_VERSION);
     x.setAttribute ("page", page);
     x.addChildElement (song.toXml().release());
-    auto* d = x.createNewChildElement ("DragTests");
-    d->setAttribute ("preset", dragTests.userPreset);
-    d->setAttribute ("factory", dragTests.factoryPreset);
-    d->setAttribute ("midi", dragTests.midiClip);
-    for (auto& line : dragTests.fromDaw)
-        d->createNewChildElement ("FromDaw")->setAttribute ("what", line);
     for (auto& f : extraFolders)
         x.createNewChildElement ("ExtraFolder")->setAttribute ("path", f.getFullPathName());
     copyXmlToBinary (x, dest);
@@ -202,15 +196,7 @@ void SongSavantProcessor::setStateInformation (const void* data, int size)
     if (x == nullptr || ! x->hasTagName ("SongSavant")) return;
     page = juce::jlimit (0, 5, x->getIntAttribute ("page", 0));
     if (auto* s = x->getChildByName ("Song")) song.fromXml (*s);
-    if (auto* d = x->getChildByName ("DragTests"))
-    {
-        dragTests.userPreset    = juce::jlimit (-1, 1, d->getIntAttribute ("preset"));
-        dragTests.factoryPreset = juce::jlimit (-1, 1, d->getIntAttribute ("factory"));
-        dragTests.midiClip      = juce::jlimit (-1, 1, d->getIntAttribute ("midi"));
-        dragTests.fromDaw.clear();
-        for (auto* e : d->getChildWithTagNameIterator ("FromDaw"))
-            dragTests.fromDaw.add (e->getStringAttribute ("what"));
-    }
+    // (projects saved before 1.0.2 also hold the drag test's answers, "DragTests": no longer used)
     extraFolders.clear();
     for (auto* e : x->getChildWithTagNameIterator ("ExtraFolder"))
         if (juce::File f (e->getStringAttribute ("path")); f.isDirectory())

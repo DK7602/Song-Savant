@@ -144,35 +144,6 @@ namespace ss::ui
     }
 
     //==============================================================================
-    ResultPicker::ResultPicker()
-    {
-        failed.setComponentID ("bad");
-        for (auto* b : { &worked, &failed })
-        {
-            b->setClickingTogglesState (false);
-            addAndMakeVisible (b);
-        }
-        worked.onClick = [this] { setValue (value == 1 ? 0 : 1); if (onChange) onChange (value); };
-        failed.onClick = [this] { setValue (value == -1 ? 0 : -1); if (onChange) onChange (value); };
-    }
-
-    void ResultPicker::setValue (int v)   { value = v; refresh(); }
-
-    void ResultPicker::refresh()
-    {
-        worked.setToggleState (value == 1, juce::dontSendNotification);
-        failed.setToggleState (value == -1, juce::dontSendNotification);
-    }
-
-    void ResultPicker::resized()
-    {
-        auto r = getLocalBounds();
-        worked.setBounds (r.removeFromLeft (r.getWidth() / 2 - 4));
-        r.removeFromLeft (8);
-        failed.setBounds (r);
-    }
-
-    //==============================================================================
     void SummaryList::setItems (std::vector<SummaryItem> i)   { items = std::move (i); repaint(); }
 
     // dot + gap (32) | title | gap (12) | detail, plus 20 px of padding
@@ -299,7 +270,8 @@ namespace ss::ui
         const auto& p = pal();
         auto r = getLocalBounds().toFloat().reduced (2.0f);
         const bool on = getToggleState();
-        g.setColour ((on ? p.gold.withAlpha (0.25f) : p.panelHi).withAlpha (over || on ? 1.0f : 0.7f));
+        // (open: a soft gold wash, so the gold picture on it still shows)
+        g.setColour (on ? p.gold.withAlpha (over ? 0.32f : 0.25f) : p.panelHi.withAlpha (over ? 1.0f : 0.7f));
         g.fillEllipse (r);
         g.setColour (p.gold.withAlpha (over || on ? 1.0f : 0.8f));
         g.drawEllipse (r, on ? 1.8f : 1.2f);
@@ -319,7 +291,8 @@ namespace ss::ui
         const auto& p = pal();
         auto r = getLocalBounds().toFloat().reduced (2.0f);
         const bool on = getToggleState();
-        g.setColour ((on ? p.gold.withAlpha (0.25f) : p.panelHi).withAlpha (over || on ? 1.0f : 0.7f));
+        // (open: a soft gold wash, so the gold picture on it still shows)
+        g.setColour (on ? p.gold.withAlpha (over ? 0.32f : 0.25f) : p.panelHi.withAlpha (over ? 1.0f : 0.7f));
         g.fillEllipse (r);
         g.setColour (p.gold.withAlpha (over || on ? 1.0f : 0.8f));
         g.drawEllipse (r, on ? 1.8f : 1.2f);

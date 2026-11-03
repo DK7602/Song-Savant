@@ -84,7 +84,6 @@ namespace ss
         }
 
         juce::String status (int s)   { return s > 0 ? "[OK]  " : s < 0 ? "[!!]  " : "[--]  "; }
-        juce::String dragResult (int s) { return s > 0 ? "WORKED" : s < 0 ? "DIDN'T WORK" : "not tried"; }
 
         void heading (juce::String& o, const juce::String& title)
         {
@@ -200,7 +199,7 @@ namespace ss
         return out;
     }
 
-    juce::String buildReport (const ScanResult& r, const SystemLocations& loc, const DragTests& drag)
+    juce::String buildReport (const ScanResult& r, const SystemLocations& loc)
     {
         juce::String o;
         o << "SONG SAVANT - SETUP REPORT\n"
@@ -211,17 +210,6 @@ namespace ss
 
         heading (o, "Summary");
         for (auto& it : summarise (r)) o << status (it.status) << it.title << ": " << it.detail << "\n";
-
-        heading (o, "Drag tests (Cubase)");
-        o << "Preset file -> Cubase:           " << dragResult (drag.userPreset)
-          << (r.userPreset != juce::File() ? "   (" + r.userPresetLabel + ")" : juce::String ("   (no preset file was found to test)")) << "\n";
-        o << "Factory preset (copied out) -> Cubase: " << dragResult (drag.factoryPreset)
-          << (r.factoryPreset != juce::File() ? "   (" + r.factoryPresetLabel + ")" : juce::String ("   (no preset could be copied out of a library)")) << "\n";
-        o << "MIDI clip -> Cubase:             " << dragResult (drag.midiClip) << "\n";
-        o << "Cubase -> Song Savant:           ";
-        if (drag.fromDaw.isEmpty()) o << "nothing dropped\n";
-        else o << drag.fromDaw.size() << " dropped\n  " << drag.fromDaw.joinIntoString ("\n  ") << "\n";
-        if (drag.notes.isNotEmpty()) o << "Notes: " << drag.notes << "\n";
 
         // ---- plug-ins
         heading (o, "1. Plug-ins");

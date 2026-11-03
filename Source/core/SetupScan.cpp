@@ -21,15 +21,6 @@ namespace ss
             return f.getParentDirectory().getFileName();
         }
 
-        int dragPreference (const juce::String& plugin, const VstPresetInfo& info)
-        {
-            static const std::pair<const char*, int> prefs[] = { { "HALion Sonic", 6 }, { "HALion", 5 }, { "Retrologue", 4 },
-                                                                   { "Padshop", 4 }, { "Groove Agent", 2 } };
-            for (auto& [name, score] : prefs)
-                if (plugin.containsIgnoreCase (name)) return score;
-            return info.attributes["PlugInCategory"].containsIgnoreCase ("Instrument") ? 3 : 1;
-        }
-
         FolderListing listFolder (const juce::File& dir, const SystemLocations& loc)
         {
             FolderListing l;
@@ -107,8 +98,6 @@ namespace ss
 
         // 4. read every .vstpreset's header and tags
         report (0.52f, "Reading preset tags...");
-        std::pair<int, juce::File> bestDrag { 0, {} };
-        juce::String bestDragLabel;
         for (int i = 0; i < found.vstPresets.size(); ++i)
         {
             if (i >= 60000) { r.presets.truncated = true; break; }
@@ -137,15 +126,7 @@ namespace ss
             if (r.presets.samples.size() < 12 && (! tags.isEmpty() || r.presets.samples.size() < 4))
                 r.presets.samples.add (plugin + ": " + f.getFileNameWithoutExtension()
                                        + (tags.isEmpty() ? juce::String (" (no tags)") : " (" + tags.joinIntoString (" / ") + ")"));
-
-            if (const int pref = dragPreference (plugin, info); pref > bestDrag.first)
-            {
-                bestDrag = { pref, f };
-                bestDragLabel = plugin + ": " + f.getFileNameWithoutExtension();
-            }
         }
-        r.userPreset = bestDrag.second;
-        r.userPresetLabel = bestDragLabel;
 
         // 5. look inside Steinberg .vstsound libraries (preset libraries first: they're small)
         r.vstSoundFiles = found.vstSounds.size();
@@ -165,20 +146,6 @@ namespace ss
         }
         if (sounds.size() > maxProbed) r.notes.add ("Looked inside the " + juce::String (maxProbed) + " smallest of " + juce::String (sounds.size()) + " sound libraries.");
         if (budget <= 0) r.notes.add ("Stopped reading sound libraries after 3 GB.");
-
-        for (auto& p : r.vstSounds)
-            if (p.example.offset >= 0)
-            {
-                auto name = p.example.plugin.isNotEmpty() ? p.example.plugin : juce::String ("Factory");
-                if (p.example.label.isNotEmpty()) name << " - " << p.example.label;
-                auto dest = paths::tempDir().getChildFile ("Drag Test").getChildFile (juce::File::createLegalFileName (name) + ".vstpreset");
-                if (extractEmbeddedPreset (p.file, p.example.offset, p.example.size, dest))
-                {
-                    r.factoryPreset = dest;
-                    r.factoryPresetLabel = name + "  (from " + p.file.getFileName() + ")";
-                }
-                break;
-            }
 
         // 6. databases (Arturia, Steinberg MediaBay, ...): also look for MediaBay in Cubase's settings
         report (0.9f, "Checking preset databases...");

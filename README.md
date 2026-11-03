@@ -6,7 +6,7 @@
 through the instruments and presets you already own, then suggests a complete sound palette: rhythm, bass,
 leads, pads and drums, each with alternatives, plus starter MIDI parts to get the song moving.
 
-> **Version 1.0.1.** New in 1.0.1: a **transport** on the Arrange page (to the start, rewind, play / stop, pause, fast forward, to the end, and a bar ruler to click), and on the Song page **PLAY ALL** or a **play button on each card** for one part on its own. New in 1.0: **PLAY** your starter parts and **PLAY SONG** on the Arrange page (simple built-in sketch sounds; inside Cubase it follows the project's tempo and plays along with Cubase), and a **welcome screen**. Also: **the manual** inside the app (the **?** button or F1). **SEND TO GROOVE GRABBER** on the drum card (Groove Grabber builds kits
+> **Version 1.0.2.** New in 1.0.2: the setup check drops the old drag test and becomes "Something missing?" (the report to send when a sound you own doesn't show up). New in 1.0.1: a **transport** on the Arrange page (to the start, rewind, play / stop, pause, fast forward, to the end, and a bar ruler to click), and on the Song page **PLAY ALL** or a **play button on each card** for one part on its own. New in 1.0: **PLAY** your starter parts and **PLAY SONG** on the Arrange page (simple built-in sketch sounds; inside Cubase it follows the project's tempo and plays along with Cubase), and a **welcome screen**. Also: **the manual** inside the app (the **?** button or F1). **SEND TO GROOVE GRABBER** on the drum card (Groove Grabber builds kits
 > for your song, tuned to its key, and the kit you save there lands on the drum card by itself), the **ARRANGE** page (your song's shape, which parts play where, and the
 > whole song dragged into your DAW with a marker per section), **starter MIDI parts** (drag a card's part, or all of them, into your
 > DAW, in your key and tempo), the **MASTERCLASS** page (learn any genre or style: its sounds, drums, bass, chords in
@@ -35,14 +35,12 @@ leads, pads and drums, each with alternatives, plus starter MIDI parts to get th
    isn't signed yet: click **More info > Run anyway**.)
 2. Open **Song Savant** from the Start menu. The welcome screen and the manual (the **?** button) take it from there.
 
-## The setup check (the first build's test)
+## The setup check (when a sound you own doesn't show up)
 
 1. In Song Savant, click the clipboard icon in the header.
 2. Click **SCAN MY SETUP**. It only reads; it never changes or moves your files. It takes a minute or two.
-3. Try the **drag tests** with a Cubase project open: drag each card **from Song Savant into Cubase** (onto the
-   empty area under your tracks), then click *Worked* or *Didn't work* for each. You can also drag things from
-   Cubase onto Song Savant: it notes what arrives.
-4. The report is saved by itself as `Documents/Song Savant/Setup Report.txt` (**OPEN REPORT**, **SHOW FILE**). Send that file back.
+3. **Something missing?** The report is saved by itself as `Documents/Song Savant/Setup Report.txt` (**OPEN REPORT**,
+   **SHOW FILE**, **COPY TEXT**). Send it along when you ask for help. The page lists a few things to try first.
 
 ## Building
 

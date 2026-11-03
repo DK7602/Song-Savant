@@ -48,12 +48,6 @@ namespace ss
         std::vector<std::pair<juce::String, int>> cubasePluginListKeys;   // name="..." values used in it
         SiblingApps siblings;
         juce::StringArray notes;                     // limits hit, things skipped
-
-        // for the drag tests
-        juce::File userPreset;                       // a .vstpreset file found on disk (instrument preferred)
-        juce::String userPresetLabel;
-        juce::File factoryPreset;                    // a preset copied out of a .vstsound library
-        juce::String factoryPresetLabel;
     };
 
     using ScanProgress = std::function<void (float fraction, const juce::String& stage)>;

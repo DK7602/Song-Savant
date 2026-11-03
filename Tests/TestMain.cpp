@@ -140,7 +140,6 @@ namespace
         check (r.presets.readable == 2 && r.presets.withTags == 1, "2 readable, 1 with tags");
         check (r.presets.byPlugin["HALion Sonic"] == 1 && r.presets.byPlugin["Retrologue"] == 1, "presets by plug-in (tags, then folder)");
         check (r.presets.categories["Piano"] == 1, "category from tags");
-        check (r.userPreset == fc.halionPreset, "drag test prefers the HALion Sonic preset");
         check (ss::describeDroppedFile (fc.halionPreset).contains ("VST3 preset for HALion Sonic, tags: Piano / Piano|A. Piano"), "dropped preset described");
 
         // VST Sound
@@ -158,9 +157,19 @@ namespace
             check (p.headerText.startsWith ("VSTSOUND"), "header shown");
             check (p.textAtStart.contains ("/.AppData/Steinberg/HALion Sonic/Factory Presets/Pianos/Bright Grand.vstpreset"), "readable text near the start");
         }
-        check (r.factoryPreset.existsAsFile(), "a factory preset was copied out for the drag test");
-        auto fp = ss::readVstPreset (r.factoryPreset);
-        check (fp.valid && fp.attributes["MusicalCategory"] == "Synth Pad", "the copied preset is a valid preset with its tags");
+        // a preset inside a library can be copied out as its own .vstpreset file (the scan itself no longer does: that
+        // was for the drag test, gone in 1.0.2)
+        bool copied = false;
+        if (lib != nullptr && lib->example.offset >= 0)
+        {
+            const auto dest = ss::paths::tempDir().getChildFile ("tests/copied out.vstpreset");
+            if (ss::extractEmbeddedPreset (lib->file, lib->example.offset, lib->example.size, dest))
+            {
+                const auto fp = ss::readVstPreset (dest);
+                copied = fp.valid && fp.attributes["MusicalCategory"] == "Synth Pad";
+            }
+        }
+        check (copied, "a preset inside a sound library can be copied out, with its tags");
 
         // databases
         const ss::SqliteProbeResult* arturia = nullptr;
@@ -251,14 +260,10 @@ namespace
         for (auto& it : items) if (it.status > 0) ++ok;
         check (ok >= 8, "most rows found something, got " + juce::String (ok));
 
-        ss::DragTests drag;
-        drag.userPreset = 1;
-        drag.midiClip = -1;
-        const auto text = ss::buildReport (r, fc.loc, drag);
+        const auto text = ss::buildReport (r, fc.loc);
         check (text.startsWith ("SONG SAVANT - SETUP REPORT"), "title");
         check (text.contains ("[OK]  Plug-ins: 11 VST3 plug-ins, 6 of them instruments"), "plug-in summary line");
-        check (text.contains ("Preset file -> Cubase:           WORKED"), "drag test answers");
-        check (text.contains ("MIDI clip -> Cubase:             DIDN'T WORK"), "drag test answers (2)");
+        check (! text.containsIgnoreCase ("drag test") && ! text.contains ("-> Cubase"), "no drag test in the report (gone in 1.0.2)");
         check (text.contains ("table Preset_Id (9 rows)"), "database tables listed");
         check (text.contains ("~"), "paths shortened with ~");
         check (! text.contains (fc.loc.home.getFullPathName()), "the user's home folder is never written out");
@@ -267,7 +272,6 @@ namespace
         check (fc.loc.tidy ("url=file://46" + h.replaceCharacter ('\\', '/') + "/Documents/x") == "url=file://46~/Documents/x", "home folder hidden in file:// links");
         check (fc.loc.tidy ("p=" + h.replaceCharacter ('/', '\\') + "\\Documents") == "p=~\\Documents", "home folder hidden with either slash");
         check (text.contains ("Back Roads  |  A Minor  |  92 BPM"), "Key Compass song listed");
-        check (text.contains ("Cubase -> Song Savant:           nothing dropped"), "nothing dragged from Cubase yet");
         check (text.contains ("type from Cubase's list"), "where a plug-in's type came from");
         check (text.contains ("recognised as: Steinberg MediaBay") && text.contains ("recognised as: Arturia presets"), "recognised databases");
         bool mediaBayRow = false, arturiaRow = false;
@@ -278,9 +282,6 @@ namespace
         }
         check (mediaBayRow, "summary: MediaBay (not the decoy database)");
         check (arturiaRow, "summary: Arturia");
-
-        drag.fromDaw.add ("Piano.mid: MIDI file");
-        check (ss::buildReport (r, fc.loc, drag).contains ("Cubase -> Song Savant:           1 dropped\n  Piano.mid: MIDI file"), "things dragged from Cubase are listed");
     }
 
     void testCatalog (const sstest::FakeComputer& fc)
@@ -1796,7 +1797,6 @@ namespace
             if (withResult)
             {
                 proc.scan.setResult (r, fc.loc);
-                proc.dragTests.userPreset = 1;
             }
             if (name.startsWith ("welcome")) ss::ui::writeFlag (ss::ui::WelcomePanel::seenKey, false);   // as on the first run
             std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
@@ -2052,7 +2052,7 @@ int main (int argc, char** argv)
         std::cout << "  took " << real.seconds << " s" << std::endl;
         for (auto& it : ss::summarise (real))
             std::cout << "  " << it.title << ": " << it.detail << std::endl;
-        check (ss::buildReport (real, loc, {}).isNotEmpty(), "report for this computer");
+        check (ss::buildReport (real, loc).isNotEmpty(), "report for this computer");
     }
 
     std::cout << "\n" << checks << " checks, " << failures << " failed" << std::endl;

@@ -329,8 +329,8 @@ When the drum card's sound has a drum map with the same name, its starter drum p
 The clipboard icon in the header opens the setup check: a one-off look at what's on this computer. You don't need it to use Song Savant, but it helps when something isn't found.
 
 - **SCAN MY SETUP** looks at your plug-ins, preset files, sound libraries and preset databases. It only reads, and takes a minute or two. **STOP** stops it, and **ALSO LOOK IN A FOLDER...** adds a folder it should look in too.
-- **The drag test** checks what can be dragged between Song Savant and Cubase: drag each card into Cubase, then click **Worked** or **Didn't work**. Things dragged from Cubase onto the page are noted too.
-- **The report** is saved as Documents\Song Savant\Setup Report.txt after the scan and after each drag test. **OPEN REPORT**, **SHOW FILE** and **COPY TEXT** get it to you. It never contains your user name: your home folder shows as ~.
+- **Something missing?** If a sound or instrument you own doesn't show up in the LIBRARY or on the cards, the report shows what Song Savant could and couldn't read on this computer. It's saved as Documents\Song Savant\Setup Report.txt after every scan. **OPEN REPORT**, **SHOW FILE** and **COPY TEXT** get it to you: attach it (or paste it) when you ask for help. It never contains your user name: your home folder shows as ~.
+- **Try these first** (listed on the page): click REFRESH LIBRARY after installing something; open Cubase's MediaBay once so it lists new Steinberg libraries; instruments are found as VST3 plug-ins (one installed only as VST2 or AAX isn't listed); for sounds on another drive, ALSO LOOK IN A FOLDER... then SCAN AGAIN.
 
 ## Using Song Savant as a plug-in
 

@@ -75,22 +75,6 @@ namespace ss::ui
         bool dragging = false;
     };
 
-    // "Worked" / "Didn't work" for one drag test
-    class ResultPicker : public juce::Component
-    {
-    public:
-        ResultPicker();
-        void setValue (int v);   // 1 worked, -1 didn't, 0 not tried
-        int getValue() const     { return value; }
-        std::function<void (int)> onChange;
-        void resized() override;
-
-    private:
-        PillButton worked { "WORKED", PillButton::Style::subtle }, failed { "DIDN'T WORK", PillButton::Style::subtle };
-        int value = 0;
-        void refresh();
-    };
-
     // The scan summary: one row per thing we looked for
     class SummaryList : public juce::Component
     {

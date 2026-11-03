@@ -18,7 +18,6 @@ public:
 
     // the setup check
     ss::ScanJob scan;
-    ss::DragTests dragTests;
     juce::Array<juce::File> extraFolders;
     std::function<ss::SystemLocations()> locationProvider;   // the real computer, or a fake one in the tests
 
