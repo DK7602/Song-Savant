@@ -2533,6 +2533,17 @@ namespace
                 check (before && after, "the app's window: minimise, maximise (full screen) and close");
             }
             ed->setSize (w, h);
+            if (auto* e = dynamic_cast<SongSavantEditor*> (ed.get()))
+            {
+                if (name == "song-opening")
+                    check (std::abs (e->getZoom() - 1.0f) < 0.001f && e->getView().getWidth() == 1440 && e->getView().getHeight() == 920,
+                           "at the size it opens at (1440 x 920) nothing is zoomed");
+                if (name == "song-full")
+                    check (e->getZoom() > 1.2f && e->getView().getWidth() >= ss::ui::zoomBaseWidth && e->getView().getHeight() >= ss::ui::zoomBaseHeight
+                             && e->getView().getHeight() <= ss::ui::zoomBaseHeight + 1,
+                           "a maximised window (1920 x 1010) draws everything bigger (zoom " + juce::String (e->getZoom(), 2) + ", pages laid out at "
+                             + juce::String (e->getView().getWidth()) + " x " + juce::String (e->getView().getHeight()) + ")");
+            }
             if (name.startsWith ("welcome")) juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
             if (auto* e = dynamic_cast<SongSavantEditor*> (ed.get()))
             {
@@ -2965,6 +2976,10 @@ namespace
         shoot ("song-empty", false, 1240, 820, 0);
         shoot ("song", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("song-small", false, 1060, 780, 0, {}, "country");
+        shoot ("song-opening", false, 1440, 920, 0, {}, "modern west coast rap");
+        shoot ("song-full", false, 1920, 1010, 0, {}, "modern west coast rap");
+        shoot ("arrange-full", false, 1920, 1010, 5, {}, "modern west coast rap");
+        shoot ("piano-roll-full", false, 1920, 1010, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("library", false, 1240, 820, 1);
         shoot ("library-search", false, 1240, 820, 1, "warm pad");
         shoot ("library-small", false, 1060, 780, 1);

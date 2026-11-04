@@ -861,7 +861,7 @@ namespace ss::ui
             m.addItem (4, "Delete this section", n > 1);
         }
         juce::Component::SafePointer<ArrangePage> safe (this);
-        m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (area), [safe, s, inSong, fresh] (int r)
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this).withTargetScreenArea (area), [safe, s, inSong, fresh] (int r)
         {
             if (safe == nullptr || r <= 0) return;
             if (r >= 1000)

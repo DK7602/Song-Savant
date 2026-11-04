@@ -52,7 +52,7 @@ namespace ss::ui
         }
 
         if (down) r = r.translated (0.0f, 1.0f);
-        g.setFont (sans (juce::jmin (15.0f, r.getHeight() * 0.42f), true));
+        g.setFont (sans (textHeight > 0.0f ? textHeight : juce::jmin (15.0f, r.getHeight() * 0.42f), true));
         g.drawText (getButtonText(), r, juce::Justification::centred);
     }
 

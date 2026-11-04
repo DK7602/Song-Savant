@@ -14,6 +14,7 @@ namespace ss::ui
         PillButton (const juce::String& buttonText, Style);
         void paintButton (juce::Graphics&, bool over, bool down) override;
         Style style;
+        float textHeight = 0.0f;     // 0: from the button's height (a small button can ask for bigger words)
     };
 
     // The sun / moon button that switches between the light and dark themes

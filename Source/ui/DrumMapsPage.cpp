@@ -180,7 +180,7 @@ namespace ss::ui
             m.addItem (-1, "Tip: drag across pads (or shift-click another pad) to rename a whole range", false);
         }
         juce::Component::SafePointer<DrumMapsPage> safe (this);
-        m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (area).withMinimumWidth (240), [safe, first, last, range, pad] (int r)
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this).withTargetScreenArea (area).withMinimumWidth (240), [safe, first, last, range, pad] (int r)
         {
             if (safe == nullptr) return;
             if (r <= 0) { safe->pads.menuClosed(); return; }

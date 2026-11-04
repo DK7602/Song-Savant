@@ -546,6 +546,17 @@ Built in steps, each one a build the owner can try:
     Save Preset..., drop it here (where Cubase keeps presets), check the names; step 4 loads it in Cubase.
   - Palettes: a drum kit that names its own pads scores +3 more (`scoreSound`; WHY IT WORKS says "Cubase shows its pad
     names"), so Groove Agent and Groove Grabber kits come first; the others stay among the choices.
+- **Bigger words in a bigger window** *(1.8.0, with Groove Grabber 1.0.25; the owner asked that a full-screen window
+  make the words bigger, "the text needs to expand and shrink appropriately as the window is resized", November 2026)*.
+  - **The whole window zooms**: up to the size it opens at (1440 x 920) nothing changes; past it everything is drawn
+    bigger, the words, buttons and cards together (`ss::ui::zoomFor`: the smaller of width / 1440 and height / 820,
+    1 to 4). `SongSavantEditor::resized` lays the pages out at the window's size divided by the zoom (never under
+    1440 x 820, a size the pages already fit) and scales them up with a transform, so nothing has to be laid out twice
+    and nothing can overflow. A maximised window on a 1920 x 1080 screen draws about 23% bigger. Menus open at the
+    same zoom (they're given the component they belong to), and the piano roll's grid picture is made at the screen's
+    pixel size so it stays sharp. Groove Grabber does the same (its editor's `content`).
+  - **The SONG cards fill a tall card**: the card's words, tags (EDIT, MIDI, YOUR PART), heart, lock, play button and
+    arrows grow with the card's height, up to 1.35 times, instead of leaving empty space under the sound's name.
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is

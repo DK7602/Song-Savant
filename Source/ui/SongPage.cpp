@@ -79,18 +79,20 @@ namespace ss::ui
         if (slot == nullptr) return;
 
         auto in = r.reduced (12.0f, 10.0f);
+        // a taller card (a bigger window) has bigger words and tags, rather than empty space under the sound's name
+        const float u = juce::jlimit (1.0f, 1.35f, juce::jmin (in.getHeight() / 250.0f, in.getWidth() / 200.0f));
         g.setColour (p.text);
-        g.setFont (sans (14.5f, true));
-        auto title = in.removeFromTop (20.0f);
+        g.setFont (sans (14.5f * u, true));
+        auto title = in.removeFromTop (20.0f * u);
         g.drawText (slot->part.role.toUpperCase(), title, juce::Justification::centred, true);
         g.setColour (p.muted);
-        g.setFont (sans (11.5f));
-        g.drawFittedText (slot->part.hint, in.removeFromTop (30.0f).toNearestInt(), juce::Justification::centredTop, 2, 0.9f);
+        g.setFont (sans (11.5f * u));
+        g.drawFittedText (slot->part.hint, in.removeFromTop (30.0f * u).toNearestInt(), juce::Justification::centredTop, 2, 0.9f);
         if (slot->part.optional)
         {
             g.setColour (p.purple.brighter (0.4f));
-            g.setFont (sans (10.0f, true));
-            g.drawText ("EXTRA", r.reduced (8.0f).removeFromTop (12.0f), juce::Justification::topLeft);
+            g.setFont (sans (10.0f * u, true));
+            g.drawText ("EXTRA", r.reduced (8.0f).removeFromTop (12.0f * u), juce::Justification::topLeft);
         }
 
         // the art: the kind of sound in its colour
@@ -104,24 +106,24 @@ namespace ss::ui
         if (partInfo.isNotEmpty())
         {
             // the starter part's tag: drag it into the DAW
-            midiArea = juce::Rectangle<float> (art.getX() + 6.0f, art.getBottom() - 24.0f, 54.0f, 18.0f);
+            midiArea = juce::Rectangle<float> (art.getX() + 6.0f, art.getBottom() - 6.0f - 18.0f * u, 54.0f * u, 18.0f * u);
             const bool hot = midiArea.contains (getMouseXYRelative().toFloat()) && isMouseOver (true);
             g.setColour ((hot ? p.gold : p.panel).withAlpha (hot ? 0.95f : 0.85f));
-            g.fillRoundedRectangle (midiArea, 9.0f);
+            g.fillRoundedRectangle (midiArea, 9.0f * u);
             g.setColour (hot ? p.goldText : p.gold);
-            g.drawRoundedRectangle (midiArea.reduced (0.5f), 9.0f, 1.0f);
-            g.setFont (sans (10.5f, true));
-            g.drawText ("MIDI", midiArea.withTrimmedLeft (8.0f), juce::Justification::centredLeft);
+            g.drawRoundedRectangle (midiArea.reduced (0.5f), 9.0f * u, 1.0f);
+            g.setFont (sans (10.5f * u, true));
+            g.drawText ("MIDI", midiArea.withTrimmedLeft (8.0f * u), juce::Justification::centredLeft);
             for (int row = 0; row < 3; ++row)
                 for (int col = 0; col < 2; ++col)
-                    g.fillEllipse (midiArea.getRight() - 15.0f + (float) col * 4.5f, midiArea.getY() + 4.5f + (float) row * 3.5f, 2.2f, 2.2f);
+                    g.fillEllipse (midiArea.getRight() + (-15.0f + (float) col * 4.5f) * u, midiArea.getY() + (4.5f + (float) row * 3.5f) * u, 2.2f * u, 2.2f * u);
         }
 
         playArea = {};
         if (partInfo.isNotEmpty())
         {
             // play just this part (a stop square while it plays on its own)
-            playArea = juce::Rectangle<float> (art.getRight() - 30.0f, art.getBottom() - 30.0f, 24.0f, 24.0f);
+            playArea = juce::Rectangle<float> (art.getRight() - 6.0f - 24.0f * u, art.getBottom() - 6.0f - 24.0f * u, 24.0f * u, 24.0f * u);
             const bool hot = playArea.contains (getMouseXYRelative().toFloat()) && isMouseOver (true);
             if (alone || hot)
             {
@@ -136,7 +138,7 @@ namespace ss::ui
                 g.setColour (p.gold);
                 g.drawEllipse (playArea.reduced (0.5f), 1.0f);
             }
-            const float is = 9.0f;
+            const float is = 9.0f * u;
             auto icon = juce::Rectangle<float> (is, is).withCentre (playArea.getCentre());
             TransportButton::drawIcon (g, TransportButton::Icon::play, alone, alone ? icon : icon.translated (1.0f, 0.0f));
         }
@@ -144,24 +146,24 @@ namespace ss::ui
         if (canEdit && partInfo.isNotEmpty())
         {
             // EDIT: the piano roll
-            editArea = juce::Rectangle<float> (art.getX() + 6.0f, art.getY() + 6.0f, 38.0f, 18.0f);   // top left: room on any card
+            editArea = juce::Rectangle<float> (art.getX() + 6.0f, art.getY() + 6.0f, 38.0f * u, 18.0f * u);   // top left: room on any card
             const bool hot = editArea.contains (getMouseXYRelative().toFloat()) && isMouseOver (true);
             g.setColour ((hot ? p.gold : p.panel).withAlpha (hot ? 0.95f : 0.85f));
-            g.fillRoundedRectangle (editArea, 9.0f);
+            g.fillRoundedRectangle (editArea, 9.0f * u);
             g.setColour (hot ? p.goldText : p.gold);
-            g.drawRoundedRectangle (editArea.reduced (0.5f), 9.0f, 1.0f);
-            g.setFont (sans (10.5f, true));
+            g.drawRoundedRectangle (editArea.reduced (0.5f), 9.0f * u, 1.0f);
+            g.setFont (sans (10.5f * u, true));
             g.drawText ("EDIT", editArea, juce::Justification::centred);
         }
         const float meterX = editArea.isEmpty() ? art.getX() + 9.0f : editArea.getRight() + 6.0f;
         if (mine)
         {
             // your own part (from the piano roll), under EDIT
-            auto tag = juce::Rectangle<float> (art.getX() + 6.0f, art.getY() + (editArea.isEmpty() ? 6.0f : 28.0f), 64.0f, 15.0f);
+            auto tag = juce::Rectangle<float> (art.getX() + 6.0f, editArea.isEmpty() ? art.getY() + 6.0f : editArea.getBottom() + 4.0f, 64.0f * u, 15.0f * u);
             g.setColour (p.purple.withAlpha (0.92f));
-            g.fillRoundedRectangle (tag, 7.5f);
+            g.fillRoundedRectangle (tag, 7.5f * u);
             g.setColour (juce::Colours::white);
-            g.setFont (sans (9.5f, true));
+            g.setFont (sans (9.5f * u, true));
             g.drawText ("YOUR PART", tag, juce::Justification::centred);
         }
         if (heard)
@@ -177,13 +179,13 @@ namespace ss::ui
             }
         }
 
-        lockArea = art.removeFromTop (30.0f).removeFromRight (30.0f).reduced (3.0f);
+        lockArea = art.removeFromTop (30.0f * u).removeFromRight (30.0f * u).reduced (3.0f * u);
         heartArea = {};
         if (sound != nullptr)
         {
             // the heart: one of your favorites (FAVS)
             heartArea = lockArea.translated (-lockArea.getWidth() + 2.0f, 0.0f);
-            auto hr = heartArea.reduced (5.5f, 6.5f);
+            auto hr = heartArea.reduced (5.5f * u, 6.5f * u);
             juce::Path heart;
             const float x = hr.getX(), y = hr.getY(), w = hr.getWidth(), h = hr.getHeight();
             heart.startNewSubPath (x + w * 0.5f, y + h);
@@ -204,7 +206,7 @@ namespace ss::ui
         if (slot->pick.isValid())
         {
             g.setColour (slot->locked ? p.gold : p.text.withAlpha (0.55f));
-            auto lk = lockArea.reduced (5.0f);
+            auto lk = lockArea.reduced (5.0f * u);
             juce::Path shackle;
             shackle.addCentredArc (lk.getCentreX(), lk.getY() + lk.getHeight() * 0.42f, lk.getWidth() * 0.3f, lk.getHeight() * 0.32f, 0.0f,
                                    -juce::MathConstants<float>::halfPi, juce::MathConstants<float>::halfPi, true);
@@ -212,42 +214,42 @@ namespace ss::ui
             g.fillRoundedRectangle (lk.withTrimmedTop (lk.getHeight() * 0.45f), 2.0f);
         }
 
-        in.removeFromTop (8.0f);
-        auto buttons = in.removeFromBottom (26.0f);
+        in.removeFromTop (8.0f * u);
+        auto buttons = in.removeFromBottom (26.0f * u);
         if (sound != nullptr)
         {
             g.setColour (p.text);
-            g.setFont (sans (14.5f, true));
-            g.drawFittedText (sound->name, in.removeFromTop (38.0f).toNearestInt(), juce::Justification::centred, 2, 0.85f);
+            g.setFont (sans (14.5f * u, true));
+            g.drawFittedText (sound->name, in.removeFromTop (38.0f * u).toNearestInt(), juce::Justification::centred, 2, 0.85f);
             g.setColour (p.gold);
-            g.setFont (sans (14.5f, true));
+            g.setFont (sans (14.5f * u, true));
             g.drawFittedText (sound->source == "Plug-in" ? juce::String ("Plug-in: pick inside") : sound->instrument,
-                              in.removeFromTop (21.0f).toNearestInt(), juce::Justification::centred, 1, 0.8f);
+                              in.removeFromTop (21.0f * u).toNearestInt(), juce::Justification::centred, 1, 0.8f);
         }
         else
         {
             g.setColour (p.dim);
-            g.setFont (sans (12.5f));
+            g.setFont (sans (12.5f * u));
             g.drawFittedText ("Nothing in your library fits this part yet", in.toNearestInt(), juce::Justification::centred, 3);
         }
 
         prevArea = nextArea = {};
         if (slot->numOptions() > 1)
         {
-            prevArea = buttons.removeFromLeft (26.0f);
-            nextArea = buttons.removeFromRight (26.0f);
+            prevArea = buttons.removeFromLeft (26.0f * u);
+            nextArea = buttons.removeFromRight (26.0f * u);
             for (auto [a, left] : { std::pair { prevArea, true }, std::pair { nextArea, false } })
             {
                 g.setColour (p.panelHi);
                 g.fillEllipse (a);
                 g.setColour (p.gold);
                 juce::Path arrow;
-                const float cx = a.getCentreX(), cy = a.getCentreY(), s = 4.5f;
+                const float cx = a.getCentreX(), cy = a.getCentreY(), s = 4.5f * u;
                 arrow.addTriangle (left ? cx + s * 0.6f : cx - s * 0.6f, cy - s, left ? cx + s * 0.6f : cx - s * 0.6f, cy + s, left ? cx - s * 0.8f : cx + s * 0.8f, cy);
                 g.fillPath (arrow);
             }
             g.setColour (p.dim);
-            g.setFont (sans (11.5f));
+            g.setFont (sans (11.5f * u));
             g.drawText (juce::String (slot->choice + 1) + " of " + juce::String (slot->numOptions()), buttons, juce::Justification::centred);
         }
     }
@@ -398,6 +400,7 @@ namespace ss::ui
         saveBtn.setTooltip ("Save the whole song (its sounds, arrangement, chords and notes) in FAVS, to open again later (Ctrl+S)");
         saveBtn.onClick = [this] { if (onSaveSong) onSaveSong(); };
         addAndMakeVisible (saveBtn);
+        notThereBtn.textHeight = 11.5f;     // (a small button: words you can read)
         notThereBtn.setTooltip ("This sound isn't in your library any more (Analog Lab dropped it, say): Song Savant won't suggest it again");
         notThereBtn.onClick = [this]
         {
@@ -1104,7 +1107,7 @@ namespace ss::ui
                 whyArea.removeFromBottom (6.0f);
             }
             // (at the end of the part's line, over the sound's name: where there's room)
-            notThereBtn.setBounds (whyArea.withHeight (22.0f).translated (0.0f, -3.0f).removeFromRight (juce::jmin (160.0f, whyArea.getWidth() * 0.5f)).toNearestInt());
+            notThereBtn.setBounds (whyArea.withHeight (24.0f).translated (0.0f, -4.0f).removeFromRight (juce::jmin (160.0f, whyArea.getWidth() * 0.5f)).toNearestInt());
             in.removeFromLeft (24.0f);
             auto mid = in.removeFromLeft (in.getWidth() * 0.5f);
             choicesTitle = mid.removeFromTop (18.0f);

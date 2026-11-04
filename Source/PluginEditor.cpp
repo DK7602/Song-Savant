@@ -10,7 +10,14 @@ SongSavantEditor::SongSavantEditor (SongSavantProcessor& p) : juce::AudioProcess
         p.startCatalog();
 }
 
-void SongSavantEditor::resized()   { view.setBounds (getLocalBounds()); }
+void SongSavantEditor::resized()
+{
+    // a window bigger than the one it opens at draws everything bigger (the words too): the pages are laid out at the
+    // window's size divided by the zoom, then drawn zoomed to fill it
+    const float zoom = ss::ui::zoomFor (getWidth(), getHeight());
+    view.setTransform (zoom > 1.0f ? juce::AffineTransform::scale (zoom) : juce::AffineTransform());
+    view.setBounds (0, 0, (int) std::ceil ((float) getWidth() / zoom), (int) std::ceil ((float) getHeight() / zoom));
+}
 
 void SongSavantEditor::parentHierarchyChanged()
 {

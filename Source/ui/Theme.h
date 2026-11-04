@@ -69,6 +69,12 @@ namespace ss::ui
                             int thumbStart, int thumbSize, bool over, bool down) override;
     };
 
+    // How much bigger to draw everything for a window of this size: 1 up to the size it opens at (1440 x 920), then
+    // growing with the window, so a big or maximised window has bigger words, buttons and cards. The pages are laid out
+    // at the window's size divided by this, never smaller than zoomBase (they fit down to 1060 x 780).
+    constexpr int zoomBaseWidth = 1440, zoomBaseHeight = 820;
+    float zoomFor (int width, int height);
+
     // Wrapped text; returns the height it used
     float drawParagraph (juce::Graphics&, const juce::String&, juce::Rectangle<float> area, const juce::Font&, juce::Colour);
     float paragraphHeight (const juce::String&, float width, const juce::Font&);

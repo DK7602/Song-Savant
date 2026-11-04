@@ -12,4 +12,9 @@
   `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build && ./build/SSTests_artefacts/Release/SSTests`
   Add `--shots DIR` (under `xvfb-run` on a headless machine) to render the screens to PNGs.
 - The owner is a musician, not a programmer: explain things in plain language, no jargon.
+- The window zooms (1.8.0): `SongSavantEditor::resized` lays `MainView` out at the window's size divided by
+  `ss::ui::zoomFor` (1 up to 1440 x 920, then the smaller of width / 1440 and height / 820) and scales it up, so a big
+  window has bigger words. Give popup menus their component (`withTargetComponent`) so they open at the same zoom, and
+  draw cached pictures at the graphics context's physical pixel scale (the piano roll's grid does). Groove Grabber does
+  the same.
 - Never commit anything read from the owner's computer (scan reports can contain their file names).

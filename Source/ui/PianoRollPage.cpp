@@ -149,8 +149,10 @@ namespace ss::ui
             const auto& p = pal();
             const auto* part = page.part();
             if (part == nullptr) return;
-            if (! bgValid) drawBackground();
-            g.drawImageAt (bg, (int) notes.getX(), (int) notes.getY());
+            // (the picture is made at the screen's pixel size, so it stays sharp in a zoomed window)
+            const float pixels = juce::jmax (1.0f, g.getInternalContext().getPhysicalPixelScaleFactor());
+            if (! bgValid || std::abs (pixels - bgScale) > 0.01f) drawBackground (pixels);
+            g.drawImageTransformed (bg, juce::AffineTransform::scale (1.0f / bgScale).translated (notes.getX(), notes.getY()));
 
             const double total = page.editor.visibleBars() * 4.0;
             const auto colour = kindColour (kindForPart (*part));
@@ -486,12 +488,14 @@ namespace ss::ui
         }
 
         // the rows (the key's notes brighter, the bar's chord gold) and the lines: drawn once per view
-        void drawBackground()
+        void drawBackground (float pixels)
         {
             const auto& p = pal();
             const int w = juce::jmax (1, (int) notes.getWidth()), h = juce::jmax (1, (int) notes.getHeight());
-            bg = juce::Image (juce::Image::ARGB, w, h, true);
+            bgScale = pixels;
+            bg = juce::Image (juce::Image::ARGB, juce::roundToInt ((float) w * pixels), juce::roundToInt ((float) h * pixels), true);
             juce::Graphics g (bg);
+            g.addTransform (juce::AffineTransform::scale (pixels));
             const bool light = isLightTheme();
             const auto keyRow = light ? juce::Colour (0xfff4efe4) : p.panelHi.withAlpha (0.75f);
             const auto otherRow = light ? juce::Colour (0xffe2dacb) : juce::Colour (0xff0d0a26);
@@ -683,6 +687,7 @@ namespace ss::ui
         int topRow = 12;
         bool drumRows = false;
         juce::Image bg;
+        float bgScale = 1.0f;
         bool bgValid = false;
         double playhead = -1.0;
         Drag drag = Drag::none;
@@ -1246,7 +1251,7 @@ namespace ss::ui
         m.addItem (9001, "Song Savant's chord here" + (songSavants.isNotEmpty() ? " (" + songSavants + ")" : juce::String()),
                    hasOwnChords (a, section) && songSavants != current);
         m.addItem (9002, "All of Song Savant's chords for the " + s.name, hasOwnChords (a, section));
-        m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (screenArea),
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this).withTargetScreenArea (screenArea),
                          [safe = juce::Component::SafePointer<PianoRollPage> (this), found, bar] (int r)
         {
             if (safe == nullptr || r <= 0) return;

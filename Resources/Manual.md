@@ -52,7 +52,7 @@ Every page sits under one header. Hover over almost anything to see a tip.
 | FAVS | Your favorites: your saved songs and the sounds you hearted |
 | LIBRARY | Every sound you own, in one searchable list |
 
-The version number sits under the tabs. The window can be resized from its bottom-right corner, and everything fits itself to the size. In the app, the **maximise** button (between minimise and close, at the top right) makes it fill the screen, and clicking it again puts it back; double-clicking the title bar does the same. (In your DAW, the plug-in's window belongs to the DAW: drag its corner to make it bigger.)
+The version number sits under the tabs. The window can be resized from its bottom-right corner, and everything fits itself to the size. Make it bigger than the size it opens at (or maximise it) and everything grows with it: the words, the buttons and the cards are easier to read on a big screen, and shrink back when you make the window smaller again. In the app, the **maximise** button (between minimise and close, at the top right) makes it fill the screen, and clicking it again puts it back; double-clicking the title bar does the same. (In your DAW, the plug-in's window belongs to the DAW: drag its corner to make it bigger.)
 
 ## SONG: describe your song
 

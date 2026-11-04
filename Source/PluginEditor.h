@@ -14,6 +14,7 @@ public:
     void paint (juce::Graphics&) override {}
 
     ss::ui::MainView& getView()   { return view; }
+    float getZoom() const         { return view.getTransform().getScaleFactor(); }
 
 private:
     ss::ui::MainView view;

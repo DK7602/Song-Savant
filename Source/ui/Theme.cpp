@@ -168,6 +168,11 @@ namespace ss::ui
         return s;
     }
 
+    float zoomFor (int width, int height)
+    {
+        return juce::jlimit (1.0f, 4.0f, juce::jmin ((float) width / (float) zoomBaseWidth, (float) height / (float) zoomBaseHeight));
+    }
+
     float paragraphHeight (const juce::String& text, float width, const juce::Font& f)
     {
         juce::TextLayout tl;
