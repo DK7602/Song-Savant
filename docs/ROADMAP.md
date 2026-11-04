@@ -527,6 +527,14 @@ Built in steps, each one a build the owner can try:
     (newest 200 kept), and BACKUPS brings one back as its own song. Opening clears ARRANGE's undo steps.
   - The header's note line ("Saved ...", "Opened ...") replaces the version for a few seconds. With six tabs, the tabs
     get a little tighter on a narrow window so the logo keeps its room.
+  - 1.6.1 (the owner: the logo should be as big as before, "Favs" to make room, and less space above and below the
+    header): the tab says **FAVS** (the page is still about your favorites), and the header is 106 px tall (was 124)
+    with the logo's height unchanged, so the pages get the room back. Also from the owner: the window opens at
+    1440 x 920, the same as Groove Grabber (was 1240 x 820); the instrument under each card's sound is as big and bold
+    as the sound's name (same gold); HOW TO LOAD IT keeps its buttons at the bottom of the panel with the steps above
+    them (smaller type, then cut at the last line that fits; the "Copied ..." note sits just above the buttons), so a
+    small window no longer runs the text under the buttons; and the palette bar shrinks to fit (NEW PALETTES and BLANK
+    SONG overlapped on a narrow window).
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is

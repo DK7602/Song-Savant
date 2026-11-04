@@ -70,7 +70,7 @@ namespace ss::ui
                    arrangeTab { "ARRANGE", PillButton::Style::subtle },
                    libraryTab { "LIBRARY", PillButton::Style::subtle },
                    masterclassTab { "MASTERCLASS", PillButton::Style::subtle },
-                   favoritesTab { "FAVORITES", PillButton::Style::subtle },
+                   favoritesTab { "FAVS", PillButton::Style::subtle },
                    drumMapsTab { "DRUM MAPS", PillButton::Style::subtle };
         SongPage songPage;
         LibraryPage libraryPage;

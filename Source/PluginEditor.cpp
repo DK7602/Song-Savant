@@ -5,7 +5,7 @@ SongSavantEditor::SongSavantEditor (SongSavantProcessor& p) : juce::AudioProcess
     addAndMakeVisible (view);
     setResizable (true, true);
     setResizeLimits (1060, 780, 3840, 2400);       // (room to fill a big screen when the app is maximised)
-    setSize (1240, 820);
+    setSize (1440, 920);                            // (the same as Groove Grabber)
     if (p.catalog.catalog() == nullptr && ! p.catalog.isBuilding())
         p.startCatalog();
 }

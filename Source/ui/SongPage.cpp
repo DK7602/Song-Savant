@@ -58,7 +58,7 @@ namespace ss::ui
         const auto tip = playArea.contains (e.position)
                            ? juce::String (alone ? "Stop" : "Hear just this part, looped. While it plays, click another card to hear that one.")
                        : heartArea.contains (e.position)
-                           ? juce::String (favorite ? "One of your favorites (FAVORITES): click to take it out" : "Keep this sound in your favorites (FAVORITES)")
+                           ? juce::String (favorite ? "One of your favorites (FAVS): click to take it out" : "Keep this sound in your favorites (FAVS)")
                            : partInfo.isNotEmpty() ? "Starter part: " + partInfo + ". Drag the MIDI tag into Cubase." : juce::String();
         if (tip != getTooltip()) setTooltip (tip);
         repaint();
@@ -181,7 +181,7 @@ namespace ss::ui
         heartArea = {};
         if (sound != nullptr)
         {
-            // the heart: one of your favorites (FAVORITES)
+            // the heart: one of your favorites (FAVS)
             heartArea = lockArea.translated (-lockArea.getWidth() + 2.0f, 0.0f);
             auto hr = heartArea.reduced (5.5f, 6.5f);
             juce::Path heart;
@@ -220,9 +220,9 @@ namespace ss::ui
             g.setFont (sans (14.5f, true));
             g.drawFittedText (sound->name, in.removeFromTop (38.0f).toNearestInt(), juce::Justification::centred, 2, 0.85f);
             g.setColour (p.gold);
-            g.setFont (sans (12.0f));
+            g.setFont (sans (14.5f, true));
             g.drawFittedText (sound->source == "Plug-in" ? juce::String ("Plug-in: pick inside") : sound->instrument,
-                              in.removeFromTop (18.0f).toNearestInt(), juce::Justification::centred, 1, 0.8f);
+                              in.removeFromTop (21.0f).toNearestInt(), juce::Justification::centred, 1, 0.8f);
         }
         else
         {
@@ -395,7 +395,7 @@ namespace ss::ui
             if (onBlankSong) onBlankSong();
         };
         addAndMakeVisible (blankBtn);
-        saveBtn.setTooltip ("Save the whole song (its sounds, arrangement, chords and notes) in FAVORITES, to open again later (Ctrl+S)");
+        saveBtn.setTooltip ("Save the whole song (its sounds, arrangement, chords and notes) in FAVS, to open again later (Ctrl+S)");
         saveBtn.onClick = [this] { if (onSaveSong) onSaveSong(); };
         addAndMakeVisible (saveBtn);
         notThereBtn.setTooltip ("This sound isn't in your library any more (Analog Lab dropped it, say): Song Savant won't suggest it again");
@@ -725,7 +725,7 @@ namespace ss::ui
         if (! slot.current().isValid()) return;
         const auto& snd = catalog->sounds[(size_t) slot.current().sound];
         const bool now = favorites::toggle (snd);
-        copiedNote = now ? "\"" + snd.name + "\" is in your favorites (FAVORITES)." : "\"" + snd.name + "\" is out of your favorites.";
+        copiedNote = now ? "\"" + snd.name + "\" is in your favorites (FAVS)." : "\"" + snd.name + "\" is out of your favorites.";
         refresh();
     }
 
@@ -980,20 +980,29 @@ namespace ss::ui
         g.setColour (p.muted);
         g.setFont (sans (12.0f, true));
         g.drawText ("HOW TO LOAD IT", how.removeFromTop (18.0f), juce::Justification::centredLeft);
+        // what just happened (copied, sent...) goes at the bottom of the steps, just above the buttons
+        if (copiedNote.isNotEmpty())
+        {
+            const auto f = sans (12.5f, true);
+            const float h = juce::jmin (how.getHeight() * 0.5f, paragraphHeight (copiedNote, how.getWidth(), f) + 2.0f);
+            auto noteArea = how.removeFromBottom (h);
+            how.removeFromBottom (4.0f);
+            juce::Graphics::ScopedSaveState clip (g);
+            g.reduceClipRegion (noteArea.toNearestInt());
+            drawParagraph (g, copiedNote, noteArea, f, p.good);
+        }
         if (snd != nullptr)
         {
-            // smaller type when it's long, so it never runs into the COPY NAME button
+            // smaller type when it's long, and never under the buttons (a small window cuts it at the last line that fits)
             const auto text = howToLoad (*snd);
             float size = 13.5f;
             while (size > 11.0f && paragraphHeight (text, how.getWidth(), sans (size)) > how.getHeight()) size -= 0.5f;
-            drawParagraph (g, text, how, sans (size), p.text);
-        }
-        if (copiedNote.isNotEmpty())
-        {
-            g.setColour (p.good);
-            g.setFont (sans (12.5f));
-            const auto row = sendBtn.isVisible() ? copyBtn.getBounds().getUnion (sendBtn.getBounds()) : copyBtn.getBounds();
-            g.drawFittedText (copiedNote, row.translated (0, row.getHeight() + 2).withHeight (32), juce::Justification::centredLeft, 2);
+            const auto f = sans (size);
+            const float lineH = f.getHeight() * 1.2f;
+            auto shown = how.withHeight (juce::jmax (lineH, std::floor (how.getHeight() / lineH) * lineH));
+            juce::Graphics::ScopedSaveState clip (g);
+            g.reduceClipRegion (shown.toNearestInt());
+            drawParagraph (g, text, shown, f, p.text);
         }
     }
 
@@ -1030,7 +1039,11 @@ namespace ss::ui
 
         // the palette bar
         auto bar = r.removeFromTop (44.0f);
-        const float k = bar.getWidth() < 1100.0f ? 0.88f : 1.0f;       // a narrow window: everything on the bar a little smaller
+        // a narrow window: everything on the bar a little smaller, so it all fits side by side
+        int numTabs = 0;
+        for (auto* t : tabs) if (t->isVisible()) ++numTabs;
+        const float wanted = (float) numTabs * 128.0f + 8.0f + 170.0f + 250.0f + 10.0f + 120.0f + 8.0f + 100.0f + 8.0f + 124.0f + 24.0f;
+        const float k = juce::jlimit (0.7f, 1.0f, bar.getWidth() / wanted);
         auto pills = bar.withSizeKeepingCentre (bar.getWidth(), 38.0f);
         for (auto* t : tabs) if (t->isVisible()) { t->setBounds (pills.removeFromLeft (120.0f * k).toNearestInt()); pills.removeFromLeft (8.0f); }
         pills.removeFromLeft (8.0f);
@@ -1071,8 +1084,9 @@ namespace ss::ui
             mid.removeFromTop (4.0f);
             choices.setBounds (mid.toNearestInt());
             in.removeFromLeft (24.0f);
-            howArea = in.withTrimmedBottom (96.0f);
-            auto buttons = in.removeFromBottom (80.0f).removeFromTop (44.0f);
+            auto buttons = in.removeFromBottom (44.0f);
+            in.removeFromBottom (8.0f);
+            howArea = in;
             if (sendBtn.isVisible())
             {
                 // the drums: COPY NAME and SEND TO GROOVE GRABBER side by side

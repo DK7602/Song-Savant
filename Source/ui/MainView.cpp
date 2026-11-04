@@ -28,7 +28,7 @@ namespace ss::ui
         arrangeTab.onClick = [this] { showPage (arrange); };
         drumMapsTab.onClick = [this] { showPage (drumMaps); };
         masterclassTab.onClick = [this] { showPage (masterclass); };
-        favoritesTab.setTooltip ("Your saved songs and favorite sounds");
+        favoritesTab.setTooltip ("Your favorites: your saved songs and the sounds you hearted");
         favoritesTab.onClick = [this] { showPage (favorites); };
         // another song opened from FAVORITES: every page shows it (ARRANGE's steps back belonged to the old one)
         favoritesPage.onOpened = [this]
@@ -150,7 +150,7 @@ namespace ss::ui
         bool over = false;
         const auto name = favoritesPage.saveSong (false, &over);
         if (name.isEmpty()) showNote ("Couldn't save the song");
-        else showNote (over ? "Saved your changes to \"" + name + "\"" : "Saved \"" + name + "\" in FAVORITES");
+        else showNote (over ? "Saved your changes to \"" + name + "\"" : "Saved \"" + name + "\" in FAVS");
         return name;
     }
 
@@ -259,7 +259,7 @@ namespace ss::ui
     void MainView::resized()
     {
         auto r = getLocalBounds();
-        auto header = r.removeFromTop (124).reduced (24, 16);
+        auto header = r.removeFromTop (106).reduced (24, 7);
         // each tab as wide as its name, right to left
         const bool narrow = getWidth() < 1320;           // (the logo keeps its room on a small window)
         const auto font = sans (narrow ? 13.0f : 14.0f, true);

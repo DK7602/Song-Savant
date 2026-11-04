@@ -215,7 +215,7 @@ namespace ss::ui
         favBtn.setEnabled (s != nullptr);
         favBtn.setButtonText (fav ? "IN FAVORITES" : "FAVORITE");
         favBtn.setToggleState (fav, juce::dontSendNotification);
-        favBtn.setTooltip (fav ? "One of your favorites (FAVORITES): click to take it out" : "Keep this sound in your favorites (FAVORITES)");
+        favBtn.setTooltip (fav ? "One of your favorites (FAVS): click to take it out" : "Keep this sound in your favorites (FAVS)");
         hideBtn.setButtonText (hid ? "SUGGEST IT AGAIN" : "NOT IN MY LIBRARY");
         hideBtn.setTooltip (hid ? "You said this sound isn't in your library: Song Savant will suggest it again"
                                 : "This sound isn't in your library any more (Analog Lab dropped it, say): Song Savant won't suggest it");
@@ -237,7 +237,7 @@ namespace ss::ui
         if (catalog == nullptr || row < 0 || row >= (int) rows.size()) return;
         const auto& s = catalog->sounds[(size_t) rows[(size_t) row]];
         const bool now = favorites::toggle (s);
-        copiedNote = now ? "\"" + s.name + "\" is in your favorites (FAVORITES)." : "\"" + s.name + "\" is out of your favorites.";
+        copiedNote = now ? "\"" + s.name + "\" is in your favorites (FAVS)." : "\"" + s.name + "\" is out of your favorites.";
         updateButtons();
         list.repaintRow (row);
         repaint();
