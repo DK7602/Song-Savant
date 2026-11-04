@@ -28,6 +28,7 @@
 #include "core/PatternEdit.h"
 #include "core/DrumLanes.h"
 #include "core/HiddenSounds.h"
+#include "core/Favorites.h"
 #include <map>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <algorithm>
@@ -1194,6 +1195,118 @@ namespace
                        "NOT IN MY LIBRARY: \"" + snd.name + "\" leaves the palettes, isn't suggested again, is remembered, and SUGGEST IT AGAIN brings it back");
             }
             check (ss::retiredArturiaPresets().contains ("Smoker"), "Analog Lab's Smoker (gone from Analog Lab V) is left out");
+        }
+    }
+
+    void testFavorites (const sstest::FakeComputer& fc)
+    {
+        section ("FAVORITES: your sounds and your saved songs");
+        namespace fav = ss::favorites;
+        namespace ms = ss::mysongs;
+        std::atomic<bool> cancel { false };
+        const auto cat = ss::buildCatalog (fc.loc, cancel);
+        fav::file().deleteFile();
+        fav::reloadForTests();
+
+        // hearts: in and out; kept on disk with what the sound is
+        const ss::Sound* bass = nullptr;
+        const ss::Sound* pad = nullptr;
+        for (auto& snd : cat.sounds)
+        {
+            if (bass == nullptr && snd.kind == ss::Kind::bass) bass = &snd;
+            if (pad == nullptr && snd.kind == ss::Kind::pad) pad = &snd;
+        }
+        if (bass != nullptr && pad != nullptr)
+        {
+            const bool inOut = ! fav::isFavorite (*bass) && fav::toggle (*bass) && fav::isFavorite (*bass) && ! fav::toggle (*bass) && ! fav::isFavorite (*bass);
+            fav::add (*pad);
+            fav::add (*bass);
+            fav::add (*bass);
+            fav::reloadForTests();
+            const auto list = fav::sounds();
+            check (inOut && list.size() == 2 && list[0].kind == ss::Kind::bass && list[0].name == bass->name && list[0].instrument == bass->instrument
+                   && list[1].name == pad->name && fav::file().existsAsFile(),
+                   "a heart: in, out, and in again; kept on disk by kind with the sound's name and instrument");
+            fav::remove (ss::soundKey (*pad));
+            check (fav::sounds().size() == 1 && ! fav::isFavorite (*pad), "REMOVE: out of your favorites");
+        }
+
+        // a saved song: everything about it comes back
+        ss::SongSession song;
+        song.form.description = "dark moody trap, 142 BPM in A minor";
+        song.find (cat);
+        const auto parts = ss::arrangementParts (*song.currentPalette(), &cat);
+        song.updateArrangement (parts);
+        const ss::ArrangementPart* bassPart = nullptr;
+        for (auto& p : parts) if (p.type == ss::PartType::bass) bassPart = &p;
+        ss::Pattern pat;
+        pat.bars = 8;
+        pat.notes = { { 0.0, 1.0, 45, 100 }, { 4.0, 1.0, 41, 90 } };
+        if (bassPart != nullptr) song.storePattern (1, *bassPart, pat);
+        ss::toggleArrangementCell (song.arrangement, 0, parts[0]);
+        song.palettes[0].slots[1].cycle (1);                  // another bass sound
+        song.palettes[0].slots[1].locked = true;
+        song.palettes[0].slots[1].keepKey = ss::soundKey (cat.sounds[(size_t) song.palettes[0].slots[1].current().sound]);
+        const int chosenBass = song.palettes[0].slots[1].current().sound;
+
+        for (auto& f : ms::folder().findChildFiles (juce::File::findFiles, false, "*.songsavant")) f.deleteFile();
+        ms::backupFolder().deleteRecursively();
+        check (ms::suggestedName (song) == "Dark moody trap", "a new song's name: the description's first words (" + ms::suggestedName (song) + ")");
+        song.savedAs = "Back Roads";
+        const auto file = ms::save (song, "Back Roads");
+        const auto listed = ms::list();
+        check (file.existsAsFile() && listed.size() == 1 && listed[0].name == "Back Roads" && listed[0].style.contains ("Trap") && listed[0].key == 21
+               && std::abs (listed[0].bpm - 142.0) < 0.01 && listed[0].sections == 7 && listed[0].bars == 72 && ! listed[0].blank,
+               "SAVE SONG: a file in My Songs, with its style, key, tempo and size");
+        ss::SongSession back;
+        if (auto x = ms::load (file)) back.fromXml (*x);
+        back.restore (cat);
+        check (back.form.description == song.form.description && back.arrangement.sections.size() == 7 && back.savedAs == "Back Roads"
+               && (bassPart == nullptr || back.isMine (1, bassPart->role))
+               && back.arrangement.sections[0].modeFor (parts[0].role) == song.arrangement.sections[0].modeFor (parts[0].role)
+               && ! back.palettes.empty() && back.palettes[0].slots[1].current().sound == chosenBass && back.palettes[0].slots[1].locked,
+               "OPEN: the description, the map, your notes and the sounds you picked all come back");
+
+        // saved over: a copy of the old one first; names; rename; delete; bring back
+        song.form.description = "dark moody trap, 140 BPM in A minor";
+        const auto again = ms::save (song, "Back Roads");
+        check (again == file && ms::list().size() == 1 && ms::backups().size() == 1 && ms::backups()[0].why == "before saving over"
+               && ms::freeName ("Back Roads") == "Back Roads 2" && ms::freeName ("Something New") == "Something New",
+               "saving over a song keeps a copy of the old one in Backups; a new song gets a name of its own");
+        ms::save (song, "Second");
+        const auto renamed = ms::rename (file, "Night Drive");
+        const auto clash = ms::rename (renamed, "Second");
+        bool savedAsFollows = false;
+        if (auto x = ms::load (renamed)) savedAsFollows = x->getStringAttribute ("savedAs") == "Night Drive";
+        check (renamed.existsAsFile() && ! file.existsAsFile() && ms::find ("Night Drive").has_value() && ! ms::find ("Back Roads").has_value()
+               && clash == juce::File() && savedAsFollows, "RENAME: a new name (not one another song has)");
+        const auto backupsBefore = ms::backups().size();
+        check (ms::remove (renamed) && ! renamed.exists() && ms::backups().size() == backupsBefore + 1 && ms::backups()[0].why == "deleted"
+               && ms::list().size() == 1, "DELETE: gone from My Songs, a copy in Backups");
+        const auto restored = ms::restore (ms::backups()[0]);
+        check (restored.existsAsFile() && ms::find ("Night Drive (restored)").has_value() && ms::list().size() == 2, "BACKUPS: a song back, as its own");
+
+        // USE IT: a favorite on a card, locked; it stays there when the song is saved and opened again
+        if (pad != nullptr)
+        {
+            const int padIdx = ss::findSoundByKey (cat, ss::soundKey (*pad));
+            ss::SongSession s2;
+            s2.form.description = "dark moody trap, 142 BPM in A minor";
+            s2.find (cat);
+            juce::String role;
+            for (auto& sl : s2.palettes[0].slots) if (sl.part.role.containsIgnoreCase ("Pad")) role = sl.part.role;
+            if (role.isEmpty()) role = s2.palettes[0].slots.back().part.role;
+            const bool put = s2.putSound (cat, padIdx, role);
+            const ss::PaletteSlot* slot = nullptr;
+            for (auto& sl : s2.palettes[0].slots) if (sl.part.role == role) slot = &sl;
+            ss::SongSession s3;
+            s3.fromXml (*s2.toXml());
+            s3.restore (cat);
+            const ss::PaletteSlot* slot3 = nullptr;
+            for (auto& sl : s3.palettes[0].slots) if (sl.part.role == role) slot3 = &sl;
+            check (put && slot != nullptr && slot->current().sound == padIdx && slot->locked && slot3 != nullptr && slot3->current().sound == padIdx
+                   && ! s2.putSound (cat, padIdx, "No Such Card"),
+                   "USE IT: a favorite on a card, locked, and still there after saving and opening");
         }
     }
 
@@ -2621,6 +2734,37 @@ namespace
                         check (blank && shaped && emptyGrid && ownChords && wrote,
                                "BLANK SONG: one empty section; sections added; an empty grid; your own chords (Dm, Bb) and notes; the bass comes in");
                     }
+                    if (name.startsWith ("favorites"))
+                    {
+                        // hearts on the SONG page and the LIBRARY page; SAVE SONG; a change, SAVE AS NEW; OPEN; USE IT
+                        auto& v = e->getView();
+                        auto& fp = v.getFavorites();
+                        const int songsBefore = (int) ss::mysongs::list().size();
+                        v.getSong().toggleFavorite (1);
+                        v.getSong().toggleFavorite (4);
+                        v.getLibrary().toggleFavorite (0);
+                        const auto savedName = v.saveSong();
+                        const bool saved = savedName.isNotEmpty() && proc.song.savedAs == savedName && fp.currentIsSaved()
+                                           && (int) ss::mysongs::list().size() == songsBefore + 1 && v.getNote().contains (savedName);
+                        proc.song.form.description << ", warm";        // a change since it was saved
+                        const bool changed = ! fp.currentIsSaved();
+                        const auto copy = fp.saveSong (true);
+                        fp.refreshLists();
+                        const bool asNew = copy.isNotEmpty() && copy != savedName && fp.numSongs() == songsBefore + 2;
+                        bool opened = false;
+                        if (auto first = ss::mysongs::find (savedName)) opened = fp.openSong (first->file, true) && proc.song.savedAs == savedName && v.getSong().isVisible()
+                                                                                 && ! proc.song.form.description.endsWith ("warm");
+                        v.showPage (6);
+                        fp.refreshLists();
+                        fp.selectSound (0);
+                        const auto role = proc.song.currentPalette() != nullptr ? proc.song.currentPalette()->slots[1].part.role : juce::String();
+                        const bool used = fp.numSounds() >= 2 && fp.useSelectedSound (role) && proc.song.currentPalette()->slots[1].locked;
+                        v.showPage (6);
+                        fp.selectSong (0);
+                        check (saved && changed && asNew && opened && used,
+                               "FAVORITES: hearts, SAVE SONG, SAVE AS NEW, OPEN and USE IT (" + juce::String ((int) saved) + juce::String ((int) changed)
+                               + juce::String ((int) asNew) + juce::String ((int) opened) + juce::String ((int) used) + ")");
+                    }
                     if (name == "arrange-scrolled")
                     {
                         auto& ar = e->getView().getArrange();
@@ -2777,6 +2921,8 @@ namespace
         shoot ("arrange-playing", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
         shoot ("arrange-moving", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
         shoot ("arrange-blank", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
+        shoot ("favorites", false, 1240, 820, 6, {}, "dark moody trap, 142 BPM in A minor");
+        shoot ("favorites-small", false, 1060, 780, 6, {}, "warm modern country, 96 BPM in G major");
         shoot ("piano-roll", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-small", false, 1060, 780, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-tools", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
@@ -2808,6 +2954,7 @@ namespace
         shoot ("drum-maps-kit-light", false, 1240, 820, 3);
         shoot ("masterclass-light", false, 1240, 820, 4, {}, "modern country like Morgan Wallen in G");
         shoot ("arrange-light", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
+        shoot ("favorites-light", false, 1240, 820, 6, {}, "big arena rock, 128 BPM in E minor");
         shoot ("piano-roll-light", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         ss::ui::setLightTheme (false);
         check (! ss::ui::isLightTheme(), "back to dark");
@@ -2845,6 +2992,7 @@ int main (int argc, char** argv)
     testStyleGuide();
     testStarterParts();
     testArrangement (fc);
+    testFavorites (fc);
     testGrooveGrabberLink (fc);
     testSketch();
     testTransport();

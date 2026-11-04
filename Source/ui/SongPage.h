@@ -12,7 +12,7 @@ namespace ss::ui
     class PartCard : public juce::Component, public juce::SettableTooltipClient, public juce::FileDragAndDropTarget
     {
     public:
-        std::function<void()> onSelect, onPrev, onNext, onLock, onDragPart, onPlayPart, onEdit;
+        std::function<void()> onSelect, onPrev, onNext, onLock, onDragPart, onPlayPart, onEdit, onHeart;
         std::function<void (const juce::File&)> onDropFile;   // a MIDI pattern dropped on the card: the piano roll
         bool isInterestedInFileDrag (const juce::StringArray&) override;
         void fileDragEnter (const juce::StringArray&, int, int) override   { dropHover = true; repaint(); }
@@ -23,6 +23,7 @@ namespace ss::ui
         void setPlaying (bool heard, bool alone);
         // EDIT (the piano roll) for the parts it can edit; `mine`: the part is your own (YOUR PART on the card)
         void setEditing (bool canEdit, bool mine);
+        void setFavorite (bool f)                   { if (favorite != f) { favorite = f; repaint(); } }   // the heart, filled
         bool isHeard() const                        { return heard; }
         void paint (juce::Graphics&) override;
         void mouseDown (const juce::MouseEvent&) override;
@@ -34,9 +35,10 @@ namespace ss::ui
     private:
         const PaletteSlot* slot = nullptr;
         const Sound* sound = nullptr;
-        bool isSelected = false, pressedOnMidi = false, dragging = false, heard = false, alone = false, canEdit = false, mine = false, dropHover = false;
+        bool isSelected = false, pressedOnMidi = false, dragging = false, heard = false, alone = false, canEdit = false, mine = false, dropHover = false,
+             favorite = false;
         juce::String partInfo;                      // the starter part, when the card has one
-        juce::Rectangle<float> prevArea, nextArea, lockArea, midiArea, playArea, editArea;
+        juce::Rectangle<float> prevArea, nextArea, lockArea, heartArea, midiArea, playArea, editArea;
     };
 
     // The other sounds a part could use: click one to switch
@@ -78,6 +80,9 @@ namespace ss::ui
         void showForm();                              // shows the song's form again (after the Masterclass changed it)
         std::function<void (const juce::String& role)> onEditPart;   // a card's EDIT: the piano roll
         std::function<void()> onBlankSong;           // BLANK SONG: ARRANGE, with an empty map to fill yourself
+        std::function<void()> onSaveSong;            // SAVE SONG: the whole song kept in FAVORITES
+        void selectRole (const juce::String& role);  // that card selected (USE IT on FAVORITES put a sound on it)
+        void toggleFavorite (int card);              // a card's heart (also the tests)
         void hideSelected();                         // NOT IN MY LIBRARY (also the tests): never suggested again
         std::function<void (const juce::String& role, const juce::File&)> onDropPart;   // a MIDI pattern dropped on a card
         void visibilityChanged() override;
@@ -114,6 +119,7 @@ namespace ss::ui
                    playBtn { "PLAY ALL", PillButton::Style::outline },
                    sendBtn { "SEND TO GROOVE GRABBER", PillButton::Style::outline },
                    blankBtn { "BLANK SONG", PillButton::Style::outline },
+                   saveBtn { "SAVE SONG", PillButton::Style::outline },
                    notThereBtn { "NOT IN MY LIBRARY?", PillButton::Style::subtle };
         DragChip allParts { "ALL PARTS", DragChip::Kind::midi };
         juce::OwnedArray<PillButton> tabs;

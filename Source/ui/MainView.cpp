@@ -3,12 +3,12 @@
 
 namespace ss::ui
 {
-    MainView::MainView (SongSavantProcessor& p) : proc (p), songPage (p), libraryPage (p), setupPage (p), drumMapsPage (p), masterclassPage (p), arrangePage (p), pianoRoll (p)
+    MainView::MainView (SongSavantProcessor& p) : proc (p), songPage (p), libraryPage (p), setupPage (p), drumMapsPage (p), masterclassPage (p), arrangePage (p), favoritesPage (p), pianoRoll (p)
     {
         setLookAndFeel (&lookAndFeel);
         owl = owlImage();
         wordmark = wordmarkImage();
-        for (auto* t : { &songTab, &arrangeTab, &masterclassTab, &libraryTab, &drumMapsTab })
+        for (auto* t : { &songTab, &arrangeTab, &masterclassTab, &favoritesTab, &libraryTab, &drumMapsTab })
         {
             t->setRadioGroupId (1);
             t->setComponentID ("tab");
@@ -28,6 +28,22 @@ namespace ss::ui
         arrangeTab.onClick = [this] { showPage (arrange); };
         drumMapsTab.onClick = [this] { showPage (drumMaps); };
         masterclassTab.onClick = [this] { showPage (masterclass); };
+        favoritesTab.setTooltip ("Your saved songs and favorite sounds");
+        favoritesTab.onClick = [this] { showPage (favorites); };
+        // another song opened from FAVORITES: every page shows it (ARRANGE's steps back belonged to the old one)
+        favoritesPage.onOpened = [this]
+        {
+            songPage.showForm();
+            arrangePage.forgetUndo();
+            showPage (song);
+            showNote ("Opened \"" + proc.song.savedAs + "\"");
+        };
+        favoritesPage.onUsedSound = [this] (const juce::String& role)
+        {
+            showPage (song);
+            songPage.selectRole (role);
+        };
+        songPage.onSaveSong = [this] { saveSong(); };
         masterclassPage.onUseForSong = [this] { songPage.showForm(); showPage (song); };
         addChildComponent (songPage);
         addChildComponent (libraryPage);
@@ -35,6 +51,7 @@ namespace ss::ui
         addChildComponent (drumMapsPage);
         addChildComponent (masterclassPage);
         addChildComponent (arrangePage);
+        addChildComponent (favoritesPage);
         addChildComponent (pianoRoll);
         pianoRoll.onDone = [this] { showPage (page); };
         songPage.onEditPart = [this] (const juce::String& role) { showPianoRoll (role, -1); };
@@ -118,7 +135,37 @@ namespace ss::ui
             else showHelp();
             return true;
         }
+        // Ctrl+S on any page: the song saved in FAVORITES
+        if (k.getModifiers().isCommandDown() && ! k.getModifiers().isShiftDown()
+            && (k.getKeyCode() == 'S' || k.getKeyCode() == 's' || juce::CharacterFunctions::toLowerCase (k.getTextCharacter()) == 's'))
+        {
+            saveSong();
+            return true;
+        }
         return false;
+    }
+
+    juce::String MainView::saveSong()
+    {
+        bool over = false;
+        const auto name = favoritesPage.saveSong (false, &over);
+        if (name.isEmpty()) showNote ("Couldn't save the song");
+        else showNote (over ? "Saved your changes to \"" + name + "\"" : "Saved \"" + name + "\" in FAVORITES");
+        return name;
+    }
+
+    void MainView::showNote (const juce::String& text)
+    {
+        note = text;
+        startTimer (3500);
+        repaint();
+    }
+
+    void MainView::timerCallback()
+    {
+        stopTimer();
+        note.clear();
+        repaint();
     }
 
     void MainView::applyTheme()
@@ -133,6 +180,7 @@ namespace ss::ui
         drumMapsPage.themeChanged();
         masterclassPage.themeChanged();
         arrangePage.themeChanged();
+        favoritesPage.themeChanged();
         help.themeChanged();
         repaint();
     }
@@ -150,7 +198,7 @@ namespace ss::ui
 
     void MainView::showPage (int which)
     {
-        page = juce::jlimit ((int) song, (int) arrange, which);
+        page = juce::jlimit ((int) song, (int) favorites, which);
         proc.page = page;
         songPage.setVisible (page == song);
         libraryPage.setVisible (page == library);
@@ -158,6 +206,7 @@ namespace ss::ui
         drumMapsPage.setVisible (page == drumMaps);
         masterclassPage.setVisible (page == masterclass);
         arrangePage.setVisible (page == arrange);
+        favoritesPage.setVisible (page == favorites);
         pianoRoll.setVisible (false);
         songTab.setToggleState (page == song, juce::dontSendNotification);
         libraryTab.setToggleState (page == library, juce::dontSendNotification);
@@ -165,6 +214,7 @@ namespace ss::ui
         arrangeTab.setToggleState (page == arrange, juce::dontSendNotification);
         drumMapsTab.setToggleState (page == drumMaps, juce::dontSendNotification);
         masterclassTab.setToggleState (page == masterclass, juce::dontSendNotification);
+        favoritesTab.setToggleState (page == favorites, juce::dontSendNotification);
         repaint();
     }
 
@@ -200,9 +250,10 @@ namespace ss::ui
             g.drawImage (wordmark, wordRect, juce::RectanglePlacement::stretchToFit);
             logoArea = owlRect.getUnion (wordRect).getIntersection (h.expanded (0.0f, 8.0f));
         }
-        g.setColour (p.muted);
-        g.setFont (sans (13.0f));
-        g.drawText ("version " SS_VERSION, subtitleArea, juce::Justification::centredRight);
+        g.setColour (note.isNotEmpty() ? p.good : p.muted);
+        g.setFont (sans (13.0f, note.isNotEmpty()));
+        g.drawText (note.isNotEmpty() ? note : juce::String ("version " SS_VERSION), subtitleArea.withLeft (subtitleArea.getRight() - 560.0f),
+                    juce::Justification::centredRight, true);
     }
 
     void MainView::resized()
@@ -210,13 +261,15 @@ namespace ss::ui
         auto r = getLocalBounds();
         auto header = r.removeFromTop (124).reduced (24, 16);
         // each tab as wide as its name, right to left
-        const auto font = sans (14.0f, true);
-        auto tabWidth = [&font] (PillButton& b) { return (int) juce::GlyphArrangement::getStringWidth (font, b.getButtonText()) + 40; };
-        const int gapW = 8;
+        const bool narrow = getWidth() < 1320;           // (the logo keeps its room on a small window)
+        const auto font = sans (narrow ? 13.0f : 14.0f, true);
+        const int pad = narrow ? 26 : 40;
+        auto tabWidth = [&font, pad] (PillButton& b) { return (int) juce::GlyphArrangement::getStringWidth (font, b.getButtonText()) + pad; };
+        const int gapW = narrow ? 6 : 8;
         int total = 40 + 8 + 40 + 8 + 40 + 12;
-        for (auto* t : { &songTab, &arrangeTab, &masterclassTab, &libraryTab, &drumMapsTab }) total += tabWidth (*t) + gapW;
+        for (auto* t : { &songTab, &arrangeTab, &masterclassTab, &favoritesTab, &libraryTab, &drumMapsTab }) total += tabWidth (*t) + gapW;
         auto tabs = header.removeFromRight (total).withSizeKeepingCentre (total, 40).translated (0, -8);
-        for (auto* t : { &drumMapsTab, &libraryTab, &masterclassTab, &arrangeTab, &songTab })
+        for (auto* t : { &drumMapsTab, &libraryTab, &favoritesTab, &masterclassTab, &arrangeTab, &songTab })
         {
             t->setBounds (tabs.removeFromRight (tabWidth (*t)));
             tabs.removeFromRight (gapW);
@@ -235,6 +288,7 @@ namespace ss::ui
         drumMapsPage.setBounds (r);
         masterclassPage.setBounds (r);
         arrangePage.setBounds (r);
+        favoritesPage.setBounds (r);
         pianoRoll.setBounds (r);
         help.setBounds (getLocalBounds());
         welcome.setBounds (getLocalBounds());

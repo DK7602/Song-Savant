@@ -7,6 +7,7 @@
 #include "DrumMapsPage.h"
 #include "MasterclassPage.h"
 #include "ArrangePage.h"
+#include "FavoritesPage.h"
 #include "PianoRollPage.h"
 #include "HelpPanel.h"
 #include "WelcomePanel.h"
@@ -15,10 +16,10 @@ class SongSavantProcessor;
 
 namespace ss::ui
 {
-    class MainView : public juce::Component, public juce::SettableTooltipClient, private juce::KeyListener
+    class MainView : public juce::Component, public juce::SettableTooltipClient, private juce::KeyListener, private juce::Timer
     {
     public:
-        enum Page { song = 0, library = 1, setupCheck = 2, drumMaps = 3, masterclass = 4, arrange = 5 };
+        enum Page { song = 0, library = 1, setupCheck = 2, drumMaps = 3, masterclass = 4, arrange = 5, favorites = 6 };
 
         explicit MainView (SongSavantProcessor&);
         ~MainView() override;
@@ -33,6 +34,10 @@ namespace ss::ui
         DrumMapsPage& getDrumMaps()      { return drumMapsPage; }
         MasterclassPage& getMasterclass() { return masterclassPage; }
         ArrangePage& getArrange()        { return arrangePage; }
+        FavoritesPage& getFavorites()    { return favoritesPage; }
+        // SAVE SONG / Ctrl+S: the song saved in FAVORITES (over the one it came from), with a note in the header
+        juce::String saveSong();
+        const juce::String& getNote() const   { return note; }
         PianoRollPage& getPianoRoll()    { return pianoRoll; }
         // The piano roll for a part (a card's role) in a section of the arrangement (-1: its first chorus). DONE goes
         // back to the page it was opened from. False when there's nothing to edit there.
@@ -58,10 +63,14 @@ namespace ss::ui
         bool keyPressed (const juce::KeyPress&, juce::Component*) override;
         juce::Component::SafePointer<juce::Component> listeningTo;
         void applyTheme();
+        void timerCallback() override;
+        void showNote (const juce::String&);           // a line in the header for a few seconds ("Saved ...")
+        juce::String note;
         PillButton songTab { "SONG", PillButton::Style::subtle },
                    arrangeTab { "ARRANGE", PillButton::Style::subtle },
                    libraryTab { "LIBRARY", PillButton::Style::subtle },
                    masterclassTab { "MASTERCLASS", PillButton::Style::subtle },
+                   favoritesTab { "FAVORITES", PillButton::Style::subtle },
                    drumMapsTab { "DRUM MAPS", PillButton::Style::subtle };
         SongPage songPage;
         LibraryPage libraryPage;
@@ -69,6 +78,7 @@ namespace ss::ui
         DrumMapsPage drumMapsPage;
         MasterclassPage masterclassPage;
         ArrangePage arrangePage;
+        FavoritesPage favoritesPage;
         PianoRollPage pianoRoll;
         HelpPanel help;
         WelcomePanel welcome;

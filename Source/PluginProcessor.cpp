@@ -196,7 +196,7 @@ void SongSavantProcessor::setStateInformation (const void* data, int size)
 {
     auto x = getXmlFromBinary (data, size);
     if (x == nullptr || ! x->hasTagName ("SongSavant")) return;
-    page = juce::jlimit (0, 5, x->getIntAttribute ("page", 0));
+    page = juce::jlimit (0, 6, x->getIntAttribute ("page", 0));
     if (auto* s = x->getChildByName ("Song")) song.fromXml (*s);
     // (projects saved before 1.0.2 also hold the drag test's answers, "DragTests": no longer used)
     extraFolders.clear();

@@ -1,5 +1,6 @@
 #include "SongPage.h"
 #include "core/HiddenSounds.h"
+#include "core/Favorites.h"
 #include "PluginProcessor.h"
 #include "core/Siblings.h"
 #include "core/Paths.h"
@@ -56,6 +57,8 @@ namespace ss::ui
     {
         const auto tip = playArea.contains (e.position)
                            ? juce::String (alone ? "Stop" : "Hear just this part, looped. While it plays, click another card to hear that one.")
+                       : heartArea.contains (e.position)
+                           ? juce::String (favorite ? "One of your favorites (FAVORITES): click to take it out" : "Keep this sound in your favorites (FAVORITES)")
                            : partInfo.isNotEmpty() ? "Starter part: " + partInfo + ". Drag the MIDI tag into Cubase." : juce::String();
         if (tip != getTooltip()) setTooltip (tip);
         repaint();
@@ -175,6 +178,29 @@ namespace ss::ui
         }
 
         lockArea = art.removeFromTop (30.0f).removeFromRight (30.0f).reduced (3.0f);
+        heartArea = {};
+        if (sound != nullptr)
+        {
+            // the heart: one of your favorites (FAVORITES)
+            heartArea = lockArea.translated (-lockArea.getWidth() + 2.0f, 0.0f);
+            auto hr = heartArea.reduced (5.5f, 6.5f);
+            juce::Path heart;
+            const float x = hr.getX(), y = hr.getY(), w = hr.getWidth(), h = hr.getHeight();
+            heart.startNewSubPath (x + w * 0.5f, y + h);
+            heart.cubicTo (x - w * 0.15f, y + h * 0.5f, x + w * 0.05f, y - h * 0.15f, x + w * 0.5f, y + h * 0.28f);
+            heart.cubicTo (x + w * 0.95f, y - h * 0.15f, x + w * 1.15f, y + h * 0.5f, x + w * 0.5f, y + h);
+            heart.closeSubPath();
+            if (favorite)
+            {
+                g.setColour (p.gold);
+                g.fillPath (heart);
+            }
+            else
+            {
+                g.setColour (p.text.withAlpha (isMouseOver (true) ? 0.75f : 0.5f));
+                g.strokePath (heart, juce::PathStrokeType (1.5f));
+            }
+        }
         if (slot->pick.isValid())
         {
             g.setColour (slot->locked ? p.gold : p.text.withAlpha (0.55f));
@@ -248,6 +274,7 @@ namespace ss::ui
         if (prevArea.contains (pos)) { if (onPrev) onPrev(); }
         else if (nextArea.contains (pos)) { if (onNext) onNext(); }
         else if (lockArea.contains (pos)) { if (onLock) onLock(); }
+        else if (heartArea.contains (pos)) { if (onHeart) onHeart(); }
         if (onSelect) onSelect();
     }
 
@@ -368,6 +395,9 @@ namespace ss::ui
             if (onBlankSong) onBlankSong();
         };
         addAndMakeVisible (blankBtn);
+        saveBtn.setTooltip ("Save the whole song (its sounds, arrangement, chords and notes) in FAVORITES, to open again later (Ctrl+S)");
+        saveBtn.onClick = [this] { if (onSaveSong) onSaveSong(); };
+        addAndMakeVisible (saveBtn);
         notThereBtn.setTooltip ("This sound isn't in your library any more (Analog Lab dropped it, say): Song Savant won't suggest it again");
         notThereBtn.onClick = [this]
         {
@@ -687,6 +717,25 @@ namespace ss::ui
         return placed;
     }
 
+    void SongPage::toggleFavorite (int card)
+    {
+        auto* pal = proc.song.currentPalette();
+        if (pal == nullptr || catalog == nullptr || card < 0 || card >= (int) pal->slots.size()) return;
+        const auto& slot = pal->slots[(size_t) card];
+        if (! slot.current().isValid()) return;
+        const auto& snd = catalog->sounds[(size_t) slot.current().sound];
+        const bool now = favorites::toggle (snd);
+        copiedNote = now ? "\"" + snd.name + "\" is in your favorites (FAVORITES)." : "\"" + snd.name + "\" is out of your favorites.";
+        refresh();
+    }
+
+    void SongPage::selectRole (const juce::String& role)
+    {
+        selectedRole = role;
+        copiedNote.clear();
+        refresh();
+    }
+
     void SongPage::hideSelected()
     {
         auto* s = selectedSlot();
@@ -740,6 +789,8 @@ namespace ss::ui
                         : mine ? "your own part (from the piano roll, the " + proc.song.arrangement.sections[(size_t) main].patternFor (role) + ")"
                                : describePart (plan, type, drums, snd != nullptr ? snd->kind : slot.part.kinds.front()));
             card->setEditing (type != PartType::none, mine);
+            card->setFavorite (snd != nullptr && favorites::isFavorite (*snd));
+            card->onHeart = [this, i] { toggleFavorite (i); };
             card->onEdit = [this, role] { if (onEditPart) onEditPart (role); };
             card->onDropFile = [this, role] (const juce::File& f) { if (onDropPart) onDropPart (role, f); };
             card->onDragPart = [this, i] { dragPart (i); };
@@ -960,16 +1011,19 @@ namespace ss::ui
             describeBox.setBounds (row1.toNearestInt());
             in.removeFromTop (12.0f);
             auto row2 = in.removeFromTop (36.0f);
+            saveBtn.setBounds (row2.removeFromRight (juce::jmin (230.0f, row2.getWidth() * 0.2f)).toNearestInt());
+            row2.removeFromRight (14.0f);
             const float gap = 12.0f;
-            genreBox.setBounds (row2.removeFromLeft (220.0f).toNearestInt());
+            const float k = juce::jmin (1.0f, (row2.getWidth() - 4.0f * gap) / (220.0f + 220.0f + 190.0f + 80.0f + 150.0f));
+            genreBox.setBounds (row2.removeFromLeft (220.0f * k).toNearestInt());
             row2.removeFromLeft (gap);
-            styleBox.setBounds (row2.removeFromLeft (220.0f).toNearestInt());
+            styleBox.setBounds (row2.removeFromLeft (220.0f * k).toNearestInt());
             row2.removeFromLeft (gap);
-            keyBox.setBounds (row2.removeFromLeft (190.0f).toNearestInt());
+            keyBox.setBounds (row2.removeFromLeft (190.0f * k).toNearestInt());
             row2.removeFromLeft (gap);
-            bpmBox.setBounds (row2.removeFromLeft (80.0f).toNearestInt());
+            bpmBox.setBounds (row2.removeFromLeft (80.0f * k).toNearestInt());
             row2.removeFromLeft (gap);
-            keyCompassBtn.setBounds (row2.removeFromLeft (150.0f).toNearestInt());
+            keyCompassBtn.setBounds (row2.removeFromLeft (150.0f * k).toNearestInt());
             understoodLine = in.withTrimmedTop (4.0f);
         }
         r.removeFromTop (12.0f);

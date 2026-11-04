@@ -49,6 +49,7 @@ Every page sits under one header. Hover over almost anything to see a tip.
 | SONG | Describe your song and get your palettes and starter parts |
 | ARRANGE | Your song's sections, and which parts play in each |
 | MASTERCLASS | Lessons on any genre or style |
+| FAVORITES | Your saved songs and the sounds you hearted |
 | LIBRARY | Every sound you own, in one searchable list |
 | DRUM MAPS | Names the pads of a drum kit that has no drum map in Cubase |
 
@@ -77,6 +78,7 @@ For example: "modern country like Morgan Wallen, warm, 120 BPM in A minor".
 | Key | "Key: from my words", or pick a key. The starter parts are written in it. |
 | BPM | Type a tempo, or leave it empty to use the description's (or the style's usual tempo) |
 | KEY COMPASS | Take the key, tempo, sections and chords from a Key Compass song (see Working with Key Compass) |
+| SAVE SONG | (under FIND MY SOUNDS) Keeps the whole song in FAVORITES, to open again later (see FAVORITES). Ctrl+S does it on any page. |
 
 Click **FIND MY SOUNDS** (or press Enter in the description box). The gold line under the boxes shows what Song Savant understood, for example "Your song: Country | Modern Nashville | Morgan Wallen | warm | 120 BPM | A Minor". If something is missing from that line, it wasn't understood: use the boxes, or say it another way.
 
@@ -92,6 +94,7 @@ Each palette has a **card for every part** the style uses. A country song gets d
 - The sound Song Savant picked, and the instrument that plays it (HALion Sonic, Analog Lab V, Groove Agent SE...).
 - **The arrows** at the bottom step through the choices for that part ("2 of 7").
 - **The lock** (top right of the picture) keeps that sound. Locked parts stay when you click **NEW PALETTES**.
+- **The heart** (next to the lock) keeps the sound in your favorites (the FAVORITES page). Click it again to take it out. Hearting a sound doesn't change your palettes: it just waits in your list until you pick it.
 - **The MIDI tag** on the picture is the starter part for that card: drag it into your DAW (see SONG: starter MIDI parts).
 - **EDIT** (top left of the picture, on the bass, keys, guitar, pad, strings and lead cards) opens the part in the piano roll (see The piano roll: your own parts).
 - **YOUR PART** (under EDIT) means you've changed this part in the piano roll: the card plays and drags your version.
@@ -396,6 +399,31 @@ For the drums, Song Savant works out which note is which drum: Groove Grabber's 
 - **Change the key** and your notes move with it (to minor or major too). Change the tempo and they keep their place in the bar.
 - **START FROM > Song Savant's suggestion** puts a pattern back to the suggestion (and it follows NEW IDEA again). Undo brings yours back.
 
+## FAVORITES: your songs and sounds
+
+The FAVORITES page keeps the songs you saved and the sounds you hearted, for any song, any day: in the app and in your DAW alike.
+
+**My songs (left)**
+
+- **SAVE THIS SONG** (or **SAVE SONG** on the SONG page, or **Ctrl+S** on any page) keeps everything about the song you have now: the description, key and tempo, the palettes with your locks and choices, the arrangement, your own chords and notes, your blank song. A new song is named after the description's first words ("Dark moody trap"); **RENAME** it to call it what you like. Once a song is saved, the button says **SAVE CHANGES** and saving puts your changes into it. A line at the top right says what was saved.
+- **SAVE AS NEW** keeps it as another song, and leaves the one it came from as it was: handy for a second version.
+- Each song shows its style, key, tempo and size, and when it was saved. **OPEN NOW** marks the one you have open; **BLANK SONG** marks your own blank songs.
+- **OPEN** (or double-click a song) brings it back exactly as you saved it, on the SONG page, to keep working on it. If the song you have now isn't saved, Song Savant asks first: save it, open anyway, or cancel.
+- **RENAME** gives a song a new name (type it, then Enter; Esc keeps the old one).
+- **DELETE** removes it (click twice: the first click asks SURE?).
+- **A copy is always kept.** Before a song is saved over or deleted, a copy goes to the Backups folder. **BACKUPS** lists them: pick one to bring it back as a song of its own.
+
+**My sounds (right)**
+
+The sounds you hearted, on a card (SONG) or in the LIBRARY, sorted by kind. Click one to see how to load it.
+
+- **USE IT** puts it on a card of your palette (the cards it fits are listed first), locked there. Song Savant takes you to the SONG page with that card selected.
+- **COPY NAME** copies its name, ready to paste into your instrument's browser.
+- **REMOVE** takes it out of your favorites (the sound stays in your library).
+- A sound marked **NOT FOUND** isn't in your libraries right now (an instrument missing?); it comes back when it's found again.
+
+Your favorites never change what Song Savant suggests: they wait here until you choose them.
+
 ## MASTERCLASS: learn a style
 
 The MASTERCLASS page teaches how a genre or style is put together. It follows the genre and style of your song on the SONG page, so the lesson is about the song you're writing.
@@ -438,7 +466,7 @@ The LIBRARY page lists every sound Song Savant found, from every library it can 
 - **ONLY SOUNDS I OWN:** hides Analog Lab sounds that show a buy button.
 - **ONLY MY OWN PRESETS:** shows only presets you saved yourself.
 
-Click a sound to see where it lives and **HOW TO LOAD IT**, and click **COPY NAME** to copy its name.
+Click a sound to see where it lives and **HOW TO LOAD IT**, and click **COPY NAME** to copy its name. **The heart** on each sound (or the **FAVORITE** button) keeps it in your favorites (FAVORITES).
 
 **NOT IN MY LIBRARY** (above COPY NAME): a sound Song Savant lists but you can't find in the instrument (Arturia's list sometimes keeps presets Analog Lab no longer has). Click it and Song Savant never suggests that sound again; the list marks it NOT IN MY LIBRARY. Click **SUGGEST IT AGAIN** to bring it back (it shows up on the next NEW PALETTES).
 
@@ -500,6 +528,9 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | The setup report | Documents\Song Savant\Setup Report.txt |
 | Drum maps (and what Song Savant heard) | Documents\Song Savant\Drum Maps |
 | Songs sent to Groove Grabber | Documents\Song Savant\Songs |
+| Your saved songs (FAVORITES) | Documents\Song Savant\My Songs (copies before saving over or deleting: My Songs\Backups) |
+| Your favorite sounds | Documents\Song Savant\Favorite sounds.xml |
+| Sounds you said aren't in your library | AppData\Roaming\Song Savant\Hidden sounds.txt |
 | Starter parts you drag | a Song Savant folder in Windows' temporary files (your DAW copies them into the project) |
 | Settings and what your plug-ins are | AppData\Roaming\Song Savant |
 | Groove Grabber kits it reads | Documents\Groove Grabber\Kits |
@@ -532,6 +563,10 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | Get palettes for a song | Describe it on SONG, then FIND MY SOUNDS (or Enter) |
 | See another sound for a part | The card's arrows, or click a sound under OTHER CHOICES |
 | Keep a sound | The card's lock |
+| A favorite sound, for any song | The heart on a card (SONG) or a sound (LIBRARY) |
+| Save the whole song | SAVE SONG (SONG page), or Ctrl+S on any page |
+| Open a saved song | FAVORITES: pick it, OPEN |
+| Put a favorite sound on a card | FAVORITES: pick it, USE IT |
 | New takes, keeping locked parts | NEW PALETTES |
 | Load a sound | Click the card, COPY NAME, paste where HOW TO LOAD IT says |
 | One starter part into your DAW | Drag the card's MIDI tag |

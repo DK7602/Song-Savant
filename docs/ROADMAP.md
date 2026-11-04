@@ -511,6 +511,22 @@ Built in steps, each one a build the owner can try:
   JUCE's standalone window asks for minimise and close only, so the editor adds maximise when it finds itself in a
   `DocumentWindow` (`SongSavantEditor::parentHierarchyChanged`; in a DAW there's none, the window is the host's). The
   title bar's double-click maximises too. The size limit went up to 3840 x 2400 so a maximised window fills big screens.
+- **FAVORITES** *(1.6.0; the owner asked for favorites, "so I can save sounds/arrangements and use/edit later", a tab between
+  MASTERCLASS and LIBRARY, November 2026)*. Small files only: nothing runs in the background.
+  - **Favorite sounds** (`favorites::` in `Source/core/Favorites.*`): the heart on a SONG card and on a LIBRARY sound (and
+    its FAVORITE button). Kept in Documents/Song Savant/Favorite sounds.xml with the sound's name, instrument, library and
+    kind (so the list reads right without the library), read again when the file changes (app and plug-in). **They
+    don't steer the palettes** (the owner's choice): they wait in the list until you pick one. USE IT puts one on a card
+    of the palette, locked (`SongSession::putSound`; the cards it fits first); COPY NAME; how to load it; REMOVE.
+  - **Saved songs** (`mysongs::`): SAVE SONG (SONG page, under FIND MY SOUNDS), Ctrl+S anywhere, SAVE THIS SONG / SAVE
+    CHANGES and SAVE AS NEW on FAVORITES. One file per song in Documents/Song Savant/My Songs (`<name>.songsavant`: a
+    `SongSavantSong` with name, style, key, tempo, size, blank, saved, around the session's own `Song` XML, so
+    everything comes back: palettes with locks and choices, the arrangement, your patterns and chords, the blank
+    song). `SongSession::savedAs` remembers which one it is (saved with the project too). OPEN (asks first when the
+    song you have isn't saved), RENAME, DELETE (twice); a copy goes to My Songs/Backups before saving over or deleting
+    (newest 200 kept), and BACKUPS brings one back as its own song. Opening clears ARRANGE's undo steps.
+  - The header's note line ("Saved ...", "Opened ...") replaces the version for a few seconds. With six tabs, the tabs
+    get a little tighter on a narrow window so the logo keeps its room.
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is

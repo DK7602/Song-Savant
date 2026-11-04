@@ -104,6 +104,7 @@ namespace ss::ui
         void deleteSection (int section);
         void undo();
         void redo();
+        void forgetUndo()                                    { undos.clear(); redos.clear(); undoFor.clear(); updateUndoButtons(); }
         bool canUndo() const                                 { return ! undos.empty(); }
         bool canRedo() const                                 { return ! redos.empty(); }
         ArrangementGrid& getGrid()                           { return grid; }

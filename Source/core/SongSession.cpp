@@ -64,6 +64,37 @@ namespace ss
             }
     }
 
+    bool SongSession::putSound (const Catalog& c, int sound, const juce::String& role)
+    {
+        auto* pal = currentPalette();
+        if (pal == nullptr || sound < 0 || sound >= (int) c.sounds.size()) return false;
+        for (auto& slot : pal->slots)
+        {
+            if (slot.part.role != role) continue;
+            // already one of its choices: that one; otherwise first among them
+            int at = -1;
+            if (slot.pick.sound == sound) at = 0;
+            for (size_t i = 0; i < slot.alternatives.size() && at < 0; ++i)
+                if (slot.alternatives[i].sound == sound) at = (int) i + 1;
+            if (at < 0)
+            {
+                Pick pk;
+                pk.sound = sound;
+                juce::StringArray why;
+                pk.score = scoreSound (c.sounds[(size_t) sound], slot.part, brief, &why);
+                pk.reasons = why;
+                pk.reasons.insert (0, "One of your favorites");
+                if (! slot.pick.isValid()) { slot.pick = pk; at = 0; }
+                else { slot.alternatives.insert (slot.alternatives.begin(), pk); at = 1; }
+            }
+            slot.choice = at;
+            slot.locked = true;
+            slot.keepKey = soundKey (c.sounds[(size_t) sound]);
+            return true;
+        }
+        return false;
+    }
+
     void SongSession::resetArrangement (const std::vector<ArrangementPart>& parts)
     {
         auto shape = songShape;
@@ -162,6 +193,7 @@ namespace ss
         x->setAttribute ("chords", form.chords.joinIntoString (" "));
         x->setAttribute ("partsSeed", (int) partsSeed);
         x->setAttribute ("songShape", (int) songShape);
+        if (savedAs.isNotEmpty()) x->setAttribute ("savedAs", savedAs);
         if (! arrangement.empty()) x->addChildElement (arrangement.toXml().release());
         if (! patterns.empty()) x->addChildElement (patterns.toXml().release());
         if (! arrangementAside.empty())
@@ -216,6 +248,7 @@ namespace ss
         form.chords.removeEmptyStrings();
         partsSeed = (juce::uint32) juce::jmax (1, x.getIntAttribute ("partsSeed", 1));
         songShape = (SongShape) juce::jlimit (0, 3, x.getIntAttribute ("songShape", 0));
+        savedAs = x.getStringAttribute ("savedAs");
         arrangement = {};
         if (auto* ax = x.getChildByName ("Arrangement")) arrangement = Arrangement::fromXml (*ax);
         arrangementAside = {};

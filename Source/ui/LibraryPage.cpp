@@ -1,5 +1,6 @@
 #include "LibraryPage.h"
 #include "core/HiddenSounds.h"
+#include "core/Favorites.h"
 #include "PluginProcessor.h"
 
 namespace ss::ui
@@ -107,6 +108,8 @@ namespace ss::ui
         copyBtn.onClick = [this] { copySelected(); };
         addAndMakeVisible (hideBtn);
         hideBtn.onClick = [this] { toggleHidden(); };
+        addAndMakeVisible (favBtn);
+        favBtn.onClick = [this] { toggleFavorite (list.getSelectedRow()); };
 
         refreshCatalog();
         startTimerHz (8);
@@ -208,9 +211,36 @@ namespace ss::ui
         copyBtn.setEnabled (s != nullptr);
         hideBtn.setEnabled (s != nullptr);
         const bool hid = s != nullptr && hidden::isHidden (*s);
+        const bool fav = s != nullptr && favorites::isFavorite (*s);
+        favBtn.setEnabled (s != nullptr);
+        favBtn.setButtonText (fav ? "IN FAVORITES" : "FAVORITE");
+        favBtn.setToggleState (fav, juce::dontSendNotification);
+        favBtn.setTooltip (fav ? "One of your favorites (FAVORITES): click to take it out" : "Keep this sound in your favorites (FAVORITES)");
         hideBtn.setButtonText (hid ? "SUGGEST IT AGAIN" : "NOT IN MY LIBRARY");
         hideBtn.setTooltip (hid ? "You said this sound isn't in your library: Song Savant will suggest it again"
                                 : "This sound isn't in your library any more (Analog Lab dropped it, say): Song Savant won't suggest it");
+    }
+
+    juce::Rectangle<float> LibraryPage::heartIn (int w, int h)
+    {
+        // just left of the kind, on the right of the row
+        return { (float) w - 4.0f - 10.0f - 150.0f - 30.0f, (float) h * 0.5f - 11.0f, 24.0f, 22.0f };
+    }
+
+    void LibraryPage::listBoxItemClicked (int row, const juce::MouseEvent& e)
+    {
+        if (heartIn (list.getVisibleRowWidth(), list.getRowHeight()).expanded (4.0f).contains (e.position)) toggleFavorite (row);
+    }
+
+    void LibraryPage::toggleFavorite (int row)
+    {
+        if (catalog == nullptr || row < 0 || row >= (int) rows.size()) return;
+        const auto& s = catalog->sounds[(size_t) rows[(size_t) row]];
+        const bool now = favorites::toggle (s);
+        copiedNote = now ? "\"" + s.name + "\" is in your favorites (FAVORITES)." : "\"" + s.name + "\" is out of your favorites.";
+        updateButtons();
+        list.repaintRow (row);
+        repaint();
     }
 
     void LibraryPage::toggleHidden()
@@ -261,6 +291,7 @@ namespace ss::ui
 
         auto text = r.withTrimmedLeft (22.0f).withTrimmedRight (10.0f);
         auto right = text.removeFromRight (150.0f);
+        text.removeFromRight (36.0f);                           // (the heart)
         g.setColour (s.owned ? p.text : p.dim);
         g.setFont (sans (15.5f, true));
         g.drawText (s.name, text.withTrimmedBottom (text.getHeight() * 0.48f), juce::Justification::bottomLeft, true);
@@ -275,6 +306,18 @@ namespace ss::ui
         g.setFont (sans (12.5f, true));
         g.drawText ((s.source == "Plug-in" ? "Plug-in: " + kindName (s.kind) : s.detail.isNotEmpty() ? s.detail : kindName (s.kind)).toUpperCase(), right.withTrimmedBottom (right.getHeight() * 0.48f),
                     juce::Justification::bottomRight, true);
+        {
+            // the heart: filled for a favorite, faint for the rest (click it)
+            const auto hr = heartIn (w, h).reduced (3.0f, 2.5f);
+            juce::Path heart;
+            const float x = hr.getX(), y = hr.getY(), hw = hr.getWidth(), hh = hr.getHeight();
+            heart.startNewSubPath (x + hw * 0.5f, y + hh);
+            heart.cubicTo (x - hw * 0.15f, y + hh * 0.5f, x + hw * 0.05f, y - hh * 0.15f, x + hw * 0.5f, y + hh * 0.28f);
+            heart.cubicTo (x + hw * 0.95f, y - hh * 0.15f, x + hw * 1.15f, y + hh * 0.5f, x + hw * 0.5f, y + hh);
+            heart.closeSubPath();
+            if (favorites::isFavorite (s)) { g.setColour (p.gold); g.fillPath (heart); }
+            else { g.setColour (p.dim.withAlpha (selected ? 0.9f : 0.45f)); g.strokePath (heart, juce::PathStrokeType (1.3f)); }
+        }
         const bool hid = hidden::isHidden (s);
         juce::String badge = hid ? "NOT IN MY LIBRARY" : ! s.owned ? "NOT OWNED" : s.yours ? "YOURS" : juce::String();
         if (badge.isNotEmpty())
@@ -444,7 +487,10 @@ namespace ss::ui
             auto in = rightPanel.reduced (22.0f, 22.0f);
             copyBtn.setBounds (in.removeFromBottom (44.0f).toNearestInt());
             in.removeFromBottom (8.0f);
-            hideBtn.setBounds (in.removeFromBottom (32.0f).toNearestInt());
+            auto row = in.removeFromBottom (32.0f);
+            favBtn.setBounds (row.removeFromLeft (row.getWidth() * 0.42f).toNearestInt());
+            row.removeFromLeft (8.0f);
+            hideBtn.setBounds (row.toNearestInt());
             detailsArea = in.withTrimmedBottom (-84.0f);   // the details drawing leaves room for the buttons themselves
         }
     }

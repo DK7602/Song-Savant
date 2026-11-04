@@ -49,7 +49,12 @@ namespace ss::ui
         void selectedRowsChanged (int) override         { copiedNote.clear(); updateButtons(); repaint(); }
         void updateButtons();
         void toggleHidden();
+    public:
+        void toggleFavorite (int row);                  // a sound's heart (also the tests)
+    private:
         void listBoxItemDoubleClicked (int, const juce::MouseEvent&) override   { copySelected(); }
+        void listBoxItemClicked (int row, const juce::MouseEvent&) override;   // (its heart: a favorite)
+        static juce::Rectangle<float> heartIn (int w, int h);
 
         void applyFilter();
         void updateCounts();
@@ -70,7 +75,8 @@ namespace ss::ui
                    yoursToggle { "ONLY MY OWN PRESETS", PillButton::Style::subtle },
                    refreshBtn { "REFRESH LIBRARY", PillButton::Style::outline },
                    copyBtn { "COPY NAME", PillButton::Style::gold },
-                   hideBtn { "NOT IN MY LIBRARY", PillButton::Style::subtle };   // or SUGGEST IT AGAIN, for one you hid
+                   hideBtn { "NOT IN MY LIBRARY", PillButton::Style::subtle },   // or SUGGEST IT AGAIN, for one you hid
+                   favBtn { "FAVORITE", PillButton::Style::subtle };              // the heart: in FAVORITES
         juce::TextEditor searchBox;
         juce::ListBox list { "sounds", this };
         juce::String copiedNote;

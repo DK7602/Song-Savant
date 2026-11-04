@@ -60,6 +60,10 @@ namespace ss
 
         // A sound you said isn't in your library: out of every palette (the next choice takes its place, unlocked)
         void forgetSound (const Catalog&, const juce::String& key);
+        // A favorite put on a card (USE IT): it becomes the card's sound, locked. False when there's no such card.
+        bool putSound (const Catalog&, int sound, const juce::String& role);
+
+        juce::String savedAs;                         // the saved song (FAVORITES) this one was saved as or opened from
 
         SongBrief makeBrief() const;                  // the description, with the form's choices on top
         void find (const Catalog&);                   // fresh palettes for the form
