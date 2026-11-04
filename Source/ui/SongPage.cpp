@@ -412,6 +412,14 @@ namespace ss::ui
                              [safe = juce::Component::SafePointer<SongPage> (this)] (int r) { if (safe != nullptr && r == 1) safe->hideSelected(); });
         };
         addChildComponent (notThereBtn);
+        drumMapBtn.onClick = [this]
+        {
+            auto* s = selectedSlot();
+            if (s == nullptr || catalog == nullptr || ! s->current().isValid()) return;
+            const auto& snd = catalog->sounds[(size_t) s->current().sound];
+            if (onMakeDrumMap) onMakeDrumMap (snd.name, snd.source == "Plug-in" ? snd.name : snd.instrument);
+        };
+        addChildComponent (drumMapBtn);
         addAndMakeVisible (copyBtn);
         sendBtn.setTooltip ("Send your song (style, key, tempo and sections) to Groove Grabber. It builds four kits for it from your own samples, "
                             "with the 808 tuned to the key. The kits you save there show up here as drum choices.");
@@ -829,6 +837,20 @@ namespace ss::ui
         copyBtn.setEnabled (sel != nullptr && sel->current().isValid());
         sendBtn.setVisible (sel != nullptr && partTypeFor (sel->part) == PartType::drums);
         notThereBtn.setVisible (sel != nullptr && sel->current().isValid() && catalog != nullptr);
+        {
+            // the drum card's kit: a drum map when Cubase can't name its pads (made already: it says so)
+            const Sound* d = sel != nullptr && sel->current().isValid() && catalog != nullptr && partTypeFor (sel->part) == PartType::drums
+                               ? &catalog->sounds[(size_t) sel->current().sound] : nullptr;
+            const bool needs = d != nullptr && ! namesItsPads (*d) && (drumForm (*d) == DrumForm::kit || d->source == "Plug-in");
+            drumMapBtn.setVisible (needs);
+            if (needs)
+            {
+                const bool made = drumMapFileFor (d->name).existsAsFile();
+                drumMapBtn.setButtonText (made ? "DRUM MAP MADE: SEE IT" : "MAKE A DRUM MAP");
+                drumMapBtn.setTooltip (made ? "You made a drum map for this kit: how to load it in Cubase, or make it again"
+                                            : "Cubase shows this kit's pads as note numbers: Song Savant can name them (Kick, Snare, Hat...)");
+            }
+        }
         blankBtn.setEnabled (pal != nullptr);
         blankBtn.setToggleState (proc.song.songShape == SongShape::blank, juce::dontSendNotification);
         resized();
@@ -1076,6 +1098,11 @@ namespace ss::ui
         {
             auto in = detailsPanel.reduced (22.0f, 18.0f);
             whyArea = in.removeFromLeft (in.getWidth() * 0.38f);
+            if (drumMapBtn.isVisible())
+            {
+                drumMapBtn.setBounds (whyArea.removeFromBottom (32.0f).removeFromLeft (juce::jmin (230.0f, whyArea.getWidth())).toNearestInt());
+                whyArea.removeFromBottom (6.0f);
+            }
             // (at the end of the part's line, over the sound's name: where there's room)
             notThereBtn.setBounds (whyArea.withHeight (22.0f).translated (0.0f, -3.0f).removeFromRight (juce::jmin (160.0f, whyArea.getWidth() * 0.5f)).toNearestInt());
             in.removeFromLeft (24.0f);

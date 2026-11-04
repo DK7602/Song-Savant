@@ -81,6 +81,7 @@ namespace ss
     // A Cubase drum map (.drm): load it in Cubase's Drum Map Setup
     juce::String makeCubaseDrumMap (const KitMap&);
     juce::File drumMapsFolder();                    // Documents/Song Savant/Drum Maps
+    juce::File drumMapFileFor (const juce::String& kitName);   // <kit>.drm in it (it may not exist yet)
     juce::File saveCubaseDrumMap (const KitMap&);   // writes <name>.drm there; returns the file (or nothing)
     juce::File saveHitDetails (const KitMap&);      // "<name> - what Song Savant heard.txt", next to the drum map
 }

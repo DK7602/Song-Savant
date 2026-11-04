@@ -69,6 +69,10 @@ namespace ss::ui
 
         void mapPreset (const juce::File&);   // also used by the tests
         void refresh();
+        // The kit it's for (MAKE A DRUM MAP on the drum card or the LIBRARY page): the steps name it and its instrument
+        void setKit (const juce::String& kitName, const juce::String& instrument);
+        const juce::String& getKitName() const   { return kitName; }
+        std::function<void()> onBack;         // BACK: the page it was opened from
         void themeChanged()                   { refresh(); }
 
         bool isInterestedInFileDrag (const juce::StringArray&) override;
@@ -84,6 +88,8 @@ namespace ss::ui
         juce::String loadSteps (const juce::String& mapName) const;   // step 4, for the DAW in use
 
         SongSavantProcessor& proc;
+        juce::String kitName, kitInstrument;
+        PillButton backBtn { "BACK", PillButton::Style::outline };
         PillButton chooseBtn { "CHOOSE A PRESET...", PillButton::Style::outline },
                    showBtn { "SHOW THE DRUM MAP", PillButton::Style::gold },
                    againBtn { "MAP IT AGAIN", PillButton::Style::outline };
@@ -92,7 +98,7 @@ namespace ss::ui
         std::unique_ptr<juce::FileChooser> chooser;
         std::unique_ptr<juce::AlertWindow> nameWindow;
 
-        juce::Rectangle<float> leftPanel, rightPanel, stepsArea, dropArea, statusArea, step4Area, titleArea, resultTextArea, howArea;
+        juce::Rectangle<float> leftPanel, rightPanel, headArea, stepsArea, dropArea, statusArea, step4Area, titleArea, resultTextArea, howArea;
         int seenGeneration = -1;
         juce::File savedFile, detailsFile;
         juce::String daw;

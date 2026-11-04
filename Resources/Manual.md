@@ -51,7 +51,6 @@ Every page sits under one header. Hover over almost anything to see a tip.
 | MASTERCLASS | Lessons on any genre or style |
 | FAVS | Your favorites: your saved songs and the sounds you hearted |
 | LIBRARY | Every sound you own, in one searchable list |
-| DRUM MAPS | Names the pads of a drum kit that has no drum map in Cubase |
 
 The version number sits under the tabs. The window can be resized from its bottom-right corner, and everything fits itself to the size. In the app, the **maximise** button (between minimise and close, at the top right) makes it fill the screen, and clicking it again puts it back; double-clicking the title bar does the same. (In your DAW, the plug-in's window belongs to the DAW: drag its corner to make it bigger.)
 
@@ -109,6 +108,7 @@ Click a card to see its details in the panel at the bottom:
 | HOW TO LOAD IT | The steps to load this sound in your DAW |
 | COPY NAME | Copies the sound's name, ready to paste (see the next chapter) |
 | SEND TO GROOVE GRABBER | On the drum card only (see Working with Groove Grabber) |
+| MAKE A DRUM MAP | On the drum card, only for a kit Cubase shows as note numbers (Analog Lab, HALion...): names its pads (see Drum maps: pad names in Cubase). Once it's made it says DRUM MAP MADE: SEE IT. |
 | NOT IN MY LIBRARY? | The sound isn't there when you look for it (Analog Lab dropped it, say). Pick **It isn't there: don't suggest it again**: the card moves on to its next choice, and Song Savant never suggests that sound again. Bring it back on the LIBRARY page (SUGGEST IT AGAIN). |
 
 **BLANK SONG** (next to PLAY ALL) starts a song of your own with these sounds: no sections and no notes from Song Savant, just your palette. It takes you to ARRANGE with one empty section. See **Your own blank song** in the ARRANGE chapter.
@@ -158,7 +158,7 @@ Every card that plays notes has a starter part: 8 bars in your song's key and te
 
 **The key.** The line above the cards says which key the parts are in ("STARTER PARTS IN A MINOR"). If you didn't give a key, Song Savant picks one that suits the style and says "Key picked for you". With a Key Compass song, the parts follow that song's own chords.
 
-**Which drum notes?** The drum part uses General MIDI notes (kick on C1, snare on D1, closed hat on F#1), which Groove Agent and most drum instruments follow. If the drum card is a kit you mapped on the DRUM MAPS page, the part uses that kit's pads instead. If it's a Groove Grabber kit, it uses Groove Grabber's pads, and in styles built on the 808 the kit's 808 plays with the kick. Hover the drum card's MIDI tag to see which notes it uses.
+**Which drum notes?** The drum part uses General MIDI notes (kick on C1, snare on D1, closed hat on F#1), which Groove Agent and most drum instruments follow. If the drum card is a kit you made a drum map for (MAKE A DRUM MAP), the part uses that kit's pads instead. If it's a Groove Grabber kit, it uses Groove Grabber's pads, and in styles built on the 808 the kit's 808 plays with the kick. Hover the drum card's MIDI tag to see which notes it uses.
 
 ## Hearing your song (PLAY)
 
@@ -203,7 +203,7 @@ Inside Cubase it plays through the track Song Savant is on, in time with Cubase 
 
 **The 808 goes with the drums.** In trap, country rap and other 808 styles, the drum card says "808 in the kit". The **Bass** card then suggests a bass that **sits above the 808** (plucked, synth or punchy basses) so the two don't turn the low end to mud. Two deep sub basses always stay among the bass choices, with a note: play the same notes as the 808, or use one instead of it.
 
-**No pad names in Cubase?** Kits from Analog Lab, HALion and some other instruments show note numbers instead of Kick, Snare, Hat in Cubase's drum editor. The DRUM MAPS page fixes that (see DRUM MAPS).
+**No pad names in Cubase?** Kits from Analog Lab, HALion and some other instruments show note numbers instead of Kick, Snare, Hat in Cubase's drum editor. Click **MAKE A DRUM MAP** on the drum card and Song Savant names the pads for you (see Drum maps: pad names in Cubase). Groove Agent and Groove Grabber kits name their own pads, so the drum card puts them first.
 
 ## Working with Groove Grabber
 
@@ -389,7 +389,7 @@ Drag a MIDI file (.mid) onto Song Savant and it becomes your pattern:
 
 A gold dashed line shows where it will land. A line under the title says what came in ("Dropped ...: 24 notes from bar 1"). **Ctrl+Z puts it back**, all in one step.
 
-For the drums, Song Savant works out which note is which drum: Groove Grabber's pads, the usual General MIDI layout, and the kits you mapped on DRUM MAPS. Files from Groove Grabber and Song Savant say which layout they use, so the 808 and the percussion land on the right rows. A hit Song Savant doesn't know is left out. A pattern shorter than the section fills only the bars it covers: copy it along with Ctrl+D, or drop it again further on.
+For the drums, Song Savant works out which note is which drum: Groove Grabber's pads, the usual General MIDI layout, and the kits you made drum maps for. Files from Groove Grabber and Song Savant say which layout they use, so the 808 and the percussion land on the right rows. A hit Song Savant doesn't know is left out. A pattern shorter than the section fills only the bars it covers: copy it along with Ctrl+D, or drop it again further on.
 
 **What happens to your notes**
 
@@ -474,18 +474,25 @@ Click a sound to see where it lives and **HOW TO LOAD IT**, and click **COPY NAM
 
 **Song Savant Scanner.** Many plug-ins don't say what they are (a synth? drums? an effect?). After reading your libraries, Song Savant asks each of those plug-ins itself, the way a DAW does, using a small helper program, Song Savant Scanner, one plug-in at a time. The LIBRARY page shows "Finding out what your other plug-ins are: 3 of 12". A plug-in that crashes or hangs only takes the helper down, never Song Savant or your DAW. The answers are remembered until the plug-in is updated.
 
-## DRUM MAPS: name a kit's pads
+## Drum maps: pad names in Cubase
 
-Some drum kits (from Analog Lab, HALion and other instruments) have no drum map in Cubase. The drum editor shows note numbers instead of Kick, Snare, Hat, Cubase's GM Map is wrong for them, and "Create Drum Map from Instrument" is greyed out. The DRUM MAPS page fixes that: Song Savant plays every key of the kit, listens to each sound, names it, and writes a Cubase drum map.
+**Do you need one?** Only for a drum kit whose pads Cubase shows as note numbers (C1, C#1, D1...) in the drum editor instead of names (Kick, Snare, Hat). That happens with kits from Analog Lab, HALion and some other instruments: Cubase's GM Map is wrong for them, and "Create Drum Map from Instrument" is greyed out.
 
-1. In Cubase, load the kit on an instrument track and pick the sound you want.
-2. In the plug-in window's top bar, click the small arrow next to the up and down preset arrows, choose **Save Preset...** and give it a name.
-3. Drag that preset onto the DRUM MAPS page (from MediaBay, or from Documents > VST3 Presets), or click **CHOOSE A PRESET...**.
-4. Wait about a minute while Song Savant opens the kit in the background (with Song Savant Scanner) and plays every key from C0 to C6. Then load the drum map in Cubase, as step 4 on the page says:
-   - Open **MIDI > Drum Map Setup...** (or click the Drum Map field in the instrument track's Inspector, then Drum Map Setup...).
-   - If an older map for the same kit is in the list, select it and click **Remove**.
-   - Click **Load...**, pick the kit's .drm file in Documents > Song Savant > Drum Maps, then **OK**.
-   - Set the track's **Drum Map** field (in the Inspector) to the kit's name.
+**You don't need one for** Groove Agent kits and Groove Grabber kits: Cubase already shows their pad names. That's why the drum card puts them first.
+
+**Where to start.** When the drum card's kit needs a drum map, a **MAKE A DRUM MAP** button shows under WHY IT WORKS (and on the LIBRARY page for that kit). Click it: the drum map page opens with the steps for that kit. **BACK** takes you back.
+
+**The steps** (once per kit, about a minute):
+
+1. **In Cubase**, load the kit's instrument (Analog Lab, HALion...) on an instrument track and pick the kit.
+2. **Save it as a preset:** in the plug-in window's top bar, click the small arrow next to the up and down preset arrows, choose **Save Preset...**, give it a name (the kit's name is fine) and click **OK**.
+3. **Bring that preset to Song Savant:** drop it in the box on the drum map page, or click **CHOOSE A PRESET...** and pick it. Cubase keeps presets in Documents > VST3 Presets > (the maker) > (the instrument); you can also drag one straight from Cubase's MediaBay. Song Savant opens the kit in the background (with Song Savant Scanner), plays every key from C0 to C6, listens, and names each pad. Check the names on the right.
+4. **Load the drum map in Cubase** (once):
+   - Open **MIDI > Drum Map Setup...**
+   - Click **Load...**, pick the kit's .drm file in Documents > Song Savant > Drum Maps, and click **OK**. (If an older map for the same kit is in the list, select it and click **Remove** first.)
+   - Click the drum track, and in the **Inspector** on the left set **Drum Map** to the kit's name.
+
+The drum editor now shows Kick, Snare, Hat... for each pad. And Song Savant knows the kit's pads too: its starter drum parts, the drum piano roll and the MIDI you drag all land on the right keys.
 
 **The pads.** The page shows every key Song Savant heard and what it called it: Kick, 808, Snare, Clap, Closed Hat, Open Hat, Cymbal, Low, Mid and High Tom, Perc. Many kits play one recording across several keys, higher on each key. Song Savant spots those zones and names the whole zone after its lowest keys.
 
@@ -493,15 +500,14 @@ Some drum kits (from Analog Lab, HALion and other instruments) have no drum map 
 
 | Button | What it does |
 | --- | --- |
-| CHOOSE A PRESET... | Pick a kit preset file instead of dragging it |
+| CHOOSE A PRESET... | Pick a kit preset file instead of dropping it |
 | MAP IT AGAIN | Listens to the same kit again (after a Song Savant update, say) |
 | SHOW THE DRUM MAP | Shows the .drm file in File Explorer |
+| BACK | Back to the page you came from |
 
 Next to each drum map, Song Savant saves "<kit> - what Song Savant heard.txt": what it measured on every key. If names are still wrong, send that file.
 
 A preset that plays one sound up and down the keyboard (an 808, a single drum) doesn't need a drum map, and the page says so. Song Savant makes Cubase drum maps for now; other DAWs are planned.
-
-When the drum card's sound has a drum map with the same name, its starter drum parts use that map's pads.
 
 ## The setup check
 
@@ -544,8 +550,8 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | A suggested sound isn't in your instrument | Tell us its name and instrument. Analog Lab presets for instruments it no longer has are left out, and sounds you'd have to buy are never suggested. |
 | Pasting the name in MediaBay finds nothing | Click **All Media** at the top of MediaBay's File Browser first: MediaBay only searches the folder that's selected. |
 | A word or artist you typed changed nothing | Check the gold "Your song" line. Use the Genre and Style boxes, or say it another way ("like Morgan Wallen"). |
-| The drum card shows loops or single drums | Your library may have few full kits for that style. Look further through the choices, send the song to Groove Grabber, or map an Analog Lab or HALion kit on DRUM MAPS. |
-| The drum part plays the wrong drums | Check which notes it uses (hover the drum card's MIDI tag). For Analog Lab and HALion kits, make a drum map on DRUM MAPS. |
+| The drum card shows loops or single drums | Your library may have few full kits for that style. Look further through the choices, send the song to Groove Grabber, or use an Analog Lab or HALion kit (MAKE A DRUM MAP names its pads). |
+| The drum part plays the wrong drums | Check which notes it uses (hover the drum card's MIDI tag). For Analog Lab and HALion kits, click MAKE A DRUM MAP on the drum card. |
 | Cubase freezes when you quit after using Groove Grabber | Install Groove Grabber 1.0.15 or newer. If it still happens, force-close Cubase and send Documents\Groove Grabber\Groove Grabber log.txt: its last lines show where it got stuck. |
 | Your Groove Grabber kit didn't land on the drum card | Song Savant needs to be open when you click SAVE KIT, and the kit has to be built for the song you sent. Saved kits always show up among the drum choices. |
 | In the piano roll, Space or Ctrl+C work Cubase instead of Song Savant | Click the piano roll's grid first, so Song Savant's window has the keyboard. |
@@ -602,5 +608,5 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | One part, the whole song | Drag the part's name on ARRANGE |
 | The whole song into your DAW | ARRANGE: drag WHOLE SONG |
 | Learn your style | MASTERCLASS |
-| Name a kit's pads in Cubase | DRUM MAPS: drop the kit's preset, then load the .drm in MIDI > Drum Map Setup |
+| Name a kit's pads in Cubase | The drum card's MAKE A DRUM MAP: save the kit as a preset, drop it in, then load the .drm in MIDI > Drum Map Setup |
 | Light or dark | Click the logo, or the sun / moon button |

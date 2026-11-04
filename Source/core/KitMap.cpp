@@ -487,6 +487,11 @@ namespace ss
 
     juce::File drumMapsFolder()   { return paths::documentsDir().getChildFile ("Drum Maps"); }
 
+    juce::File drumMapFileFor (const juce::String& kitName)
+    {
+        return drumMapsFolder().getChildFile (juce::File::createLegalFileName (kitName).trim() + ".drm");
+    }
+
     juce::File saveHitDetails (const KitMap& k)
     {
         const auto folder = drumMapsFolder();

@@ -70,8 +70,7 @@ namespace ss::ui
                    arrangeTab { "ARRANGE", PillButton::Style::subtle },
                    libraryTab { "LIBRARY", PillButton::Style::subtle },
                    masterclassTab { "MASTERCLASS", PillButton::Style::subtle },
-                   favoritesTab { "FAVS", PillButton::Style::subtle },
-                   drumMapsTab { "DRUM MAPS", PillButton::Style::subtle };
+                   favoritesTab { "FAVS", PillButton::Style::subtle };
         SongPage songPage;
         LibraryPage libraryPage;
         SetupCheckPage setupPage;
@@ -85,5 +84,6 @@ namespace ss::ui
         juce::TooltipWindow tooltips { this, 500 };
         juce::Rectangle<float> headerArea, subtitleArea, logoArea;   // logoArea: where the owl and the name are drawn
         int page = song;
+        int drumMapsFrom = song;                       // DRUM MAPS' BACK: the page MAKE A DRUM MAP was clicked on
     };
 }

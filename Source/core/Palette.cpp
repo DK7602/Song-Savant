@@ -65,6 +65,11 @@ namespace ss
         return DrumForm::kit;
     }
 
+    bool namesItsPads (const Sound& s)
+    {
+        return isGrooveGrabberKit (s) || s.instrument == "Groove Grabber" || s.instrument.containsIgnoreCase ("Groove Agent");
+    }
+
     float scoreSound (const Sound& s, const PartSpec& part, const SongBrief& brief, juce::StringArray* reasons)
     {
         if (! s.owned) return -1.0f;
@@ -76,7 +81,7 @@ namespace ss
         if (part.kinds.front() == Kind::drums)
             switch (drumForm (s))
             {
-                case DrumForm::kit:     score += 4.0f; break;     // you play your own beat on it (808 included)
+                case DrumForm::kit:     score += namesItsPads (s) ? 7.0f : 4.0f; break;   // your own beat on it; +3: pad names in Cubase
                 case DrumForm::loop:    score -= 8.0f; break;     // plays its own groove: hard to use as your drum track
                 case DrumForm::single:  score -= 8.0f; break;     // one drum, not a kit
                 case DrumForm::unknown: break;
@@ -283,7 +288,10 @@ namespace ss
         if (slot.part.kinds.front() == Kind::drums)
             switch (drumForm (s))
             {
-                case DrumForm::kit:     out.add ("A full kit: you play your own beat on it"); break;
+                case DrumForm::kit:
+                    out.add ("A full kit: you play your own beat on it");
+                    if (namesItsPads (s)) out.add ("Cubase shows its pad names (no drum map needed)");
+                    break;
                 case DrumForm::loop:    out.add ("A ready-made loop: it plays its own beat"); break;
                 case DrumForm::single:  out.add ("One drum sound, not a whole kit"); break;
                 case DrumForm::unknown: break;

@@ -8,7 +8,7 @@ namespace ss::ui
         setLookAndFeel (&lookAndFeel);
         owl = owlImage();
         wordmark = wordmarkImage();
-        for (auto* t : { &songTab, &arrangeTab, &masterclassTab, &favoritesTab, &libraryTab, &drumMapsTab })
+        for (auto* t : { &songTab, &arrangeTab, &masterclassTab, &favoritesTab, &libraryTab })
         {
             t->setRadioGroupId (1);
             t->setComponentID ("tab");
@@ -26,7 +26,16 @@ namespace ss::ui
         helpBtn.onClick = [this] { showHelp(); };
         addAndMakeVisible (helpBtn);
         arrangeTab.onClick = [this] { showPage (arrange); };
-        drumMapsTab.onClick = [this] { showPage (drumMaps); };
+        // DRUM MAPS: from MAKE A DRUM MAP (the drum card, the LIBRARY), and BACK to where it came from
+        auto makeDrumMap = [this] (const juce::String& kitName, const juce::String& instrument)
+        {
+            drumMapsFrom = page;
+            drumMapsPage.setKit (kitName, instrument);
+            showPage (drumMaps);
+        };
+        songPage.onMakeDrumMap = makeDrumMap;
+        libraryPage.onMakeDrumMap = makeDrumMap;
+        drumMapsPage.onBack = [this] { showPage (drumMapsFrom == drumMaps ? (int) song : drumMapsFrom); };
         masterclassTab.onClick = [this] { showPage (masterclass); };
         favoritesTab.setTooltip ("Your favorites: your saved songs and the sounds you hearted");
         favoritesTab.onClick = [this] { showPage (favorites); };
@@ -212,7 +221,6 @@ namespace ss::ui
         libraryTab.setToggleState (page == library, juce::dontSendNotification);
         setupBtn.setToggleState (page == setupCheck, juce::dontSendNotification);
         arrangeTab.setToggleState (page == arrange, juce::dontSendNotification);
-        drumMapsTab.setToggleState (page == drumMaps, juce::dontSendNotification);
         masterclassTab.setToggleState (page == masterclass, juce::dontSendNotification);
         favoritesTab.setToggleState (page == favorites, juce::dontSendNotification);
         repaint();
@@ -267,9 +275,9 @@ namespace ss::ui
         auto tabWidth = [&font, pad] (PillButton& b) { return (int) juce::GlyphArrangement::getStringWidth (font, b.getButtonText()) + pad; };
         const int gapW = narrow ? 6 : 8;
         int total = 40 + 8 + 40 + 8 + 40 + 12;
-        for (auto* t : { &songTab, &arrangeTab, &masterclassTab, &favoritesTab, &libraryTab, &drumMapsTab }) total += tabWidth (*t) + gapW;
+        for (auto* t : { &songTab, &arrangeTab, &masterclassTab, &favoritesTab, &libraryTab }) total += tabWidth (*t) + gapW;
         auto tabs = header.removeFromRight (total).withSizeKeepingCentre (total, 40).translated (0, -8);
-        for (auto* t : { &drumMapsTab, &libraryTab, &favoritesTab, &masterclassTab, &arrangeTab, &songTab })
+        for (auto* t : { &libraryTab, &favoritesTab, &masterclassTab, &arrangeTab, &songTab })
         {
             t->setBounds (tabs.removeFromRight (tabWidth (*t)));
             tabs.removeFromRight (gapW);
@@ -281,7 +289,7 @@ namespace ss::ui
         tabs.removeFromRight (8);
         helpBtn.setBounds (tabs.removeFromRight (40));
         headerArea = header.withTrimmedRight (16).toFloat();
-        subtitleArea = juce::Rectangle<float> ((float) drumMapsTab.getRight() - 300.0f, (float) drumMapsTab.getBottom() + 4.0f, 300.0f, 18.0f);
+        subtitleArea = juce::Rectangle<float> ((float) libraryTab.getRight() - 300.0f, (float) libraryTab.getBottom() + 4.0f, 300.0f, 18.0f);
         songPage.setBounds (r);
         libraryPage.setBounds (r);
         setupPage.setBounds (r);

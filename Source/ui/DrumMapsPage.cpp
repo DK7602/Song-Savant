@@ -101,6 +101,9 @@ namespace ss::ui
     //==============================================================================
     DrumMapsPage::DrumMapsPage (SongSavantProcessor& p) : proc (p)
     {
+        backBtn.setTooltip ("Back to the page you came from");
+        backBtn.onClick = [this] { if (onBack) onBack(); };
+        addAndMakeVisible (backBtn);
         addAndMakeVisible (chooseBtn);
         chooseBtn.onClick = [this] { choosePreset(); };
         addChildComponent (showBtn);
@@ -212,15 +215,23 @@ namespace ss::ui
         });
     }
 
+    void DrumMapsPage::setKit (const juce::String& name, const juce::String& instrument)
+    {
+        kitName = name;
+        kitInstrument = instrument;
+        repaint();
+    }
+
     juce::String DrumMapsPage::loadSteps (const juce::String& mapName) const
     {
         const auto arrow = juce::String::fromUTF8 (" \xe2\x80\xba ");
-        const auto name = mapName.isNotEmpty() ? mapName : juce::String ("your kit");
+        const auto file = mapName.isNotEmpty() ? mapName + ".drm" : juce::String ("the kit's .drm file");
+        const auto name = mapName.isNotEmpty() ? mapName : juce::String ("the kit's name");
         if (daw.isEmpty() || daw == "Cubase" || daw == "Nuendo")
-            return "When the map is ready, in " + (daw.isNotEmpty() ? daw : juce::String ("Cubase")) + ": open the MIDI menu" + arrow + "Drum Map Setup... "
-                   "(or click the Drum Map field in the instrument track's Inspector" + arrow + "Drum Map Setup...). If an older " + name
-                   + " is in the list, select it and click Remove. Click Load..., pick " + name + ".drm in Documents" + arrow + "Song Savant"
-                   + arrow + "Drum Maps, then OK. Last, set the track's Drum Map field (in the Inspector) to " + name + ".";
+            return "Load the map in " + (daw.isNotEmpty() ? daw : juce::String ("Cubase")) + " (once): open the MIDI menu" + arrow + "Drum Map Setup... "
+                   "Click Load..., pick " + file + " in Documents" + arrow + "Song Savant" + arrow + "Drum Maps, and click OK. (If an older map "
+                   "for it is in the list, select it and click Remove first.) Then click the drum track and, in the Inspector on the left, "
+                   "set Drum Map to " + name + ". The drum editor now shows Kick, Snare, Hat... for each pad.";
         return "Song Savant makes Cubase drum maps (.drm) for now, so this step needs Cubase. Pad names for " + daw + " are planned.";
     }
 
@@ -266,19 +277,31 @@ namespace ss::ui
         drawPanel (g, rightPanel);
 
         // left: how it works
-        auto steps = stepsArea;
+        const auto arrow = juce::String::fromUTF8 (" \xe2\x80\xba ");
+        const bool plugin = kitName.isNotEmpty() && kitName == kitInstrument;     // a drum plug-in: its kit is picked inside it
+        const auto kit = kitName.isNotEmpty() && ! plugin ? "\"" + kitName + "\"" : juce::String ("the kit");
+        const auto inst = kitInstrument.isNotEmpty() ? kitInstrument : juce::String ("its instrument");
         g.setColour (p.text);
         g.setFont (serif (24.0f));
-        g.drawText ("Map a drum kit", steps.removeFromTop (34.0f), juce::Justification::centredLeft);
-        g.setColour (p.muted);
-        g.setFont (sans (13.5f));
-        steps.removeFromTop (drawParagraph (g, "For kits with no drum map in Cubase (Analog Lab, HALion, other plug-ins): Song Savant plays every key "
-                                               "and names each pad, so the drum editor shows Kick, Snare, Hat... instead of note numbers.",
-                                            steps, sans (13.5f), p.muted) + 12.0f);
-        const char* lines[] = {
-            "In Cubase, load the kit on an instrument track and pick the sound you want.",
-            "In the plug-in window's top bar, click the small \xe2\x96\xbe next to the \xe2\x96\xb2 \xe2\x96\xbc arrows, choose Save Preset... and give it a name.",
-            "Drag that preset onto this page (from MediaBay, or Documents \xe2\x80\xba VST3 Presets), or click CHOOSE A PRESET." };
+        g.drawText (kitName.isNotEmpty() ? "A drum map for " + kitName : juce::String ("Make a drum map"), headArea, juce::Justification::centredLeft, true);
+        auto steps = stepsArea;
+        {
+            // why, in one go
+            juce::String why = "Cubase shows the pads of " + (plugin ? "a kit in " + kitName : kitName.isNotEmpty() ? kit : juce::String ("some kits"))
+                               + " as note numbers (C1, C#1...). A drum map names them (Kick, Snare, Hat...) in Cubase's drum editor, "
+                                 "and the drum parts Song Savant writes land on the right pads. You make it once per kit; it takes about a minute.";
+            if (kitName.isNotEmpty() && drumMapFileFor (kitName).existsAsFile())
+                why << " You already made one: load it in Cubase (step 4), or make it again.";
+            steps.removeFromTop (drawParagraph (g, why, steps, sans (13.5f), p.muted) + 10.0f);
+        }
+        const juce::String lines[] = {
+            "In Cubase, load " + inst + " on an instrument track and pick " + (plugin ? juce::String ("the kit you want in it") : kit) + ".",
+            juce::String::fromUTF8 ("Save it as a preset: in the plug-in window's top bar, click the small \xe2\x96\xbe next to the \xe2\x96\xb2 \xe2\x96\xbc arrows, "
+                                    "choose Save Preset..., name it") + (kitName.isNotEmpty() && ! plugin ? " (" + kit + " is fine)" : juce::String (" after the kit"))
+                + " and click OK.",
+            "Drop that preset in the box below, or click CHOOSE A PRESET... (it's in Documents" + arrow + "VST3 Presets" + arrow
+                + "the maker" + arrow + "the instrument, or drag it from Cubase's MediaBay). Song Savant plays every key and names each pad: "
+                  "check the names on the right, and click one to change it." };
         auto step = [&] (juce::Rectangle<float>& area, int number, const juce::String& text, float size)
         {
             auto row = area;
@@ -290,7 +313,7 @@ namespace ss::ui
             const float h = drawParagraph (g, text, row.withTrimmedLeft (6.0f), sans (size), p.text);
             area.removeFromTop (juce::jmax (26.0f, h) + 12.0f);
         };
-        for (int i = 0; i < 3; ++i) step (steps, i + 1, juce::String::fromUTF8 (lines[i]), 14.0f);
+        for (int i = 0; i < 3; ++i) step (steps, i + 1, lines[i], 13.5f);
         {
             auto m4 = proc.kitMap.result();
             auto s4 = step4Area;
@@ -326,7 +349,6 @@ namespace ss::ui
         }
 
         // right: the result
-        const auto arrow = juce::String::fromUTF8 (" \xe2\x80\xba ");
         auto m = proc.kitMap.isMapping() ? nullptr : proc.kitMap.result();
         if (m == nullptr || ! m->ok())
         {
@@ -374,7 +396,10 @@ namespace ss::ui
 
         {
             auto in = leftPanel.reduced (22.0f, 20.0f);
-            stepsArea = in.removeFromTop (in.getHeight() * 0.42f);
+            headArea = in.removeFromTop (36.0f);
+            backBtn.setBounds (headArea.removeFromRight (90.0f).withSizeKeepingCentre (90.0f, 32.0f).toNearestInt());
+            in.removeFromTop (6.0f);
+            stepsArea = in.removeFromTop (in.getHeight() * 0.5f);
             dropArea = in.removeFromTop (juce::jlimit (90.0f, 120.0f, in.getHeight() * 0.3f));
             chooseBtn.setBounds (dropArea.withTrimmedTop (dropArea.getHeight() * 0.55f).withSizeKeepingCentre (220.0f, 36.0f).toNearestInt());
             in.removeFromTop (10.0f);

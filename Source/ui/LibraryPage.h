@@ -32,6 +32,7 @@ namespace ss::ui
     {
     public:
         explicit LibraryPage (SongSavantProcessor&);
+        std::function<void (const juce::String& kitName, const juce::String& instrument)> onMakeDrumMap;
         ~LibraryPage() override;
 
         void paint (juce::Graphics&) override;
@@ -76,7 +77,8 @@ namespace ss::ui
                    refreshBtn { "REFRESH LIBRARY", PillButton::Style::outline },
                    copyBtn { "COPY NAME", PillButton::Style::gold },
                    hideBtn { "NOT IN MY LIBRARY", PillButton::Style::subtle },   // or SUGGEST IT AGAIN, for one you hid
-                   favBtn { "FAVORITE", PillButton::Style::subtle };              // the heart: in FAVORITES
+                   favBtn { "FAVORITE", PillButton::Style::subtle },              // the heart: in FAVORITES
+                   drumMapBtn { "MAKE A DRUM MAP", PillButton::Style::outline };  // a drum kit Cubase can't name
         juce::TextEditor searchBox;
         juce::ListBox list { "sounds", this };
         juce::String copiedNote;

@@ -41,6 +41,9 @@ namespace ss
     // that plays its own beat (HALion Sonic "Beats"), or one drum (a kick, a snare). A drum part wants a kit.
     enum class DrumForm { kit, loop, single, unknown };
     DrumForm drumForm (const Sound&);
+    // Cubase shows this kit's pad names by itself (Groove Agent kits, Groove Grabber kits): no drum map needed. Kits
+    // from other instruments (Analog Lab, HALion...) show note numbers until you make a drum map (MAKE A DRUM MAP).
+    bool namesItsPads (const Sound&);
 
     struct PaletteOptions
     {

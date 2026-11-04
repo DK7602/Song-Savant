@@ -1,6 +1,8 @@
 #include "LibraryPage.h"
 #include "core/HiddenSounds.h"
 #include "core/Favorites.h"
+#include "core/KitMap.h"
+#include "core/Palette.h"
 #include "PluginProcessor.h"
 
 namespace ss::ui
@@ -109,6 +111,12 @@ namespace ss::ui
         addAndMakeVisible (hideBtn);
         hideBtn.onClick = [this] { toggleHidden(); };
         addAndMakeVisible (favBtn);
+        drumMapBtn.onClick = [this]
+        {
+            if (auto* snd = selectedSound(); snd != nullptr && onMakeDrumMap)
+                onMakeDrumMap (snd->name, snd->source == "Plug-in" ? snd->name : snd->instrument);
+        };
+        addChildComponent (drumMapBtn);
         favBtn.onClick = [this] { toggleFavorite (list.getSelectedRow()); };
 
         refreshCatalog();
@@ -213,6 +221,9 @@ namespace ss::ui
         const bool hid = s != nullptr && hidden::isHidden (*s);
         const bool fav = s != nullptr && favorites::isFavorite (*s);
         favBtn.setEnabled (s != nullptr);
+        const bool needsMap = s != nullptr && s->kind == Kind::drums && ! namesItsPads (*s) && (drumForm (*s) == DrumForm::kit || s->source == "Plug-in");
+        if (needsMap != drumMapBtn.isVisible()) { drumMapBtn.setVisible (needsMap); resized(); }
+        if (needsMap) drumMapBtn.setButtonText (drumMapFileFor (s->name).existsAsFile() ? "DRUM MAP MADE: SEE IT" : "MAKE A DRUM MAP");
         favBtn.setButtonText (fav ? "IN FAVORITES" : "FAVORITE");
         favBtn.setToggleState (fav, juce::dontSendNotification);
         favBtn.setTooltip (fav ? "One of your favorites (FAVS): click to take it out" : "Keep this sound in your favorites (FAVS)");
@@ -431,7 +442,8 @@ namespace ss::ui
         }
 
         // how to load it, above the copy button
-        auto bottom = r.removeFromBottom (copyBtn.getHeight() + hideBtn.getHeight() + 8.0f + (copiedNote.isNotEmpty() ? 30.0f : 6.0f));
+        auto bottom = r.removeFromBottom (copyBtn.getHeight() + hideBtn.getHeight() + 8.0f + (drumMapBtn.isVisible() ? 40.0f : 0.0f)
+                                          + (copiedNote.isNotEmpty() ? 30.0f : 6.0f));
         if (copiedNote.isNotEmpty())
         {
             g.setColour (p.good);
@@ -488,10 +500,15 @@ namespace ss::ui
             copyBtn.setBounds (in.removeFromBottom (44.0f).toNearestInt());
             in.removeFromBottom (8.0f);
             auto row = in.removeFromBottom (32.0f);
+            if (drumMapBtn.isVisible())
+            {
+                in.removeFromBottom (8.0f);
+                drumMapBtn.setBounds (in.removeFromBottom (32.0f).toNearestInt());
+            }
             favBtn.setBounds (row.removeFromLeft (row.getWidth() * 0.42f).toNearestInt());
             row.removeFromLeft (8.0f);
             hideBtn.setBounds (row.toNearestInt());
-            detailsArea = in.withTrimmedBottom (-84.0f);   // the details drawing leaves room for the buttons themselves
+            detailsArea = in.withTrimmedBottom (drumMapBtn.isVisible() ? -124.0f : -84.0f);   // (the details leave room for the buttons)
         }
     }
 }

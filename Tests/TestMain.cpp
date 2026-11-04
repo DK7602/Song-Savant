@@ -2277,8 +2277,23 @@ namespace
         const int kit = drum ("Trap Room Kit", "HALion Sonic", "MediaBay", "Drumset", "Urban (Hip-Hop / R&B)", "Modern,Processed", false, false);
 
         const int analogKit = drum ("Beat Box", "Analog Lab V", "Arturia", "", "Hip Hop/Trap", "Punchy", false, false);
-        check (ss::drumForm (cat.sounds[(size_t) analogKit]) == ss::DrumForm::kit && ss::howToLoad (cat.sounds[(size_t) analogKit]).contains ("DRUM MAPS"),
-               "an Analog Lab kit counts as a kit too (the Drum Maps page names its pads)");
+        check (ss::drumForm (cat.sounds[(size_t) analogKit]) == ss::DrumForm::kit && ss::howToLoad (cat.sounds[(size_t) analogKit]).contains ("MAKE A DRUM MAP"),
+               "an Analog Lab kit counts as a kit too (MAKE A DRUM MAP names its pads)");
+        {
+            // Groove Agent and Groove Grabber kits name their own pads in Cubase: they come first
+            auto ga = cat.sounds[(size_t) kit];
+            ga.instrument = "Groove Agent SE";
+            auto gg = cat.sounds[(size_t) kit];
+            gg.instrument = "Groove Grabber";
+            gg.source = "Groove Grabber";
+            const auto part = ss::partsFor (ss::readBrief ("modern trap")).front();
+            const auto br = ss::readBrief ("modern trap");
+            check (ss::namesItsPads (cat.sounds[(size_t) mine]) && ss::namesItsPads (ga) && ss::namesItsPads (gg)
+                   && ! ss::namesItsPads (cat.sounds[(size_t) analogKit]) && ! ss::namesItsPads (cat.sounds[(size_t) kit])
+                   && std::abs (ss::scoreSound (ga, part, br) - ss::scoreSound (cat.sounds[(size_t) kit], part, br) - 3.0f) < 0.01f
+                   && ! ss::howToLoad (ga).contains ("DRUM MAP"),
+                   "a kit that names its pads in Cubase (Groove Agent, Groove Grabber) ranks higher than the same kit that doesn't");
+        }
         check (ss::drumForm (cat.sounds[(size_t) loop]) == ss::DrumForm::loop && ss::drumForm (cat.sounds[(size_t) kick]) == ss::DrumForm::single
                && ss::drumForm (cat.sounds[(size_t) mine]) == ss::DrumForm::kit && ss::drumForm (cat.sounds[(size_t) kit]) == ss::DrumForm::kit,
                "loops, single drums and kits are told apart");
@@ -2734,6 +2749,45 @@ namespace
                         check (blank && shaped && emptyGrid && ownChords && wrote,
                                "BLANK SONG: one empty section; sections added; an empty grid; your own chords (Dm, Bb) and notes; the bass comes in");
                     }
+                    if (name == "song-drum-map")
+                    {
+                        // a Groove Grabber kit on the drum card: no drum map needed; a kit from another instrument: MAKE A DRUM MAP
+                        auto& v = e->getView();
+                        auto& sp = v.getSong();
+                        auto* pal = proc.song.currentPalette();
+                        const auto cat = proc.catalog.catalog();
+                        bool notForNamed = false, offered = false, opened = false, back = false;
+                        if (pal != nullptr && cat != nullptr)
+                        {
+                            auto& drums = pal->slots.front();
+                            notForNamed = ss::namesItsPads (cat->sounds[(size_t) drums.current().sound]) && ! sp.drumMapOffered();
+                            // another drum kit, one Cubase can't name (a drum plug-in)
+                            for (int i = 0; i < drums.numOptions(); ++i)
+                            {
+                                drums.choice = i;
+                                if (! ss::namesItsPads (cat->sounds[(size_t) drums.current().sound])) break;
+                            }
+                            sp.selectRole (drums.part.role);
+                            const auto kitName = cat->sounds[(size_t) drums.current().sound].name;
+                            offered = sp.drumMapOffered();
+                            sp.makeDrumMap();
+                            opened = v.getDrumMaps().isVisible() && v.getDrumMaps().getKitName() == kitName;
+                            if (opened)
+                            {
+                                juce::Image shot = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+                                auto f = dir.getChildFile ("drum-maps-for-kit.png");
+                                f.deleteFile();
+                                juce::FileOutputStream out (f);
+                                juce::PNGImageFormat png;
+                                png.writeImageToStream (shot, out);
+                            }
+                            v.getDrumMaps().onBack();
+                            back = sp.isVisible();
+                        }
+                        check (notForNamed && offered && opened && back,
+                               "MAKE A DRUM MAP: only for a kit Cubase can't name; it opens the drum map page for that kit; BACK returns ("
+                               + juce::String ((int) notForNamed) + juce::String ((int) offered) + juce::String ((int) opened) + juce::String ((int) back) + ")");
+                    }
                     if (name.startsWith ("favorites"))
                     {
                         // hearts on the SONG page and the LIBRARY page; SAVE SONG; a change, SAVE AS NEW; OPEN; USE IT
@@ -2858,7 +2912,7 @@ namespace
                     juce::StringArray titles;
                     for (auto& sec : man.getSections()) titles.add (sec.title);
                     check (v.getHelp().isVisible() && titles.size() >= 18 && man.numBlocks() > 120 && titles.contains ("Working with Groove Grabber") && titles.contains ("The piano roll: your own parts")
-                           && titles.contains ("DRUM MAPS: name a kit's pads") && titles.contains ("Quick reference card"),
+                           && titles.contains ("Drum maps: pad names in Cubase") && titles.contains ("Quick reference card"),
                            "the manual opens with its contents: " + juce::String (titles.size()) + " chapters, " + juce::String (man.numBlocks()) + " blocks");
                     check (man.setSearch ("drum map") >= 5 && man.getMatchY (0) > 0, "searching the manual finds every mention of a word");
                     check (man.setSearch ("no such words here") == 0, "and nothing when nothing matches");
@@ -2922,6 +2976,7 @@ namespace
         shoot ("arrange-moving", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
         shoot ("arrange-blank", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
         shoot ("favorites", false, 1240, 820, 6, {}, "dark moody trap, 142 BPM in A minor");
+        shoot ("song-drum-map", false, 1240, 820, 0, {}, "warm modern country, 96 BPM in G major");
         shoot ("favorites-small", false, 1060, 780, 6, {}, "warm modern country, 96 BPM in G major");
         shoot ("piano-roll", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-small", false, 1060, 780, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");

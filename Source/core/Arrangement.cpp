@@ -112,7 +112,7 @@ namespace ss
             {
                 const auto& snd = cat->sounds[(size_t) slot.current().sound];
                 if (isGrooveGrabberKit (snd) || snd.instrument == "Groove Grabber") return grooveGrabberDrums();
-                const auto drm = drumMapsFolder().getChildFile (juce::File::createLegalFileName (snd.name).trim() + ".drm");
+                const auto drm = drumMapFileFor (snd.name);
                 if (drm.existsAsFile())
                     if (auto mapped = drumNotesFromMap (drm)) return *mapped;
             }

@@ -535,6 +535,17 @@ Built in steps, each one a build the owner can try:
     them (smaller type, then cut at the last line that fits; the "Copied ..." note sits just above the buttons), so a
     small window no longer runs the text under the buttons; and the palette bar shrinks to fit (NEW PALETTES and BLANK
     SONG overlapped on a narrow window).
+- **Drum maps from the drum card; kits that name their pads first** *(1.7.0; the owner found Groove Grabber kits already
+  show their pad names in Cubase through Groove Agent, asked what DRUM MAPS is for, and chose to take it out of the header
+  and rank Groove Agent and Groove Grabber kits higher, November 2026)*.
+  - The header has no DRUM MAPS tab. **MAKE A DRUM MAP** shows under WHY IT WORKS on the drum card (and on the LIBRARY
+    page) only for a kit Cubase can't name: a drum kit (or a drum plug-in) that isn't Groove Agent or Groove Grabber
+    (`namesItsPads`). With a map already made it says DRUM MAP MADE: SEE IT. It opens the drum map page for that kit
+    (`DrumMapsPage::setKit`: the title, the why and the steps name the kit and its instrument); BACK returns.
+  - The steps are rewritten plainly: why (note numbers vs names, once per kit, about a minute), load and pick the kit,
+    Save Preset..., drop it here (where Cubase keeps presets), check the names; step 4 loads it in Cubase.
+  - Palettes: a drum kit that names its own pads scores +3 more (`scoreSound`; WHY IT WORKS says "Cubase shows its pad
+    names"), so Groove Agent and Groove Grabber kits come first; the others stay among the choices.
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is

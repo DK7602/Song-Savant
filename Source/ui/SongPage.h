@@ -81,6 +81,10 @@ namespace ss::ui
         std::function<void (const juce::String& role)> onEditPart;   // a card's EDIT: the piano roll
         std::function<void()> onBlankSong;           // BLANK SONG: ARRANGE, with an empty map to fill yourself
         std::function<void()> onSaveSong;            // SAVE SONG: the whole song kept in FAVORITES
+        // MAKE A DRUM MAP: the drum card's kit shows note numbers in Cubase (not Groove Agent or Groove Grabber)
+        std::function<void (const juce::String& kitName, const juce::String& instrument)> onMakeDrumMap;
+        bool drumMapOffered() const                  { return drumMapBtn.isVisible(); }   // (the tests)
+        void makeDrumMap()                           { if (drumMapBtn.isVisible() && drumMapBtn.onClick) drumMapBtn.onClick(); }   // (the tests)
         void selectRole (const juce::String& role);  // that card selected (USE IT on FAVORITES put a sound on it)
         void toggleFavorite (int card);              // a card's heart (also the tests)
         void hideSelected();                         // NOT IN MY LIBRARY (also the tests): never suggested again
@@ -120,7 +124,8 @@ namespace ss::ui
                    sendBtn { "SEND TO GROOVE GRABBER", PillButton::Style::outline },
                    blankBtn { "BLANK SONG", PillButton::Style::outline },
                    saveBtn { "SAVE SONG", PillButton::Style::outline },
-                   notThereBtn { "NOT IN MY LIBRARY?", PillButton::Style::subtle };
+                   notThereBtn { "NOT IN MY LIBRARY?", PillButton::Style::subtle },
+                   drumMapBtn { "MAKE A DRUM MAP", PillButton::Style::outline };
         DragChip allParts { "ALL PARTS", DragChip::Kind::midi };
         juce::OwnedArray<PillButton> tabs;
         juce::OwnedArray<PartCard> cards;
