@@ -2393,6 +2393,17 @@ namespace
             }
             if (name.startsWith ("welcome")) ss::ui::writeFlag (ss::ui::WelcomePanel::seenKey, false);   // as on the first run
             std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
+            if (name == "song-empty")
+            {
+                // the app's window (JUCE's asks for minimise and close only): Song Savant adds maximise
+                juce::DocumentWindow window ("Song Savant", juce::Colours::black, juce::DocumentWindow::minimiseButton | juce::DocumentWindow::closeButton,
+                                             false);   // (not on the screen: the test's X server has no window manager)
+                const bool before = window.getMaximiseButton() == nullptr;
+                window.setContentNonOwned (ed.get(), true);
+                const bool after = window.getMaximiseButton() != nullptr && window.getMinimiseButton() != nullptr && window.getCloseButton() != nullptr;
+                window.clearContentComponent();
+                check (before && after, "the app's window: minimise, maximise (full screen) and close");
+            }
             ed->setSize (w, h);
             if (name.startsWith ("welcome")) juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
             if (auto* e = dynamic_cast<SongSavantEditor*> (ed.get()))

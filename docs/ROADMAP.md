@@ -507,6 +507,10 @@ Built in steps, each one a build the owner can try:
     <app data>/Hidden sounds.txt; makePalettes skips them; `SongSession::forgetSound` takes one out of the palettes
     (the next choice takes its place, unlocked). Analog Lab's "Smoker" is left out for everyone
     (`retiredArturiaPresets`, counted as left out like the Prophet V3 presets).
+- **Maximise in the app** *(1.5.1; the owner asked for a full-screen button by minimise and close, November 2026)*:
+  JUCE's standalone window asks for minimise and close only, so the editor adds maximise when it finds itself in a
+  `DocumentWindow` (`SongSavantEditor::parentHierarchyChanged`; in a DAW there's none, the window is the host's). The
+  title bar's double-click maximises too. The size limit went up to 3840 x 2400 so a maximised window fills big screens.
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is

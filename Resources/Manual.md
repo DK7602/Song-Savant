@@ -52,7 +52,7 @@ Every page sits under one header. Hover over almost anything to see a tip.
 | LIBRARY | Every sound you own, in one searchable list |
 | DRUM MAPS | Names the pads of a drum kit that has no drum map in Cubase |
 
-The version number sits under the tabs. The window can be resized from its bottom-right corner, and everything fits itself to the size.
+The version number sits under the tabs. The window can be resized from its bottom-right corner, and everything fits itself to the size. In the app, the **maximise** button (between minimise and close, at the top right) makes it fill the screen, and clicking it again puts it back; double-clicking the title bar does the same. (In your DAW, the plug-in's window belongs to the DAW: drag its corner to make it bigger.)
 
 ## SONG: describe your song
 
