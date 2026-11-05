@@ -557,6 +557,12 @@ Built in steps, each one a build the owner can try:
     pixel size so it stays sharp. Groove Grabber does the same (its editor's `content`).
   - **The SONG cards fill a tall card**: the card's words, tags (EDIT, MIDI, YOUR PART), heart, lock, play button and
     arrows grow with the card's height, up to 1.35 times, instead of leaving empty space under the sound's name.
+- **Groove Grabber's bigger kits** *(1.8.1; Groove Grabber 1.0.26 added KIT SIZE 17 / 23 / 32, November 2026)*. Its pads
+  now go up to 68: 58 Kick 2, 59 808 2, 60 Closed Hat 2, 61 Open Hat 2, 62 FX 3, 63 Clap 2, 64 Rim 2, 65 Crash 2,
+  66 Ride 2, 67 Perc 4, 68 FX 4; 40, 41, 45 and 48 are Snare 2 and the second floor, mid and high toms. A file tagged
+  "drums: Groove Grabber's pads" reads them onto those drums' rows (`laneForNote`); a file that doesn't say keeps the
+  usual layout above 57 (General MIDI's ride 2 and hand percussion). Song Savant still writes a Groove Grabber kit's
+  part on the 17-sound kit's pads, which every kit size has.
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is

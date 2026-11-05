@@ -389,7 +389,7 @@ Drag a MIDI file (.mid) onto Song Savant and it becomes your pattern:
 
 A gold dashed line shows where it will land. A line under the title says what came in ("Dropped ...: 24 notes from bar 1"). **Ctrl+Z puts it back**, all in one step.
 
-For the drums, Song Savant works out which note is which drum: Groove Grabber's pads, the usual General MIDI layout, and the kits you made drum maps for. Files from Groove Grabber and Song Savant say which layout they use, so the 808 and the percussion land on the right rows. A hit Song Savant doesn't know is left out. A pattern shorter than the section fills only the bars it covers: copy it along with Ctrl+D, or drop it again further on.
+For the drums, Song Savant works out which note is which drum: Groove Grabber's pads, the usual General MIDI layout, and the kits you made drum maps for. Files from Groove Grabber and Song Savant say which layout they use, so the 808 and the percussion land on the right rows. Groove Grabber's bigger kits (23 or 32 sounds, Groove Grabber 1.0.26 or newer) have second sounds: a second kick, 808, hats, clap, rim, crash and ride land on those drums' rows, with the first ones. A hit Song Savant doesn't know is left out. A pattern shorter than the section fills only the bars it covers: copy it along with Ctrl+D, or drop it again further on.
 
 **What happens to your notes**
 

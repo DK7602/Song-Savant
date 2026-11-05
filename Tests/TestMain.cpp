@@ -1949,6 +1949,27 @@ namespace
                "Groove Grabber's pads: 52 is the 808, 53 and 54 its percussion");
         check (ss::laneForNote (52, "General MIDI") == "crash" && ss::laneForNote (70) == "shaker" && ss::laneForNote (99).isEmpty(),
                "a General MIDI file: 52 is a cymbal; notes that aren't drums are left out");
+        {
+            // Groove Grabber 1.0.26's 23- and 32-sound kits: the second sounds sit on 58-68 (and 40, 41, 45, 48)
+            const juce::String pads = "Groove Grabber's pads";
+            bool all = true;
+            for (auto [note, lane] : std::initializer_list<std::pair<int, const char*>> {
+                     { 40, "snare" }, { 41, "tomlow" }, { 45, "tommid" }, { 48, "tomhigh" }, { 58, "kick" }, { 59, "808" }, { 60, "hat" },
+                     { 61, "openhat" }, { 62, "perc" }, { 63, "clap" }, { 64, "rim" }, { 65, "crash" }, { 66, "ride" }, { 67, "perc" }, { 68, "perc" } })
+                all = all && ss::laneForNote (note, pads) == lane;
+            check (all, "Groove Grabber's bigger kits: Kick 2 (58), 808 2, Closed and Open Hat 2, Clap 2, Rim 2, Crash 2, Ride 2, "
+                        "Perc 4 and the FX land on their drums' rows, the second toms (45, 48) on the mid and high tom");
+            check (ss::laneForNote (59) == "ride" && ss::laneForNote (60) == "perc" && ss::laneForNote (59, "General MIDI") == "ride"
+                     && ss::laneForNote (45) == "tomlow",
+                   "a file that doesn't say it's Groove Grabber's keeps the usual layout above 57 (59 a ride, 60 up hand percussion)");
+            ss::DrumNotes from;
+            from.source = pads;
+            const std::vector<PatternNote> second { { 0, 0.25, 58, 110 }, { 0.5, 0.25, 60, 80 }, { 1, 0.25, 63, 100 }, { 1.5, 0.25, 61, 90 } };
+            const auto rows = ss::drumsToLanes (second, from);
+            check (rows.size() == 4 && rows[0].note == ss::laneNote ("kick") && rows[1].note == ss::laneNote ("hat")
+                     && rows[2].note == ss::laneNote ("clap") && rows[3].note == ss::laneNote ("openhat"),
+                   "a pattern from a 32-sound Groove Grabber kit, dropped in: every hit on its drum's row");
+        }
         const auto gg = ss::grooveGrabberDrums(), gm = ss::generalMidiDrums();
         const std::vector<PatternNote> onPads { { 0, 0.25, 36, 110 }, { 0, 0.25, 52, 100 }, { 1, 0.25, 38, 100 }, { 0.5, 0.25, 54, 70 } };
         const auto lanes = ss::drumsToLanes (onPads, gg);

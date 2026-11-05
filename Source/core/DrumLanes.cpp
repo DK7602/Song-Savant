@@ -27,6 +27,26 @@ namespace ss
     juce::String laneForNote (int note, const juce::String& source)
     {
         const bool gm = source.containsIgnoreCase ("General MIDI");
+        if (source.containsIgnoreCase ("Groove Grabber"))
+        {
+            // Groove Grabber's pads: its second mid and high toms (45, 48), and from 1.0.26 its bigger kits' second
+            // sounds above the 17-sound kit's pads (23 sounds: 58-62; 32 sounds: up to 68)
+            switch (note)
+            {
+                case 45:                   return "tommid";
+                case 48:                   return "tomhigh";
+                case 58:                   return "kick";          // Kick 2
+                case 59:                   return "808";           // 808 2
+                case 60:                   return "hat";           // Closed Hat 2
+                case 61:                   return "openhat";       // Open Hat 2
+                case 63:                   return "clap";          // Clap 2
+                case 64:                   return "rim";           // Rim 2
+                case 65:                   return "crash";         // Crash 2
+                case 66:                   return "ride";          // Ride 2
+                case 62: case 67: case 68: return "perc";          // FX 3, Perc 4, FX 4
+                default: break;
+            }
+        }
         switch (note)
         {
             case 35: case 36:          return "kick";
