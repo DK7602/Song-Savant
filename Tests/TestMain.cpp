@@ -27,6 +27,7 @@
 #include "core/SongSession.h"
 #include "core/PatternEdit.h"
 #include "core/DrumLanes.h"
+#include "core/Coach.h"
 #include "core/HiddenSounds.h"
 #include "core/Favorites.h"
 #include <map>
@@ -2271,6 +2272,244 @@ namespace
             }
     }
 
+    void testCoach (const sstest::FakeComputer& fc)
+    {
+        section ("Coach my song");
+        using namespace ss::coach;
+        std::atomic<bool> cancel { false };
+        const auto cat = ss::buildCatalog (fc.loc, cancel);
+        auto songFor = [&cat] (const juce::String& words)
+        {
+            ss::SongSession s;
+            s.form.description = words;
+            s.find (cat);
+            s.updateArrangement (ss::arrangementParts (*s.currentPalette(), &cat));
+            return s;
+        };
+        auto tipFor = [] (const Report& r, const juce::String& idStart) -> const Tip*
+        {
+            for (auto& t : r.tips) if (t.id.startsWith (idStart)) return &t;
+            return nullptr;
+        };
+        auto sectionNamed = [] (const ss::Arrangement& a, const juce::String& name, bool last = false)
+        {
+            int found = -1;
+            for (int i = 0; i < (int) a.sections.size(); ++i)
+                if (a.sections[(size_t) i].name == name) { found = i; if (! last) break; }
+            return found;
+        };
+        auto partOf = [] (const std::vector<ss::ArrangementPart>& parts, ss::PartType t) -> const ss::ArrangementPart*
+        {
+            for (auto& p : parts) if (p.type == t) return &p;
+            return nullptr;
+        };
+
+        {
+            const auto r = tempoRanges ("130-160 BPM, felt in half time (like 65-80)");
+            check (r.size() == 2 && r[0].first == 130 && r[0].second == 160 && r[1].first == 65 && r[1].second == 80 && timeText (125) == "2:05",
+                   "the style's usual tempos are read from its notes");
+        }
+
+        // ---- trap: tempo, I MEANT THAT, a late hook, a hook that doesn't lift, the snare
+        {
+            auto s = songFor ("trap 142 BPM in A minor");
+            const auto parts = ss::arrangementParts (*s.currentPalette(), &cat);
+            check (! isYours (s, &cat) && ! coachSong (s, &cat).yours, "a song Song Savant made, untouched: nothing of yours to coach");
+            ss::toggleArrangementCell (s.arrangement, 0, parts[0]);
+            check (isYours (s, &cat) && coachSong (s, &cat).yours, "a change of yours on the map: it's yours to coach");
+
+            s.form.bpm = 100;
+            auto r = coachSong (s, &cat);
+            const auto* t = tipFor (r, "tempo");
+            check (t != nullptr && t->fix.kind == FixKind::setBpm && t->fix.value == 130 && t->fixLabel == "SET 130 BPM" && t->why.contains ("130-160"),
+                   "100 BPM for trap: the tempo tip, with FIX IT to the nearest usual tempo (130)");
+            const auto before = snapshot (s);
+            check (t != nullptr && applyFix (s, &cat, t->fix) && s.form.bpm == 130 && tipFor (coachSong (s, &cat), "tempo") == nullptr,
+                   "FIX IT sets the tempo, and the tip goes");
+            restore (s, before);
+            check (s.form.bpm == 100 && sameSong (snapshot (s), before), "UNDO puts the tempo back");
+            s.coachDismissed.add ("tempo");
+            r = coachSong (s, &cat);
+            ss::SongSession back;
+            back.fromXml (*s.toXml());
+            check (tipFor (r, "tempo") == nullptr && r.dismissed == 1 && back.coachDismissed.contains ("tempo"),
+                   "I MEANT THAT puts the tip away for this song (saved with it)");
+            s.coachDismissed.clear();
+            s.form.bpm = 70;
+            r = coachSong (s, &cat);
+            bool halfTime = false;
+            for (auto& w : r.working) halfTime = halfTime || (w.area == Area::tempoKey && w.text.contains ("70 BPM"));
+            check (tipFor (r, "tempo") == nullptr && halfTime, "70 BPM is trap's half-time feel: no tip, it's working");
+            s.form.bpm = 0;
+
+            // a 32-bar intro: the hook comes in at 0:54
+            ss::setSectionBars (s.arrangement, 0, 32);
+            r = coachSong (s, &cat);
+            t = tipFor (r, "shape.latechorus");
+            check (t != nullptr && t->section == 1 && t->fix.kind == FixKind::setBars && t->fix.section == 0 && t->fix.value == 4 && t->why.contains ("0:54"),
+                   "a hook that comes in at 0:54 (a 32-bar intro): the tip, FIX IT shortens the intro to 4 bars");
+            check (t != nullptr && applyFix (s, &cat, t->fix) && s.arrangement.sections[0].bars == 4, "FIX IT: the intro is 4 bars");
+
+            // verses and hooks playing the same: the hook doesn't lift
+            const auto* drumsPart = partOf (parts, ss::PartType::drums);
+            const auto* bassPart = partOf (parts, ss::PartType::bass);
+            check (drumsPart != nullptr && bassPart != nullptr, "the trap palette has drums and a bass");
+            if (drumsPart != nullptr && bassPart != nullptr)
+            {
+                for (auto& sec : s.arrangement.sections)
+                    if (sec.name == "Verse" || sec.name == "Hook") sec.play = { { drumsPart->role, "groove" }, { bassPart->role, "on" } };
+                r = coachSong (s, &cat);
+                t = tipFor (r, "energy.chorus");
+                check (t != nullptr && t->fix.kind == FixKind::liftChoruses && t->fixLabel == "LIFT EVERY HOOK", "a hook that plays what the verse plays: the tip");
+                bool lifted = t != nullptr && applyFix (s, &cat, t->fix);
+                for (auto& sec : s.arrangement.sections)
+                    if (sec.name == "Hook")
+                        for (auto& p : parts) lifted = lifted && sec.modeFor (p.role) == (p.type == ss::PartType::drums ? "full" : "on");
+                check (lifted && tipFor (coachSong (s, &cat), "energy.chorus") == nullptr, "FIX IT brings every part into every hook, the drums full");
+
+                // your drums with a rock backbeat (2 and 4); trap puts its clap on 3
+                ss::Pattern p;
+                p.bars = 4;
+                p.drums = true;
+                for (int b = 0; b < 4; ++b)
+                {
+                    p.notes.push_back ({ b * 4.0, 0.25, ss::laneNote ("kick"), 110 });
+                    p.notes.push_back ({ b * 4.0 + 1.0, 0.25, ss::laneNote ("snare"), 110 });
+                    p.notes.push_back ({ b * 4.0 + 3.0, 0.25, ss::laneNote ("snare"), 110 });
+                }
+                const int hook = sectionNamed (s.arrangement, "Hook");
+                s.storePattern (hook, *drumsPart, p);
+                r = coachSong (s, &cat);
+                t = tipFor (r, "drums.backbeat");
+                check (t != nullptr && t->role == drumsPart->role && t->section == hook && t->why.contains ("beat 3") && t->why.contains ("beats 2 and 4"),
+                       "your snare on 2 and 4 in trap: the tip says trap puts it on beat 3");
+                bool onThree = t != nullptr && applyFix (s, &cat, t->fix);
+                const auto fixed = s.patternAt (hook, *drumsPart, ss::generalMidiDrums());
+                int backbeats = 0;
+                for (auto& n : fixed.notes)
+                    if (n.note == ss::laneNote ("snare") || n.note == ss::laneNote ("clap"))
+                    {
+                        ++backbeats;
+                        onThree = onThree && std::abs (std::fmod (n.start, 4.0) - 2.0) < 0.01;
+                    }
+                check (onThree && backbeats == 4, "FIX IT: the snare on beat 3 of every bar (on the snare you used)");
+            }
+        }
+
+        // ---- country: a missing bridge, a chord from outside the key, a wide melody, the bass off the roots
+        {
+            auto s = songFor ("modern country 96 BPM in G major");
+            const auto parts = ss::arrangementParts (*s.currentPalette(), &cat);
+            const auto plan = s.partsPlan();
+            const int bridge = sectionNamed (s.arrangement, "Bridge");
+            check (bridge > 0, "the country song has a bridge");
+            ss::removeSection (s.arrangement, bridge);
+            auto r = coachSong (s, &cat);
+            const auto* t = tipFor (r, "shape.missing.Bridge");
+            check (t != nullptr && t->fixLabel == "ADD A BRIDGE" && t->fix.value == sectionNamed (s.arrangement, "Chorus", true),
+                   "no bridge in a country song with its choruses: the tip, FIX IT adds one before the last chorus");
+            check (t != nullptr && applyFix (s, &cat, t->fix) && sectionNamed (s.arrangement, "Bridge") == sectionNamed (s.arrangement, "Chorus", true) - 1,
+                   "FIX IT: a bridge right before the last chorus");
+
+            const int chorus = sectionNamed (s.arrangement, "Chorus");
+            ss::setSectionChord (s.arrangement, plan, chorus, 0, "C#");
+            r = coachSong (s, &cat);
+            t = tipFor (r, "chords.outside.Chorus.0");
+            check (t != nullptr && t->title.startsWith ("C# is outside the key") && t->fixLabel.startsWith ("USE "), "C# in G major (your chord): the tip");
+            check (t != nullptr && applyFix (s, &cat, t->fix) && ss::sectionChords (plan, s.arrangement.sections[(size_t) chorus])[0].name != "C#",
+                   "FIX IT puts Song Savant's chord back in that bar");
+
+            const auto drums = ss::drumNotesFor (*s.currentPalette(), &cat);
+            if (const auto* hook = partOf (parts, ss::PartType::hook))
+            {
+                ss::Pattern p;
+                p.bars = 8;
+                p.key = plan.key;
+                int i = 0;
+                for (int note : { 48, 55, 62, 67, 72, 74 }) p.notes.push_back ({ (double) i++, 1.0, note, 100 });
+                s.storePattern (chorus, *hook, p);
+                r = coachSong (s, &cat);
+                t = tipFor (r, "melody.range." + hook->role);
+                check (t != nullptr && t->fixLabel == "BRING IT IN" && t->why.contains ("26 semitones"), "a melody 26 semitones wide: the tip");
+                applyFix (s, &cat, t != nullptr ? t->fix : Fix());
+                int lo = 127, hi = 0;
+                for (auto& n : s.patternAt (chorus, *hook, drums).notes) { lo = juce::jmin (lo, n.note); hi = juce::jmax (hi, n.note); }
+                check (hi - lo <= 19 && tipFor (coachSong (s, &cat), "melody.range") == nullptr, "FIX IT brings the far notes an octave closer");
+            }
+            else check (false, "the country palette has a melody part");
+
+            if (const auto* bass = partOf (parts, ss::PartType::bass))
+            {
+                const auto chords = ss::sectionChords (plan, s.arrangement.sections[(size_t) chorus]);
+                ss::Pattern p;
+                p.bars = 8;
+                p.key = plan.key;
+                for (int b = 0; b < 8; ++b) p.notes.push_back ({ b * 4.0, 1.0, 36 + (chords[(size_t) b % chords.size()].root + 2) % 12, 100 });
+                s.storePattern (chorus, *bass, p);
+                r = coachSong (s, &cat);
+                t = tipFor (r, "bass.roots." + bass->role);
+                check (t != nullptr && t->fixLabel == "ROOTS ON THE ONE", "a bass that never starts the bar on the root: the tip");
+                applyFix (s, &cat, t != nullptr ? t->fix : Fix());
+                bool roots = true;
+                const auto fixed = s.patternAt (chorus, *bass, drums);
+                for (int b = 0; b < 8; ++b) roots = roots && fixed.notes[(size_t) b].note % 12 == chords[(size_t) b % chords.size()].root % 12;
+                check (roots, "FIX IT: every bar starts on its chord's root");
+            }
+            else check (false, "the country palette has a bass");
+        }
+
+        // ---- boom bap: straight hats where the style swings
+        {
+            auto s = songFor ("boom bap 90 BPM in A minor");
+            const auto parts = ss::arrangementParts (*s.currentPalette(), &cat);
+            const auto* drumsPart = partOf (parts, ss::PartType::drums);
+            const int swing = s.partsPlan().guide.groove.swing;
+            check (drumsPart != nullptr && swing >= 55, "boom bap swings (" + juce::String (swing) + "%)");
+            if (drumsPart != nullptr)
+            {
+                ss::Pattern p;
+                p.bars = 2;
+                p.drums = true;
+                for (int step = 0; step < 32; ++step) p.notes.push_back ({ step / 4.0, 0.2, ss::laneNote ("hat"), 80 });
+                for (int b = 0; b < 2; ++b)
+                {
+                    p.notes.push_back ({ b * 4.0 + 1.0, 0.25, ss::laneNote ("snare"), 110 });
+                    p.notes.push_back ({ b * 4.0 + 3.0, 0.25, ss::laneNote ("snare"), 110 });
+                }
+                ss::sortNotes (p.notes);
+                const int verse = sectionNamed (s.arrangement, "Verse");
+                s.storePattern (verse, *drumsPart, p);
+                auto r = coachSong (s, &cat);
+                const auto* t = tipFor (r, "drums.swing");
+                bool snareFine = false;
+                for (auto& w : r.working) snareFine = snareFine || w.text.startsWith ("Your snare sits where");
+                check (t != nullptr && t->fixLabel == "SWING THE HATS" && tipFor (r, "drums.backbeat") == nullptr && snareFine,
+                       "straight 16th hats in boom bap: the swing tip (and the snare on 2 and 4 is working)");
+                applyFix (s, &cat, t != nullptr ? t->fix : Fix());
+                bool swung = true;
+                int moved = 0;
+                for (auto& n : s.patternAt (verse, *drumsPart, ss::generalMidiDrums()).notes)
+                {
+                    if (n.note != ss::laneNote ("hat")) continue;
+                    const double at16 = n.start * 4.0;
+                    const int step = (int) std::floor (at16 + 0.001);
+                    if (step % 2 == 1) { ++moved; swung = swung && at16 - step > 0.1; }
+                    else swung = swung && std::abs (at16 - step) < 0.01;
+                }
+                check (swung && moved == 16, "FIX IT swings the in-between hats late, and leaves the rest on the beat");
+            }
+        }
+
+        // ---- a blank song, just started
+        {
+            auto s = songFor ("pop 110 BPM in C major");
+            s.setSongShape (ss::SongShape::blank);
+            s.updateArrangement (ss::arrangementParts (*s.currentPalette(), &cat));
+            const auto r = coachSong (s, &cat);
+            check (isYours (s, &cat) && r.yours && r.empty && r.tips.empty(), "a blank song with nothing playing yet: yours, just getting started");
+        }
+    }
+
     void testDrumKits (const ss::Catalog& base)
     {
         // a drum part wants a whole kit you play yourself, not a loop or a single drum
@@ -2575,6 +2814,26 @@ namespace
                 {
                     e->getView().getSong().setDescription (song);
                     e->getView().getSong().find();
+                    if (name.startsWith ("masterclass-coach"))
+                    {
+                        // a song made your own: a long intro, verses and hooks playing the same, a slow tempo
+                        auto& mine = proc.song;
+                        const auto catalog = proc.catalog.catalog();
+                        const auto parts = ss::arrangementParts (*mine.currentPalette(), catalog.get());
+                        mine.updateArrangement (parts);
+                        ss::setSectionBars (mine.arrangement, 0, 32);
+                        for (auto& sec : mine.arrangement.sections)
+                            if (sec.name == "Verse" || sec.name == "Hook")
+                            {
+                                sec.play.clear();
+                                for (auto& p : parts)
+                                    if (p.type == ss::PartType::drums) sec.play[p.role] = "groove";
+                                    else if (p.type == ss::PartType::bass) sec.play[p.role] = "on";
+                            }
+                        mine.form.bpm = 100;
+                        e->getView().getSong().showForm();
+                        e->getView().getMasterclass().showCoach (true);
+                    }
                     if (name.startsWith ("arrange"))
                     {
                         auto& ar = e->getView().getArrange();
@@ -2967,6 +3226,37 @@ namespace
             juce::PNGImageFormat png;
             check (out.openedOk() && png.writeImageToStream (img, out), "wrote " + f.getFileName());
             std::cout << "  " << f.getFullPathName() << std::endl;
+            if (name == "masterclass-coach")
+                if (auto* e = dynamic_cast<SongSavantEditor*> (ed.get()))
+                {
+                    auto& v = e->getView();
+                    auto& cv = v.getMasterclass().getCoach();
+                    auto indexOf = [&cv] (const juce::String& id)
+                    {
+                        for (int i = 0; i < (int) cv.getReport().tips.size(); ++i) if (cv.getReport().tips[(size_t) i].id == id) return i;
+                        return -1;
+                    };
+                    const auto& rep = cv.getReport();
+                    check (rep.yours && rep.tips.size() >= 3 && indexOf ("tempo") >= 0 && indexOf ("shape.latechorus") >= 0 && indexOf ("energy.chorus") >= 0
+                             && cv.shownTips() == juce::jmin (5, (int) rep.tips.size()),
+                           "COACH MY SONG on a song made your own: the tempo, the late hook and the hook that doesn't lift ("
+                             + juce::String ((int) rep.tips.size()) + " tips)");
+                    const bool fixed = cv.fix (indexOf ("tempo")) && proc.song.form.bpm == 130 && cv.canUndo() && indexOf ("tempo") < 0;
+                    cv.undo();
+                    check (fixed && proc.song.form.bpm == 100 && ! cv.canUndo() && indexOf ("tempo") >= 0, "FIX IT sets 130 BPM; the coach's UNDO puts 100 back");
+                    // SHOW ME: ARRANGE, with the section framed in gold
+                    const int late = indexOf ("shape.latechorus");
+                    const int target = late >= 0 ? cv.getReport().tips[(size_t) late].section : -1;
+                    cv.showMe (late);
+                    check (target >= 0 && v.getArrange().isVisible() && v.getArrange().getGrid().getHighlighted() == target,
+                           "SHOW ME opens ARRANGE with the section framed in gold");
+                    auto shot = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+                    auto sf = dir.getChildFile ("coach-show-me.png");
+                    sf.deleteFile();
+                    juce::FileOutputStream sout (sf);
+                    juce::PNGImageFormat spng;
+                    check (sout.openedOk() && spng.writeImageToStream (shot, sout), "wrote coach-show-me.png");
+                }
             if (name.startsWith ("welcome"))
                 if (auto* e = dynamic_cast<SongSavantEditor*> (ed.get()))
                 {
@@ -3024,6 +3314,8 @@ namespace
         shoot ("song-playing", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("masterclass", false, 1240, 820, 4, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("masterclass-small", false, 1060, 780, 4, {}, "uk drill 142 bpm");
+        shoot ("masterclass-coach", false, 1240, 820, 4, {}, "trap 142 BPM in A minor");
+        shoot ("masterclass-coach-small", false, 1060, 780, 4, {}, "trap 142 BPM in A minor");
         shoot ("masterclass-tall", false, 1240, 1900, 4, {}, "uk drill 142 bpm in F minor");
         shoot ("drum-maps-empty", false, 1240, 820, 3);
         shoot ("drum-maps-kit", false, 1240, 820, 3);
@@ -3044,6 +3336,7 @@ namespace
         shoot ("setup-check-light", true, 1140, 800, 2);
         shoot ("drum-maps-kit-light", false, 1240, 820, 3);
         shoot ("masterclass-light", false, 1240, 820, 4, {}, "modern country like Morgan Wallen in G");
+        shoot ("masterclass-coach-light", false, 1240, 820, 4, {}, "trap 142 BPM in A minor");
         shoot ("arrange-light", false, 1240, 820, 5, {}, "trap 142 BPM in A minor");
         shoot ("favorites-light", false, 1240, 820, 6, {}, "big arena rock, 128 BPM in E minor");
         shoot ("piano-roll-light", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
@@ -3091,6 +3384,7 @@ int main (int argc, char** argv)
     testPatternEditor();
     testBuildingTools();
     testDrumPatterns();
+    testCoach (fc);
     testPalettes (fc);
     testCancelAndJob (fc);
 

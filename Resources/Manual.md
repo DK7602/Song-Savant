@@ -14,7 +14,7 @@ The workflow, start to finish:
 4. **Drums:** send the song to **Groove Grabber** for kits made from your own samples, tuned to your key.
 5. **ARRANGE:** lay the parts out across the song (intro, verse, chorus...) and drag the **WHOLE SONG** into your DAW, with a marker for each section.
 6. **The piano roll:** change any part in any section, or write your own from an empty grid (a card's **EDIT**, or double-click a box on ARRANGE).
-7. **MASTERCLASS:** learn how your style is built: its sounds, drums, bass, chords in your key, arrangement and mix.
+7. **MASTERCLASS:** learn how your style is built: its sounds, drums, bass, chords in your key, arrangement and mix. Once the song is yours, **COACH MY SONG** says what's working and what to try.
 
 Song Savant never suggests a sound you don't own, and it never changes or moves your files. It only reads them.
 
@@ -48,7 +48,7 @@ Every page sits under one header. Hover over almost anything to see a tip.
 | Clipboard with a tick | The setup check: what Song Savant found on this computer |
 | SONG | Describe your song and get your palettes and starter parts |
 | ARRANGE | Your song's sections, and which parts play in each |
-| MASTERCLASS | Lessons on any genre or style |
+| MASTERCLASS | Lessons on any genre or style, and COACH MY SONG |
 | FAVS | Your favorites: your saved songs and the sounds you hearted |
 | LIBRARY | Every sound you own, in one searchable list |
 
@@ -445,6 +445,39 @@ The MASTERCLASS page teaches how a genre or style is put together. It follows th
 | Tips | The things that make it sound right |
 | Listen to | Artists and songs to study |
 
+### Coach my song
+
+Under the page's title, **THE LESSON** shows the cards above and **COACH MY SONG** looks at your own song. The coach works on songs you've made your own: you changed the map on ARRANGE (moved, added, lengthened or shortened sections, switched parts on or off), wrote or changed notes in the piano roll, picked your own chords, or started a BLANK SONG. On a song Song Savant made and you haven't touched, it says there's nothing of yours to coach yet.
+
+It reads your sections, what plays in each, your chords and your notes, and compares them with what your genre and style usually do (and your decade, when the description names one). Then it shows:
+
+- **WHAT'S WORKING** (on the right): what already fits the style, like "The hook arrives at 0:14, in good time for Trap".
+- **TRY THIS:** tips, the most useful first (five at a time; **SHOW ALL** shows the rest). Each says what it noticed, why it matters in your style, and what to try.
+
+What it looks at:
+
+| Area | What it checks |
+| --- | --- |
+| Tempo and key | A tempo outside the style's usual range (a half-time or double-time feel counts as fitting); a minor key in a style that's mostly major, or the other way round |
+| Song shape | How soon the chorus (or hook) arrives, in seconds; a long intro; no chorus; a bridge, pre-chorus or outro the style usually has; a song much longer than usual |
+| Energy | A chorus that doesn't lift above the verse; every section playing the same parts; a last chorus no bigger than the first |
+| Chords | A chord you picked from outside the key (the odd ones, not the usual borrowed chords); a chorus on the verse's chords |
+| Melody | A melody too wide to sing comfortably; many notes outside the key |
+| Bass | A bass that rarely starts the bar on the chord's root |
+| Drums | A snare (or clap) that isn't where the style puts it; straight hats in a style that swings |
+
+The notes it checks are yours: the parts you wrote or changed in the piano roll. Song Savant's own suggestions already follow the style.
+
+**The buttons on each tip:**
+
+- **SHOW ME:** takes you there. A tip about a section opens ARRANGE with that section framed in gold; a tip about your notes opens that part in the piano roll (DONE brings you back).
+- **FIX IT** (the gold button, named for what it does: SET 130 BPM, SHORTEN THE INTRO TO 4 BARS, LIFT EVERY CHORUS, ADD A BRIDGE, USE G, BRING IT IN, ROOTS ON THE ONE, SWING THE HATS...): Song Savant makes the change for you. Not every tip has one: some are yours to decide (a minor key, a long song).
+- **I MEANT THAT:** you broke the rule on purpose. The tip is put away for this song (it's saved with the song). **BRING BACK THE TIPS YOU MEANT** shows them again.
+
+**UNDO** (top right, while you're coaching) takes back the last FIX IT, one at a time. If you change the song somewhere else after a fix (on ARRANGE, in the piano roll), that fix can't be undone here any more, so nothing you did since is lost: change it back by hand instead.
+
+What the coach can't do: it can't hear anything. It reads notes, chords and sections, not your recording, your vocals or your mix, and changes you make in Cubase after dragging parts out aren't seen (drop the MIDI back in to coach it). Its tips are the usual ways of the style, not rules about what's good.
+
 ## LIBRARY: every sound you own
 
 The LIBRARY page lists every sound Song Savant found, from every library it can read, in one place.
@@ -608,5 +641,6 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | One part, the whole song | Drag the part's name on ARRANGE |
 | The whole song into your DAW | ARRANGE: drag WHOLE SONG |
 | Learn your style | MASTERCLASS |
+| Tips for your own song | MASTERCLASS > COACH MY SONG (SHOW ME, FIX IT, UNDO, I MEANT THAT) |
 | Name a kit's pads in Cubase | The drum card's MAKE A DRUM MAP: save the kit as a preset, drop it in, then load the .drm in MIDI > Drum Map Setup |
 | Light or dark | Click the logo, or the sun / moon button |

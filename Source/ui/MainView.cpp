@@ -54,6 +54,18 @@ namespace ss::ui
         };
         songPage.onSaveSong = [this] { saveSong(); };
         masterclassPage.onUseForSong = [this] { songPage.showForm(); showPage (song); };
+        // COACH MY SONG: SHOW ME opens the place on ARRANGE or in the piano roll (DONE comes back); a FIX IT changed the song
+        masterclassPage.onShowSection = [this] (int section)
+        {
+            showPage (arrange);
+            arrangePage.showSection (section);
+        };
+        masterclassPage.onShowPart = [this] (const juce::String& role, int section) { showPianoRoll (role, section); };
+        masterclassPage.onSongChanged = [this]
+        {
+            songPage.showForm();
+            arrangePage.forgetUndo();          // (its steps back would undo the fix out of order)
+        };
         addChildComponent (songPage);
         addChildComponent (libraryPage);
         addChildComponent (setupPage);

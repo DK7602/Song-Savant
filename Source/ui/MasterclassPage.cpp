@@ -161,7 +161,7 @@ namespace ss::ui
     }
 
     //==============================================================================
-    MasterclassPage::MasterclassPage (SongSavantProcessor& p) : proc (p)
+    MasterclassPage::MasterclassPage (SongSavantProcessor& p) : proc (p), coach (p)
     {
         for (int i = 0; i < numGenres; ++i) genreBox.addItem (genreName ((Genre) i), i + 1);
         genreBox.onChange = [this]
@@ -195,6 +195,28 @@ namespace ss::ui
         };
         addAndMakeVisible (useBtn);
 
+        // THE LESSON / COACH MY SONG
+        for (auto* t : { &lessonTab, &coachTab })
+        {
+            t->setComponentID ("tab");
+            t->textHeight = 12.5f;
+            addAndMakeVisible (*t);
+        }
+        lessonTab.setTooltip ("What the genre or style is, and how it goes");
+        coachTab.setTooltip ("Tips for your own song, from what its style usually does");
+        lessonTab.onClick = [this] { showCoach (false); };
+        coachTab.onClick = [this] { showCoach (true); };
+        lessonTab.setToggleState (true, juce::dontSendNotification);
+        undoBtn.setTooltip ("Take back the last FIX IT");
+        undoBtn.onClick = [this] { coach.undo(); };
+        undoBtn.setEnabled (false);
+        addChildComponent (undoBtn);
+        coach.onLayoutChanged = [this] { layoutCoach(); };
+        coach.onUndoChanged = [this] { undoBtn.setEnabled (coach.canUndo()); };
+        coach.onSongChanged = [this] { if (onSongChanged) onSongChanged(); };
+        coach.onShowSection = [this] (int section) { if (onShowSection) onShowSection (section); };
+        coach.onShowPart = [this] (const juce::String& role, int section) { if (onShowPart) onShowPart (role, section); };
+
         view.setViewedComponent (&lesson, false);
         view.setScrollBarsShown (true, false);
         view.setScrollBarThickness (10);
@@ -208,12 +230,39 @@ namespace ss::ui
     void MasterclassPage::visibilityChanged()
     {
         if (isVisible() && following) followSong();
+        if (isVisible() && coaching) coach.refresh();       // (the song may have changed on another page)
     }
 
     void MasterclassPage::timerCallback()
     {
         // your library's picks show once the libraries are read
-        if (isVisible() && proc.catalog.generation() != seenCatalog) rebuild();
+        if (isVisible() && proc.catalog.generation() != seenCatalog)
+        {
+            rebuild();
+            if (coaching) coach.refresh();
+        }
+    }
+
+    void MasterclassPage::showCoach (bool on)
+    {
+        coaching = on;
+        lessonTab.setToggleState (! on, juce::dontSendNotification);
+        coachTab.setToggleState (on, juce::dontSendNotification);
+        genreBox.setVisible (! on);
+        styleBox.setVisible (! on);
+        useBtn.setVisible (! on);
+        followBtn.setVisible (! on && ! following);
+        undoBtn.setVisible (on);
+        view.setViewedComponent (on ? static_cast<juce::Component*> (&coach) : &lesson, false);
+        resized();
+        if (on) coach.refresh();
+        else rebuild();
+        repaint();
+    }
+
+    void MasterclassPage::layoutCoach()
+    {
+        coach.layout (view.getWidth() - view.getScrollBarThickness() - 4);    // (room for the scroll bar, shown or not)
     }
 
     void MasterclassPage::followSong()
@@ -332,7 +381,7 @@ namespace ss::ui
 
         lesson.setContent (guide, std::move (cards), guide.name, guide.summary);
         lesson.layout (view.getMaximumVisibleWidth());
-        followBtn.setVisible (! following);
+        followBtn.setVisible (! following && ! coaching);
         repaint();
     }
 
@@ -346,8 +395,10 @@ namespace ss::ui
         g.drawText ("Masterclass", t.removeFromTop (30.0f), juce::Justification::centredLeft);
         g.setColour (p.muted);
         g.setFont (sans (13.0f));
-        g.drawText (following ? "Following your song. Pick another genre or style to study it."
-                              : "Studying another style. BACK TO MY SONG follows your song again.", t, juce::Justification::centredLeft, true);
+        g.drawText (coaching ? "Tips for the song you're making"
+                             : following ? "Following your song. Pick another genre or style to study it."
+                                         : "Studying another style. BACK TO MY SONG follows your song again.",
+                    statusArea, juce::Justification::centredLeft, true);
     }
 
     void MasterclassPage::resized()
@@ -356,17 +407,32 @@ namespace ss::ui
         topPanel = r.removeFromTop (84.0f);
         {
             auto in = topPanel.reduced (20.0f, 14.0f);
-            useBtn.setBounds (in.removeFromRight (190.0f).withSizeKeepingCentre (190.0f, 40.0f).toNearestInt());
-            in.removeFromRight (10.0f);
-            followBtn.setBounds (in.removeFromRight (180.0f).withSizeKeepingCentre (180.0f, 40.0f).toNearestInt());
-            in.removeFromRight (16.0f);
-            styleBox.setBounds (in.removeFromRight (230.0f).withSizeKeepingCentre (230.0f, 36.0f).toNearestInt());
-            in.removeFromRight (10.0f);
-            genreBox.setBounds (in.removeFromRight (190.0f).withSizeKeepingCentre (190.0f, 36.0f).toNearestInt());
+            // (a narrow window: the boxes and buttons a little smaller, so the tabs keep their room)
+            const float k = juce::jlimit (0.6f, 1.0f, (in.getWidth() - 300.0f) / 826.0f);
+            if (coaching)
+                undoBtn.setBounds (in.removeFromRight (120.0f).withSizeKeepingCentre (120.0f, 40.0f).toNearestInt());
+            else
+            {
+                useBtn.setBounds (in.removeFromRight (190.0f * k).withSizeKeepingCentre (190.0f * k, 40.0f).toNearestInt());
+                in.removeFromRight (10.0f);
+                followBtn.setBounds (in.removeFromRight (180.0f * k).withSizeKeepingCentre (180.0f * k, 40.0f).toNearestInt());
+                in.removeFromRight (16.0f);
+                styleBox.setBounds (in.removeFromRight (230.0f * k).withSizeKeepingCentre (230.0f * k, 36.0f).toNearestInt());
+                in.removeFromRight (10.0f);
+                genreBox.setBounds (in.removeFromRight (190.0f * k).withSizeKeepingCentre (190.0f * k, 36.0f).toNearestInt());
+            }
+            in.removeFromRight (12.0f);
             titleArea = in;
+            // under the title: THE LESSON and COACH MY SONG, then what the page is doing
+            auto tabs = in.withTrimmedTop (30.0f);
+            lessonTab.setBounds (tabs.removeFromLeft (124.0f).withSizeKeepingCentre (124.0f, 28.0f).toNearestInt());
+            tabs.removeFromLeft (8.0f);
+            coachTab.setBounds (tabs.removeFromLeft (156.0f).withSizeKeepingCentre (156.0f, 28.0f).toNearestInt());
+            statusArea = tabs.withTrimmedLeft (14.0f);
         }
         r.removeFromTop (14.0f);
         view.setBounds (r.toNearestInt());
         lesson.layout (view.getMaximumVisibleWidth());
+        if (coaching) layoutCoach();
     }
 }

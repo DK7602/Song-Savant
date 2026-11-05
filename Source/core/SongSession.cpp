@@ -194,6 +194,7 @@ namespace ss
         x->setAttribute ("partsSeed", (int) partsSeed);
         x->setAttribute ("songShape", (int) songShape);
         if (savedAs.isNotEmpty()) x->setAttribute ("savedAs", savedAs);
+        if (! coachDismissed.isEmpty()) x->setAttribute ("coachDismissed", coachDismissed.joinIntoString ("|"));
         if (! arrangement.empty()) x->addChildElement (arrangement.toXml().release());
         if (! patterns.empty()) x->addChildElement (patterns.toXml().release());
         if (! arrangementAside.empty())
@@ -249,6 +250,8 @@ namespace ss
         partsSeed = (juce::uint32) juce::jmax (1, x.getIntAttribute ("partsSeed", 1));
         songShape = (SongShape) juce::jlimit (0, 3, x.getIntAttribute ("songShape", 0));
         savedAs = x.getStringAttribute ("savedAs");
+        coachDismissed = juce::StringArray::fromTokens (x.getStringAttribute ("coachDismissed"), "|", "");
+        coachDismissed.removeEmptyStrings();
         arrangement = {};
         if (auto* ax = x.getChildByName ("Arrangement")) arrangement = Arrangement::fromXml (*ax);
         arrangementAside = {};

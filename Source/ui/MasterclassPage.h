@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Widgets.h"
+#include "CoachView.h"
 #include "core/StyleGuide.h"
 #include "core/Catalog.h"
 
@@ -58,6 +59,14 @@ namespace ss::ui
 
         std::function<void()> onUseForSong;                 // the Song page should show the new genre and style
 
+        // COACH MY SONG: tips for your own song, from what its style usually does (in place of the lesson)
+        void showCoach (bool);
+        bool isCoaching() const                             { return coaching; }
+        CoachView& getCoach()                               { return coach; }
+        std::function<void (int section)> onShowSection;                         // SHOW ME on ARRANGE
+        std::function<void (const juce::String& role, int section)> onShowPart;   // SHOW ME in the piano roll
+        std::function<void()> onSongChanged;                // a FIX IT (or its UNDO) changed the song
+
     private:
         void timerCallback() override;
         void rebuild();
@@ -71,10 +80,16 @@ namespace ss::ui
                    useBtn { "USE FOR MY SONG", PillButton::Style::gold };
         juce::Viewport view;
         Lesson lesson;
+        CoachView coach;
+        PillButton lessonTab { "THE LESSON", PillButton::Style::subtle },
+                   coachTab { "COACH MY SONG", PillButton::Style::subtle },
+                   undoBtn { "UNDO", PillButton::Style::outline };
+        void layoutCoach();
+        bool coaching = false;
         bool following = true;
         Genre genre = Genre::pop;
         juce::String styleId;
         int seenCatalog = -1;
-        juce::Rectangle<float> topPanel, titleArea;
+        juce::Rectangle<float> topPanel, titleArea, statusArea;
     };
 }

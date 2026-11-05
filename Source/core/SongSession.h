@@ -64,6 +64,7 @@ namespace ss
         bool putSound (const Catalog&, int sound, const juce::String& role);
 
         juce::String savedAs;                         // the saved song (FAVORITES) this one was saved as or opened from
+        juce::StringArray coachDismissed;             // COACH MY SONG's tips you said you meant (I MEANT THAT), by id
 
         SongBrief makeBrief() const;                  // the description, with the form's choices on top
         void find (const Catalog&);                   // fresh palettes for the form

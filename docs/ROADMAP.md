@@ -563,6 +563,30 @@ Built in steps, each one a build the owner can try:
   "drums: Groove Grabber's pads" reads them onto those drums' rows (`laneForNote`); a file that doesn't say keeps the
   usual layout above 57 (General MIDI's ride 2 and hand percussion). Song Savant still writes a Groove Grabber kit's
   part on the 17-sound kit's pads, which every kit size has.
+- **COACH MY SONG** *(1.9.0; the owner asked for "Coach my Song" in Masterclass: "on songs that I edit, change, or build from
+  blank, Song Savant analyzes and gives specific feedback and coaching based on genre, style, layout, era", and chose
+  **tips only, no score**, and **FIX IT with undo**, November 2026)*.
+  - MASTERCLASS has two tabs under its title: THE LESSON and COACH MY SONG. The coach (`Source/core/Coach.*`, no UI;
+    `Source/ui/CoachView.*`) works on songs you made your own (`coach::isYours`: a blank song, your own notes or chords,
+    or a map that isn't the one Song Savant made); an untouched song has nothing to coach.
+  - Rules only, offline, from the StyleGuide: the tempo against the style's ranges (half and double time fit; FIX IT to
+    the nearest usual tempo, never a half-time range's; inside a DAW it says to change the DAW's tempo instead); major or
+    minor when the style leans one way and you picked the key (no fix: a mode change would move your notes); when the
+    chorus arrives (45 s for pop, trap, hip-hop, EDM and R&B, 60 s for the rest, 15 s more for the 90s and before;
+    FIX IT shortens the intro to 4 bars or the first verse to 8); a long intro against the style's; no chorus; a
+    bridge, pre-chorus or outro the style has (once there are two choruses); a long song; a chorus that doesn't lift
+    above the verse; every section the same; the last chorus no bigger than the first; your chords from outside the key
+    (only the odd roots: a tritone away, and in minor the major 3rd and 6th, so borrowed chords pass); a chorus on the
+    verse's chords; your melody wider than 19 semitones or with many notes outside the key; your bass rarely on the
+    root on the one; your snare or clap not on the style's backbeat; straight hats where the style swings (55% or more).
+  - WHAT'S WORKING lists what fits. TRY THIS shows five tips at a time, the most useful first. SHOW ME opens ARRANGE with
+    the section framed in gold (`ArrangePage::showSection`) or the part in the piano roll. FIX IT (`coach::applyFix`)
+    changes only the tempo, the map or your notes; the coach's UNDO restores a `coach::Snapshot` (form, map, your
+    patterns), and only while nothing else changed the song since (`sameSong`), so it never throws away later work.
+    ARRANGE's own undo steps are forgotten after a fix. I MEANT THAT keeps the tip's id in `SongSession::coachDismissed`
+    (saved with the song); BRING BACK clears it.
+  - Later: decade write-ups for each genre (Groove Grabber's SAUCE has them) for real era coaching, deeper note checks,
+    and comparing with an artist named in the description.
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is

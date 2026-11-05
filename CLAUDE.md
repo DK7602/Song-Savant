@@ -17,4 +17,8 @@
   window has bigger words. Give popup menus their component (`withTargetComponent`) so they open at the same zoom, and
   draw cached pictures at the graphics context's physical pixel scale (the piano roll's grid does). Groove Grabber does
   the same.
+- COACH MY SONG (1.9.0, MASTERCLASS): the rules are in `Source/core/Coach.*` (no UI; offline, from the StyleGuide), the
+  page in `Source/ui/CoachView.*`. Tips only, no score (the owner's choice). A FIX IT changes only the tempo, the map or
+  your patterns, and the coach's UNDO restores a `coach::Snapshot` only while nothing else changed the song (`sameSong`).
+  A new check needs a stable tip id (I MEANT THAT stores it in `SongSession::coachDismissed`) and a test in `testCoach`.
 - Never commit anything read from the owner's computer (scan reports can contain their file names).

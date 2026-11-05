@@ -54,6 +54,12 @@ namespace ss::ui
         juce::Rectangle<float> addArea() const;                    // + ADD SECTION, after the last section
         static constexpr float addW = 124.0f;
 
+        // SHOW ME (COACH MY SONG): a gold frame round a section for a few seconds
+        void highlight (int section);
+        int getHighlighted() const                                 { return highlighted; }
+        float sectionX (int section) const;                        // where a section starts across the map (-1: none)
+        void paintOverChildren (juce::Graphics&) override;
+
     private:
         juce::Rectangle<float> cellArea (int section, int part) const;
         juce::Rectangle<float> headerArea (int section) const;
@@ -73,6 +79,7 @@ namespace ss::ui
         bool playheadMoving = false, onRuler = false;
         int hoverSection = -1, hoverPart = -1;
         bool hoverHeader = false, hoverRuler = false, hoverAdd = false;
+        int highlighted = -1, highlights = 0;
     };
 
     class ArrangePage : public juce::Component, private juce::Timer
@@ -104,6 +111,7 @@ namespace ss::ui
         void deleteSection (int section);
         void undo();
         void redo();
+        void showSection (int section);                      // SHOW ME: the section framed in gold, scrolled into view
         void forgetUndo()                                    { undos.clear(); redos.clear(); undoFor.clear(); updateUndoButtons(); }
         bool canUndo() const                                 { return ! undos.empty(); }
         bool canRedo() const                                 { return ! redos.empty(); }

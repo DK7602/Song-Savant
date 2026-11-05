@@ -107,6 +107,36 @@ namespace ss::ui
         return { columnX.back() + columnW.back() + 6.0f, rulerH + 2.0f, addW - 12.0f, headerH - rulerH - 4.0f };
     }
 
+    void ArrangementGrid::highlight (int section)
+    {
+        highlighted = section;
+        const int mine = ++highlights;
+        repaint();
+        juce::Timer::callAfterDelay (3500, [safe = juce::Component::SafePointer<ArrangementGrid> (this), mine]
+        {
+            if (safe != nullptr && safe->highlights == mine)
+            {
+                safe->highlighted = -1;
+                safe->repaint();
+            }
+        });
+    }
+
+    float ArrangementGrid::sectionX (int section) const
+    {
+        return section >= 0 && section < (int) columnX.size() ? columnX[(size_t) section] : -1.0f;
+    }
+
+    void ArrangementGrid::paintOverChildren (juce::Graphics& g)
+    {
+        if (highlighted < 0 || highlighted >= (int) columnX.size()) return;
+        const auto r = juce::Rectangle<float> (columnX[(size_t) highlighted], rulerH, columnW[(size_t) highlighted], (float) getHeight() - rulerH).reduced (1.5f);
+        g.setColour (pal().gold.withAlpha (0.12f));
+        g.fillRoundedRectangle (r, 8.0f);
+        g.setColour (pal().gold);
+        g.drawRoundedRectangle (r, 8.0f, 3.0f);
+    }
+
     juce::Rectangle<float> ArrangementGrid::headerArea (int s) const
     {
         return { columnX[(size_t) s], rulerH, columnW[(size_t) s], headerH - rulerH };
@@ -918,6 +948,15 @@ namespace ss::ui
     void ArrangePage::deleteSection (int section)
     {
         edit ([section] (Arrangement& a) { removeSection (a, section); });
+    }
+
+    void ArrangePage::showSection (int section)
+    {
+        refresh();
+        grid.highlight (section);
+        const float x = grid.sectionX (section);
+        if (x >= 0.0f && grid.getWidth() > view.getWidth())
+            view.setViewPosition (juce::jlimit (0, grid.getWidth() - view.getWidth(), (int) x - (int) ArrangementGrid::labelW - 20), view.getViewPositionY());
     }
 
     void ArrangePage::undo()
