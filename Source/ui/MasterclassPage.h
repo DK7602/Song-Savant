@@ -85,6 +85,10 @@ namespace ss::ui
                    coachTab { "COACH MY SONG", PillButton::Style::subtle },
                    undoBtn { "UNDO", PillButton::Style::outline };
         void layoutCoach();
+        static juce::StringArray statusLines (bool coaching, bool following);   // longest first
+    public:
+        juce::Rectangle<float> getStatusArea() const        { return statusArea; }   // (the tests)
+    private:
         bool coaching = false;
         bool following = true;
         Genre genre = Genre::pop;

@@ -385,6 +385,13 @@ namespace ss::ui
         repaint();
     }
 
+    juce::StringArray MasterclassPage::statusLines (bool coaching, bool following)
+    {
+        if (coaching) return { "Tips for the song you're making", "Tips for your song" };
+        if (following) return { "Following your song. Pick another genre or style to study it.", "Following your song" };
+        return { "Studying another style. BACK TO MY SONG follows your song again.", "Studying another style" };
+    }
+
     void MasterclassPage::paint (juce::Graphics& g)
     {
         const auto& p = pal();
@@ -393,12 +400,16 @@ namespace ss::ui
         g.setColour (p.text);
         g.setFont (serif (24.0f));
         g.drawText ("Masterclass", t.removeFromTop (30.0f), juce::Justification::centredLeft);
+        // what the page is doing, beside the tabs: the long line, a short one, or nothing (never a cut-off "...")
         g.setColour (p.muted);
-        g.setFont (sans (13.0f));
-        g.drawText (coaching ? "Tips for the song you're making"
-                             : following ? "Following your song. Pick another genre or style to study it."
-                                         : "Studying another style. BACK TO MY SONG follows your song again.",
-                    statusArea, juce::Justification::centredLeft, true);
+        const auto f = sans (13.0f);
+        g.setFont (f);
+        for (auto& line : statusLines (coaching, following))
+            if (juce::GlyphArrangement::getStringWidth (f, line) <= statusArea.getWidth())
+            {
+                g.drawText (line, statusArea, juce::Justification::centredLeft, false);
+                break;
+            }
     }
 
     void MasterclassPage::resized()

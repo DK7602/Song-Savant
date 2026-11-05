@@ -3314,6 +3314,7 @@ namespace
         shoot ("song-playing", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("masterclass", false, 1240, 820, 4, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("masterclass-small", false, 1060, 780, 4, {}, "uk drill 142 bpm");
+        shoot ("masterclass-mid", false, 1150, 800, 4, {}, "hard rock");
         shoot ("masterclass-coach", false, 1240, 820, 4, {}, "trap 142 BPM in A minor");
         shoot ("masterclass-coach-small", false, 1060, 780, 4, {}, "trap 142 BPM in A minor");
         shoot ("masterclass-tall", false, 1240, 1900, 4, {}, "uk drill 142 bpm in F minor");

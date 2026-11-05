@@ -587,6 +587,8 @@ Built in steps, each one a build the owner can try:
     (saved with the song); BRING BACK clears it.
   - Later: decade write-ups for each genre (Groove Grabber's SAUCE has them) for real era coaching, deeper note checks,
     and comparing with an artist named in the description.
+  - 1.9.1: the line beside the tabs ("Following your song...") shows whole, or a short version ("Following your song"),
+    or nothing: a smaller window had cut it to "..." against the genre box (the owner's screenshot).
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is
