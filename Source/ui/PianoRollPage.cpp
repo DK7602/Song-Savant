@@ -887,6 +887,14 @@ namespace ss::ui
 
     juce::Rectangle<int> PianoRollPage::gridBounds() const   { return grid->getBounds(); }
 
+    juce::Rectangle<float> PianoRollPage::tutorialArea (const juce::String& key) const
+    {
+        if (key == "panel") return panelArea;
+        if (key == "top") return topLine;
+        if (key == "title") return titleArea;
+        return {};
+    }
+
     void PianoRollPage::refreshData()
     {
         catalog = proc.catalog.catalog();

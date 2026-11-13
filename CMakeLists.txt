@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 # Windows: link the C++ runtime into the plug-in itself, so a DAW's plug-in scanner never trips over missing runtime DLLs
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-project(SongSavant VERSION 1.9.1 LANGUAGES C CXX)
+project(SongSavant VERSION 1.9.2 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -201,7 +201,7 @@ endif()
 # ------------------------------------------------------------------------------------------------
 if(SS_BUILD_TESTS)
     juce_add_console_app(SSTests PRODUCT_NAME "SSTests")
-    target_sources(SSTests PRIVATE Tests/TestMain.cpp Tests/FakeComputer.cpp ${SS_CORE_SOURCES} ${SS_UI_SOURCES})
+    target_sources(SSTests PRIVATE Tests/TestMain.cpp Tests/TestTutorial.cpp Tests/FakeComputer.cpp ${SS_CORE_SOURCES} ${SS_UI_SOURCES})
     target_compile_definitions(SSTests PRIVATE SS_TEST_RUNNER=1 JUCE_MODAL_LOOPS_PERMITTED=1)
     target_link_libraries(SSTests PRIVATE SSShared)
     # a tiny drum kit plug-in, only for the tests: the scanner maps it like one of your kits

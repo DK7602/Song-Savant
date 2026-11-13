@@ -65,6 +65,7 @@ namespace ss::ui
         void resetChords();
         void showChordMenu (int bar, juce::Rectangle<int> screenArea);   // a chord along the top, clicked
         juce::Rectangle<int> gridBounds() const;
+        juce::Rectangle<float> tutorialArea (const juce::String& key) const;   // (the video tutorial: panel, top, title)
 
     private:
         class Grid;

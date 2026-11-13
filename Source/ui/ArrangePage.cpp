@@ -122,6 +122,17 @@ namespace ss::ui
         });
     }
 
+    juce::Rectangle<float> ArrangementGrid::tutorialArea (const juce::String& key) const
+    {
+        const auto bits = juce::StringArray::fromTokens (key, ":", "");
+        if (arr == nullptr || columnX.size() != arr->sections.size()) return {};
+        const int a = bits[1].getIntValue(), b = bits[2].getIntValue();
+        if (bits[0] == "header" && a >= 0 && a < (int) columnX.size()) return headerArea (a);
+        if (bits[0] == "cell" && a >= 0 && a < (int) columnX.size() && parts != nullptr && b >= 0 && b < (int) parts->size()) return cellArea (a, b);
+        if (bits[0] == "add") return addArea();
+        return {};
+    }
+
     float ArrangementGrid::sectionX (int section) const
     {
         return section >= 0 && section < (int) columnX.size() ? columnX[(size_t) section] : -1.0f;
@@ -948,6 +959,14 @@ namespace ss::ui
     void ArrangePage::deleteSection (int section)
     {
         edit ([section] (Arrangement& a) { removeSection (a, section); });
+    }
+
+    juce::Rectangle<float> ArrangePage::tutorialArea (const juce::String& key) const
+    {
+        if (key == "top") return topPanel;
+        if (key == "tips") return tipsArea;
+        if (key == "transport") return transportInfo;
+        return {};
     }
 
     void ArrangePage::showSection (int section)

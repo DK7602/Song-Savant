@@ -358,6 +358,15 @@ namespace ss::coach
                 double limit = g.fastGenre() ? 45.0 : 60.0;
                 if (g.brief.era >= 0 && g.brief.era <= 3) limit += 15.0;     // the 90s and before took a little longer
                 if (g.brief.genre == Genre::cinematic) limit = 1.0e9;
+                // never earlier than the style's own song shape gets there (hip-hop's 16-bar first verse is the norm)
+                {
+                    int before = 0;
+                    for (auto& f : form)
+                    {
+                        if (isChorus (f.name)) { limit = juce::jmax (limit, sectionSeconds (before, bpm) * 1.1 + 5.0); break; }
+                        before += f.bars;
+                    }
+                }
                 const auto name = a.sections[(size_t) chorus].name.toLowerCase();
                 if (at <= limit)
                     good (r, Area::shape, "The " + name + " arrives at " + timeText (at) + " (bar " + juce::String (g.startBar[(size_t) chorus] + 1) + "), in good time for "

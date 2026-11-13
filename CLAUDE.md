@@ -21,4 +21,12 @@
   page in `Source/ui/CoachView.*`. Tips only, no score (the owner's choice). A FIX IT changes only the tempo, the map or
   your patterns, and the coach's UNDO restores a `coach::Snapshot` only while nothing else changed the song (`sameSong`).
   A new check needs a stable tip id (I MEANT THAT stores it in `SongSession::coachDismissed`) and a test in `testCoach`.
+- The video tutorial: `bash tools/tutorial/make.sh` makes "Song Savant Tutorial.mp4" (about 5 minutes). `SSTests --tutorial
+  DIR "description"` (`Tests/TestTutorial.cpp`) runs the real window at 1920 x 1080 on the tests' made-up computer through
+  the workflow and saves each step as a picture with where things are (`frames.json` "marks", from the pages'
+  `tutorialArea` getters), plus `beat.wav` (the song's starter parts, played by the sketch player). Menus are drawn (a
+  real popup closes itself under xvfb). `tools/tutorial/script.py` is what's said and shown: change it when a button's
+  name or a step changes, and keep it true to the app. `make_video.py` (adapted from Groove Grabber's) adds the cursor,
+  highlights, subtitles, cards, the narrator (Piper, offline; LJ Speech is public domain) and the music;
+  `--preview 12,60` writes stills, `--schedule` lists when each part starts.
 - Never commit anything read from the owner's computer (scan reports can contain their file names).

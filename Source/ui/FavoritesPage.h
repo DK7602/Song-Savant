@@ -45,6 +45,11 @@ namespace ss::ui
         bool deleteSelected();
         const juce::String& getStatus() const           { return status; }
 
+        juce::Rectangle<float> tutorialArea (const juce::String& key) const   // (the video tutorial: songs, sounds)
+        {
+            return key == "songs" ? songsPanel : key == "sounds" ? soundsPanel : juce::Rectangle<float>();
+        }
+
     private:
         class SongRows;
         class SoundRows;

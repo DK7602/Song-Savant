@@ -459,7 +459,7 @@ What it looks at:
 | Area | What it checks |
 | --- | --- |
 | Tempo and key | A tempo outside the style's usual range (a half-time or double-time feel counts as fitting); a minor key in a style that's mostly major, or the other way round |
-| Song shape | How soon the chorus (or hook) arrives, in seconds; a long intro; no chorus; a bridge, pre-chorus or outro the style usually has; a song much longer than usual |
+| Song shape | How soon the chorus (or hook) arrives, in seconds (only when it's later than the style's own songs have it); a long intro; no chorus; a bridge, pre-chorus or outro the style usually has; a song much longer than usual |
 | Energy | A chorus that doesn't lift above the verse; every section playing the same parts; a last chorus no bigger than the first |
 | Chords | A chord you picked from outside the key (the odd ones, not the usual borrowed chords); a chorus on the verse's chords |
 | Melody | A melody too wide to sing comfortably; many notes outside the key |

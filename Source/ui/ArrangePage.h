@@ -59,6 +59,7 @@ namespace ss::ui
         int getHighlighted() const                                 { return highlighted; }
         float sectionX (int section) const;                        // where a section starts across the map (-1: none)
         void paintOverChildren (juce::Graphics&) override;
+        juce::Rectangle<float> tutorialArea (const juce::String& key) const;   // (the video tutorial: header:N, cell:S:P, add)
 
     private:
         juce::Rectangle<float> cellArea (int section, int part) const;
@@ -112,6 +113,7 @@ namespace ss::ui
         void undo();
         void redo();
         void showSection (int section);                      // SHOW ME: the section framed in gold, scrolled into view
+        juce::Rectangle<float> tutorialArea (const juce::String& key) const;   // (the video tutorial: top, tips, transport)
         void forgetUndo()                                    { undos.clear(); redos.clear(); undoFor.clear(); updateUndoButtons(); }
         bool canUndo() const                                 { return ! undos.empty(); }
         bool canRedo() const                                 { return ! redos.empty(); }

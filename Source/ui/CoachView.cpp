@@ -286,6 +286,22 @@ namespace ss::ui
         }
     }
 
+    juce::Rectangle<float> CoachView::tutorialArea (const juce::String& key) const
+    {
+        if (key == "head") return headArea;
+        if (key == "working") return workArea;
+        const auto bits = juce::StringArray::fromTokens (key, ":", "");
+        const int i = bits[1].getIntValue();
+        if (i >= 0 && i < (int) rows.size())
+        {
+            if (bits[0] == "tip") return rows[(size_t) i]->area;
+            if (bits[0] == "fix" && rows[(size_t) i]->fixBtn != nullptr) return rows[(size_t) i]->fixBtn->getBounds().toFloat();
+            if (bits[0] == "show" && rows[(size_t) i]->show != nullptr) return rows[(size_t) i]->show->getBounds().toFloat();
+            if (bits[0] == "meant" && rows[(size_t) i]->meant != nullptr) return rows[(size_t) i]->meant->getBounds().toFloat();
+        }
+        return {};
+    }
+
     bool CoachView::fix (int tip)
     {
         if (tip < 0 || tip >= (int) report.tips.size()) return false;

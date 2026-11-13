@@ -254,6 +254,18 @@ namespace ss::ui
         }
     }
 
+    juce::Rectangle<float> PartCard::tutorialArea (const juce::String& key) const
+    {
+        if (key == "midi") return midiArea;
+        if (key == "play") return playArea;
+        if (key == "edit") return editArea;
+        if (key == "heart") return heartArea;
+        if (key == "lock") return lockArea;
+        if (key == "prev") return prevArea;
+        if (key == "next") return nextArea;
+        return {};
+    }
+
     void PartCard::mouseDown (const juce::MouseEvent& e)
     {
         pressedOnMidi = midiArea.contains (e.position);
@@ -1029,6 +1041,24 @@ namespace ss::ui
             g.reduceClipRegion (shown.toNearestInt());
             drawParagraph (g, text, shown, f, p.text);
         }
+    }
+
+    juce::Rectangle<float> SongPage::tutorialArea (const juce::String& key) const
+    {
+        if (key == "form") return formPanel;
+        if (key == "understood") return understoodLine;
+        if (key == "cards") return cardsArea;
+        if (key == "details") return detailsPanel;
+        if (key == "why") return whyArea;
+        if (key == "how") return howArea;
+        if (key == "barHint") return barHint;
+        if (key == "palettes")
+        {
+            juce::Rectangle<float> u;
+            for (auto* t : tabs) if (t->isVisible()) u = u.isEmpty() ? t->getBounds().toFloat() : u.getUnion (t->getBounds().toFloat());
+            return u;
+        }
+        return {};
     }
 
     void SongPage::resized()

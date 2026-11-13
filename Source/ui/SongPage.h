@@ -25,6 +25,7 @@ namespace ss::ui
         void setEditing (bool canEdit, bool mine);
         void setFavorite (bool f)                   { if (favorite != f) { favorite = f; repaint(); } }   // the heart, filled
         bool isHeard() const                        { return heard; }
+        juce::Rectangle<float> tutorialArea (const juce::String& key) const;   // (the video tutorial: midi, play, edit, heart, lock, prev, next)
         void paint (juce::Graphics&) override;
         void mouseDown (const juce::MouseEvent&) override;
         void mouseDrag (const juce::MouseEvent&) override;
@@ -90,6 +91,8 @@ namespace ss::ui
         void hideSelected();                         // NOT IN MY LIBRARY (also the tests): never suggested again
         std::function<void (const juce::String& role, const juce::File&)> onDropPart;   // a MIDI pattern dropped on a card
         void visibilityChanged() override;
+        // (the video tutorial) where a painted part of the page is: form, understood, cards, details, why, how, palettes
+        juce::Rectangle<float> tutorialArea (const juce::String& key) const;
 
     private:
         void timerCallback() override;

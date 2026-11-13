@@ -572,7 +572,8 @@ Built in steps, each one a build the owner can try:
   - Rules only, offline, from the StyleGuide: the tempo against the style's ranges (half and double time fit; FIX IT to
     the nearest usual tempo, never a half-time range's; inside a DAW it says to change the DAW's tempo instead); major or
     minor when the style leans one way and you picked the key (no fix: a mode change would move your notes); when the
-    chorus arrives (45 s for pop, trap, hip-hop, EDM and R&B, 60 s for the rest, 15 s more for the 90s and before;
+    chorus arrives (45 s for pop, trap, hip-hop, EDM and R&B, 60 s for the rest, 15 s more for the 90s and before, and
+    never earlier than the style's own song shape gets there, plus a little: 1.9.2, hip-hop's 16-bar first verse is normal;
     FIX IT shortens the intro to 4 bars or the first verse to 8); a long intro against the style's; no chorus; a
     bridge, pre-chorus or outro the style has (once there are two choruses); a long song; a chorus that doesn't lift
     above the verse; every section the same; the last chorus no bigger than the first; your chords from outside the key
@@ -589,6 +590,11 @@ Built in steps, each one a build the owner can try:
     and comparing with an artist named in the description.
   - 1.9.1: the line beside the tabs ("Following your song...") shows whole, or a short version ("Following your song"),
     or nothing: a smaller window had cut it to "..." against the genre box (the owner's screenshot).
+- **The video tutorial** *(1.9.2; the owner asked for "a video tutorial on how to use Song Savant", November 2026)*:
+  about five minutes, seven chapters (describe your song, your palette, starter parts, ARRANGE, the piano roll,
+  MASTERCLASS and COACH MY SONG, saving / FAVS / LIBRARY / the manual), the real screens with a cursor, highlights and
+  subtitles, an offline narrator (Piper, LJ Speech: public domain) and the song's starter parts underneath. Made the
+  same way as Groove Grabber's (`tools/tutorial`, `SSTests --tutorial`); see CLAUDE.md.
 - **The drag test is gone** *(1.0.2; the owner asked whether to keep it, November 2026)*. Phase 0's question (can
   presets and MIDI be dragged between Song Savant and Cubase?) is answered, nothing read its WORKED / DIDN'T WORK
   answers but the report, and to a buyer "Drag test with Cubase" looks like a step they must do. The setup check is

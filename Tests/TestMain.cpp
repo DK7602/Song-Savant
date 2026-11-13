@@ -3347,6 +3347,8 @@ namespace
     }
 }
 
+int runTutorial (const juce::File& outDir, const sstest::FakeComputer&, const ss::ScanResult&, const juce::String& description);   // TestTutorial.cpp
+
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -3363,6 +3365,14 @@ int main (int argc, char** argv)
    #endif
 
     auto fc = sstest::makeFakeComputer (home.getChildFile ("computer"));
+
+    // --tutorial DIR: the pictures and the music for the video tutorial (tools/tutorial), nothing else
+    if (const int i = args.indexOf ("--tutorial"); i >= 0)
+    {
+        std::atomic<bool> cancel { false };
+        const auto scan = ss::runSetupScan (fc.loc, cancel);
+        return runTutorial (juce::File::getCurrentWorkingDirectory().getChildFile (args[i + 1].isNotEmpty() ? args[i + 1] : "tutorial"), fc, scan, args[i + 2]);
+    }
 
     testPresetFormat();
     testHelpers();

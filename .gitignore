@@ -8,3 +8,4 @@ build-*/
 dist/
 stage/
 screenshots/
+__pycache__/

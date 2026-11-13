@@ -21,6 +21,7 @@ namespace ss::ui
 
         const coach::Report& getReport() const       { return report; }
         int shownTips() const;
+        juce::Rectangle<float> tutorialArea (const juce::String& key) const;   // (the video tutorial: head, working, tip:N, fix:N)
         // (the buttons; also the tests)
         bool fix (int tip);                          // FIX IT: true when the song changed
         void dismiss (int tip);                      // I MEANT THAT
