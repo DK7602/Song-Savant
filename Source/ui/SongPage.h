@@ -96,6 +96,7 @@ namespace ss::ui
 
     private:
         void timerCallback() override;
+        void updateKeyboard();                        // a MIDI keyboard plays the highlighted card's sound
         void showPlaying();
         void refresh();
         void readForm();

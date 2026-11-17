@@ -54,8 +54,9 @@ namespace ss
         // ---- the message thread
         void setSong (std::shared_ptr<const SketchSong>);    // takes over at the next block; what's sounding carries on
         // From `fromBeat` (the start, or where the playhead is); inside a DAW that's playing, along with the DAW. Playing
-        // already: it jumps there (notes held across that point sound from there on).
-        void play (double fromBeat = 0.0);
+        // already: it jumps there (notes held across that point sound from there on). `countIn` beats of the metronome
+        // first (RECORD's count-in): the position runs from -countIn up to `fromBeat`, and nothing else plays until then.
+        void play (double fromBeat = 0.0, double countIn = 0.0);
         void stop();
         // One part on its own (an index into SketchSong::parts), or every part (-1). Changes as it plays, in time.
         void setSolo (int part)               { solo = part; }
@@ -64,8 +65,18 @@ namespace ss
         bool isFollowingHost() const          { return followingHost.load(); }   // the DAW is playing: it decides where
         // One note heard straight away, playing or not (a note placed in the piano roll, a key tapped on its keyboard)
         void preview (int note, int velocity, PartType, Kind instrument, double seconds = 0.45);
-        double getPosition() const            { return position.load(); }   // beats into the song (-1: silent)
+        double getPosition() const            { return position.load(); }   // beats into the song (-1: silent; below 0 in a count-in)
+        double getLoopLength() const          { return loopLength.load(); }  // the loop's beats (0: not a loop)
+        double getSamplesPerBeat() const      { return samplesPerBeat.load(); }
         std::atomic<float> volume { 0.8f };
+        std::atomic<bool> metronome { false };    // METRONOME: a click on every beat while it plays (the first of the bar higher)
+
+        // ---- your MIDI keyboard (the audio thread, from the processor's MIDI): notes held while the key is down
+        void liveNoteOn (int note, int velocity, PartType, Kind, int sampleOffset);
+        void liveNoteOff (int note);
+        void liveSustain (bool down);                 // the sustain pedal: keys let go while it's down keep sounding
+        void liveAllOff();
+        int liveVoices() const;                       // (the tests) the keyboard's notes sounding
 
         // ---- the audio thread
         struct Host { bool known = false, playing = false; double ppq = 0.0, bpm = 0.0; };
@@ -74,7 +85,7 @@ namespace ss
     private:
         struct Voice
         {
-            bool active = false, drum = false, releasing = false;
+            bool active = false, drum = false, releasing = false, live = false, sustained = false;
             int note = 60, part = 0, gate = 0;
             PartType type = PartType::none;
             Kind instrument = Kind::other;
@@ -83,7 +94,7 @@ namespace ss
             juce::uint32 seed = 1;
         };
         void startVoice (const SketchNote&, const SketchSong&, double lengthSamples, int offset);
-        void startVoice (int note, int velocity, int part, PartType, Kind, double lengthSamples, int offset);
+        Voice* startVoice (int note, int velocity, int part, PartType, Kind, double lengthSamples, int offset);
         void render (juce::AudioBuffer<float>&, int from, int to);
         float toneSample (Voice&);
         float drumSample (Voice&);
@@ -96,7 +107,8 @@ namespace ss
         double sampleRate = 44100.0;
         std::array<Voice, 64> voices;
         std::atomic<bool> armed { false }, restart { false }, followingHost { false };
-        std::atomic<double> position { -1.0 }, startAt { 0.0 };
+        std::atomic<double> position { -1.0 }, startAt { 0.0 }, loopLength { 0.0 }, samplesPerBeat { 22050.0 };
+        bool sustainDown = false;
         std::atomic<int> solo { -1 };
         int lastSolo = -1;
         bool ownRunning = false, wasFollowing = false, wasSounding = false;

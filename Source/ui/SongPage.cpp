@@ -563,8 +563,27 @@ namespace ss::ui
             }
     }
 
+    void SongPage::updateKeyboard()
+    {
+        auto* pal = proc.song.currentPalette();
+        if (pal == nullptr || pal->slots.empty()) return;
+        const auto* slot = selectedSlot();
+        if (slot == nullptr) slot = &pal->slots.front();       // (the first card is the highlighted one until you pick)
+        for (const auto& part : arrangementParts (*pal, catalog.get()))
+            if (part.role == slot->part.role)
+            {
+                const auto kit = drumNotesFor (*pal, catalog.get());
+                const auto id = "song:" + part.role + ":" + juce::String ((int) part.type) + ":" + juce::String ((int) part.instrument) + ":" + kit.source;
+                if (proc.keyboardFor == id) return;
+                proc.keyboardFor = id;
+                proc.setKeyboardPart (part.type, part.instrument, part.type == PartType::drums ? &kit : nullptr);
+                return;
+            }
+    }
+
     void SongPage::timerCallback()
     {
+        if (isShowing()) updateKeyboard();
         showPlaying();          // PLAY ALL / STOP, and which cards are playing
         // inside a DAW: the song follows its tempo
         if (proc.isInDaw() && std::abs (proc.getHostBpm() - proc.song.hostBpm) > 0.01)

@@ -68,6 +68,24 @@ public:
     double getHostBpm() const                           { return hostBpm.load(); }   // the DAW's tempo; 0 in the app
     bool isInDaw() const                                { return wrapperType != wrapperType_Standalone && wrapperType != wrapperType_Undefined; }
 
+    // ---- a MIDI keyboard (the app: Options > Audio/MIDI Settings; in a DAW, the track's input). Its notes play the
+    // highlighted card's sketch sound (or the piano roll's part), and reach the piano roll for RECORD and STEP INPUT.
+    // The drums: a key plays the drum the kit has there (its drum map, Groove Grabber's pads, or General MIDI).
+    void setKeyboardPart (ss::PartType, ss::Kind, const ss::DrumNotes* kit = nullptr);   // what the keys play now
+    juce::String keyboardFor;                           // (the message thread) who set it last: "song:Bass:...", "roll:Keys:..." 
+    int keyboardDrum (int note) const                   { return note >= 0 && note < 128 ? drumLane[(size_t) note].load() : -1; }  // its drum row (-1: none)
+    struct KeyEvent
+    {
+        int note = 60, velocity = 0;                    // velocity 0: let go
+        double beat = -1.0;                             // where the sketch was when it came (below 0: a count-in; -1000: not playing)
+    };
+    bool nextKeyEvent (KeyEvent&);                      // the message thread: the next note played (false: none waiting)
+    int keyboardActivity() const                        { return keyActivity.load(); }   // goes up with every note played
+    void keyboardEvent (const juce::MidiMessage&, int sampleOffset);   // (the audio thread; also the tests)
+    void playSection (double countIn);                  // RECORD: the piano roll's section from its start, after a count-in
+    void setMetronome (bool on);                        // METRONOME (kept for next time)
+    bool getMetronome() const                           { return sketch.metronome.load(); }
+
     //==============================================================================
     void prepareToPlay (double sampleRate, int) override   { sketch.prepare (sampleRate); }
     void releaseResources() override {}
@@ -101,5 +119,9 @@ private:
     juce::String sectionSolo;                            // the piano roll's part, when it plays ALONE
     double songCursor = 0.0;                             // where the song's playhead waits (beats)
     std::atomic<double> hostBpm { 0.0 };
+    std::atomic<int> keyType { (int) ss::PartType::chords }, keyKind { (int) ss::Kind::piano }, keyActivity { 0 };
+    std::array<std::atomic<int>, 128> drumLane, drumSound;   // a key -> its drum row (lane note) and the sketch's drum note
+    std::array<KeyEvent, 512> keyEvents;
+    juce::AbstractFifo keyFifo { 512 };
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SongSavantProcessor)
 };

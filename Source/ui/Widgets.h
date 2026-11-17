@@ -46,11 +46,28 @@ namespace ss::ui
     class TransportButton : public juce::Button
     {
     public:
-        enum class Icon { toStart, rewind, play, pause, forward, toEnd };
+        enum class Icon { toStart, rewind, play, pause, forward, toEnd, record };
         explicit TransportButton (Icon);
         void paintButton (juce::Graphics&, bool over, bool down) override;
         static void drawIcon (juce::Graphics&, Icon, bool stop, juce::Rectangle<float> area);   // (the cards use it too)
         Icon icon;
+    };
+
+    // The MIDI light (in the header): it glows when a MIDI keyboard plays a note
+    class KeyboardLight : public juce::Component, public juce::SettableTooltipClient, private juce::Timer
+    {
+    public:
+        KeyboardLight();
+        void setSource (std::function<int()> notesPlayed)   { this->notesPlayed = std::move (notesPlayed); }
+        void paint (juce::Graphics&) override;
+        bool hasSeenNotes() const   { return seen > 0; }
+        std::function<void()> onClick;
+        void mouseUp (const juce::MouseEvent& e) override   { if (e.mouseWasClicked() && onClick) onClick(); }
+    private:
+        void timerCallback() override;
+        std::function<int()> notesPlayed;
+        int seen = 0;
+        float glow = 0.0f;
     };
 
     // Something the user drags out of Song Savant into their DAW (a preset file, a MIDI clip)

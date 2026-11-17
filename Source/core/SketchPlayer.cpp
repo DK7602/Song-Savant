@@ -107,10 +107,10 @@ namespace ss
         while (keep.size() > 4) keep.pop_back();
     }
 
-    void SketchPlayer::play (double fromBeat)
+    void SketchPlayer::play (double fromBeat, double countIn)
     {
-        startAt = juce::jmax (0.0, fromBeat);
-        position = juce::jmax (0.0, fromBeat);     // (until the next block says where it is)
+        startAt = juce::jmax (0.0, fromBeat) - juce::jmax (0.0, countIn);
+        position = startAt.load();                 // (until the next block says where it is)
         restart = true;
         armed = true;
     }
@@ -129,7 +129,46 @@ namespace ss
 
     void SketchPlayer::releaseAll()
     {
-        for (auto& v : voices) release (v);
+        for (auto& v : voices) if (! v.live) release (v);      // (what you're holding on the keyboard keeps sounding)
+    }
+
+    void SketchPlayer::liveNoteOn (int note, int velocity, PartType type, Kind instrument, int sampleOffset)
+    {
+        // the same key again: the old one lets go
+        for (auto& v : voices) if (v.active && v.live && v.note == note && ! v.releasing) release (v);
+        if (auto* v = startVoice (note, velocity, -2, type, instrument, sampleRate * 600.0, juce::jmax (0, sampleOffset)))
+            v->live = true;
+    }
+
+    void SketchPlayer::liveNoteOff (int note)
+    {
+        for (auto& v : voices)
+            if (v.active && v.live && v.note == note && ! v.releasing && ! v.sustained)
+            {
+                if (sustainDown) v.sustained = true;
+                else if (! v.drum) release (v);              // (a drum plays out on its own)
+            }
+    }
+
+    void SketchPlayer::liveSustain (bool down)
+    {
+        sustainDown = down;
+        if (! down)
+            for (auto& v : voices)
+                if (v.active && v.live && v.sustained) { v.sustained = false; if (! v.drum) release (v); }
+    }
+
+    void SketchPlayer::liveAllOff()
+    {
+        sustainDown = false;
+        for (auto& v : voices) if (v.active && v.live) { v.sustained = false; release (v); }
+    }
+
+    int SketchPlayer::liveVoices() const
+    {
+        int n = 0;
+        for (auto& v : voices) if (v.active && v.live && ! v.releasing) ++n;
+        return n;
     }
 
     void SketchPlayer::preview (int note, int velocity, PartType type, Kind instrument, double seconds)
@@ -145,7 +184,7 @@ namespace ss
         startVoice (n.note, n.velocity, n.part, part.type, part.instrument, lengthSamples, offset);
     }
 
-    void SketchPlayer::startVoice (int note, int velocity, int partIndex, PartType type, Kind instrument, double lengthSamples, int offset)
+    SketchPlayer::Voice* SketchPlayer::startVoice (int note, int velocity, int partIndex, PartType type, Kind instrument, double lengthSamples, int offset)
     {
         Voice* v = nullptr;
         for (auto& x : voices) if (! x.active) { v = &x; break; }
@@ -170,6 +209,7 @@ namespace ss
         if (v->drum && (note == 42 || note == 44))
             for (auto& x : voices)
                 if (&x != v && x.active && x.drum && x.note == 46) x.gate = juce::jmin (x.gate, (int) (sampleRate * 0.02));
+        return v;
     }
 
     void SketchPlayer::schedule (const SketchSong& s, double from, double to, double samplesPerBeat, int blockLength)
@@ -238,7 +278,7 @@ namespace ss
         if (restart.exchange (false))           // PLAY, or a jump while it plays
         {
             ownRunning = true;
-            ownPos = juce::jmax (0.0, startAt.load());
+            ownPos = startAt.load();                // (below 0: a count-in)
             expectedPos = -1.0;
             releaseAll();
             jumped = true;
@@ -249,13 +289,15 @@ namespace ss
         const bool soloChanged = so != lastSolo;
         if (soloChanged && so >= 0)
             for (auto& v : voices)
-                if (v.active && v.part != so) release (v);
+                if (v.active && ! v.live && v.part >= 0 && v.part != so) release (v);
 
         bool sounding = false, following = false;
         if (armed.load() && s != nullptr)
         {
             const double bpm = host.known && host.bpm > 0.0 ? host.bpm : s->bpm;
             const double samplesPerBeat = sampleRate * 60.0 / juce::jlimit (20.0, 400.0, bpm);
+            this->samplesPerBeat = samplesPerBeat;
+            loopLength = s->loop ? s->lengthBeats : 0.0;
             following = host.known && host.playing;
             if (wasFollowing && ! following) ownRunning = false;   // the DAW stopped: so does the sketch (until PLAY or the DAW plays)
             double pos = -1.0;
@@ -269,6 +311,13 @@ namespace ss
                 else if (soloChanged && lastSolo >= 0) chase (*s, pos, samplesPerBeat, lastSolo);
                 const double end = pos + (double) n / samplesPerBeat;
                 schedule (*s, pos, end, samplesPerBeat, n);
+                if (metronome.load())
+                    for (double b = std::ceil (pos - 1e-9); b < end; b += 1.0)       // a click on every beat in this block
+                    {
+                        const int beatInBar = ((int) std::llround (b) % 4 + 4) % 4;
+                        startVoice (beatInBar == 0 ? 34 : 33, beatInBar == 0 ? 120 : 95, -3, PartType::drums, Kind::drums, 0.0,
+                                    juce::jlimit (0, n - 1, (int) ((b - pos) * samplesPerBeat)));
+                    }
                 expectedPos = end;
                 if (! following)
                 {
@@ -279,7 +328,7 @@ namespace ss
                         armed = false;
                     }
                 }
-                position = s->loop ? std::fmod (juce::jmax (0.0, end), s->lengthBeats) : end;
+                position = end < 0.0 ? end : s->loop ? std::fmod (end, s->lengthBeats) : end;
                 sounding = true;
             }
             else
@@ -450,6 +499,10 @@ namespace ss
                 break;
             case 51: case 53: case 59:                       // ride
                 x = bright * std::exp (-t / 0.7) * 0.14 + std::sin (twoPi * 3200.0 * t) * std::exp (-t / 0.5) * 0.04;
+                break;
+            case 33: case 34:                                // the metronome: a short tick (the bar's first beat higher)
+                x = std::sin (twoPi * (v.note == 34 ? 1760.0 : 1320.0) * t) * std::exp (-t / 0.012) * 0.55;
+                if (t > 0.08) v.active = false;
                 break;
             case 56:                                         // cowbell
             {

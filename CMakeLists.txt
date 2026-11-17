@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 # Windows: link the C++ runtime into the plug-in itself, so a DAW's plug-in scanner never trips over missing runtime DLLs
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-project(SongSavant VERSION 1.9.2 LANGUAGES C CXX)
+project(SongSavant VERSION 1.10.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -142,7 +142,8 @@ set(SS_UI_SOURCES
     Source/ui/PianoRollPage.cpp
     Source/ui/HelpPanel.cpp
     Source/ui/WelcomePanel.cpp
-    Source/ui/MainView.cpp)
+    Source/ui/MainView.cpp
+    Source/StandaloneBridge.cpp)
 
 add_library(SSShared INTERFACE)
 target_include_directories(SSShared INTERFACE Source)

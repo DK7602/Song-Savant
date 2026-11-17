@@ -584,6 +584,15 @@ namespace ss::ui
     //==============================================================================
     ArrangePage::ArrangePage (SongSavantProcessor& p) : proc (p)
     {
+        metronomeBtn.setComponentID ("tab");
+        metronomeBtn.setTooltip ("METRONOME: on, a click on every beat while the song plays; off, no clicks");
+        metronomeBtn.onClick = [this]
+        {
+            proc.setMetronome (! proc.getMetronome());
+            writeFlag ("metronome", proc.getMetronome());
+            metronomeBtn.setToggleState (proc.getMetronome(), juce::dontSendNotification);
+        };
+        addChildComponent (metronomeBtn);
         shapeBox.onChange = [this] { setShape ((SongShape) juce::jlimit (0, 3, shapeBox.getSelectedId() - 1)); };
         addAndMakeVisible (shapeBox);
         resetBtn.setTooltip ("Put the map back the way it came for this song shape, undoing your changes to it");
@@ -793,6 +802,8 @@ namespace ss::ui
         wholeSong.setVisible (hasPalette);
         for (auto* b : { &toStartBtn, &rewindBtn, &playBtn, &pauseBtn, &forwardBtn, &toEndBtn }) b->setVisible (hasPalette);
         for (auto* b : { &undoBtn, &redoBtn }) b->setVisible (hasPalette);
+        metronomeBtn.setVisible (hasPalette);
+        metronomeBtn.setToggleState (proc.getMetronome(), juce::dontSendNotification);
         if (hasPalette)         // what the transport plays: the same song as WHOLE SONG
             proc.updateSketch (SongSavantProcessor::SketchMode::song,
                                std::make_shared<const SketchSong> (sketchOfSong (plan, proc.song.arrangement, parts, &proc.song.patterns)));
@@ -1124,6 +1135,8 @@ namespace ss::ui
             redoBtn.setBounds (row.removeFromRight (84.0f).withSizeKeepingCentre (84.0f, 36.0f).toNearestInt());
             row.removeFromRight (8.0f);
             undoBtn.setBounds (row.removeFromRight (84.0f).withSizeKeepingCentre (84.0f, 36.0f).toNearestInt());
+            row.removeFromRight (12.0f);
+            metronomeBtn.setBounds (row.removeFromRight (120.0f).withSizeKeepingCentre (120.0f, 34.0f).toNearestInt());
             row.removeFromRight (12.0f);
             row.removeFromLeft (10.0f);
             const float infoW = juce::jmin (380.0f, row.getWidth());

@@ -590,6 +590,24 @@ Built in steps, each one a build the owner can try:
     and comparing with an artist named in the description.
   - 1.9.1: the line beside the tabs ("Following your song...") shows whole, or a short version ("Following your song"),
     or nothing: a smaller window had cut it to "..." against the genre box (the owner's screenshot).
+- **A MIDI keyboard** *(1.10.0; the owner asked "to be able to use a midi keyboard for building my own arrangements, and
+  ... when i am in songs and press a key the highlighted card should play the generic sound", chose **both** RECORD and
+  STEP INPUT, and asked for "a metronome button: when engaged it clicks, when unengaged it doesn't", November 2026)*.
+  - The processor reads incoming MIDI (it used to throw it away): notes play the sketch sound of the highlighted card on
+    SONG (`SongPage::updateKeyboard`) or the piano roll's part (`setKeyboardPart`), held while the key is down
+    (`SketchPlayer::liveNoteOn/Off`, velocity, the sustain pedal, all-notes-off); PLAY / STOP don't cut a held key. The
+    drum card maps keys to its drums: its own map's notes, Groove Grabber's pads, or General MIDI (`keyboardDrum`).
+  - Every note also goes to the message thread (`nextKeyEvent`, a lock-free FIFO) with the beat the sketch was at, to
+    the sample. The MIDI light in the header glows with each note; in the app a click opens Options > Audio/MIDI
+    Settings. Song Savant doesn't open MIDI inputs by itself: on Windows a keyboard is usually one program's at a time,
+    and it mustn't take it from Cubase.
+  - RECORD (the piano roll's red dot): the section loops (`playSection`), after a bar of clicks when METRONOME is on;
+    notes go in where they were played (a touch early for beat 1 counts as beat 1; held over the end: to the end), one
+    take = one UNDO (`PatternEditor::beginTake / addTakeNote / endTake`; an empty take leaves nothing). It adds; START
+    FROM > An empty grid records over nothing. STEP INPUT: the keys held together go in at a blue cursor when the last
+    is let go, as long as the snap (`addStep`), then the cursor moves on; arrows / Home / a click move it.
+  - METRONOME (the piano roll and ARRANGE, one switch, remembered): a click on every beat while it plays (higher on
+    beat 1; `SketchPlayer::metronome`), and RECORD's count-in (`play (from, countIn)`: the position runs below 0).
 - **The video tutorial** *(1.9.2; the owner asked for "a video tutorial on how to use Song Savant", November 2026)*:
   about five minutes, seven chapters (describe your song, your palette, starter parts, ARRANGE, the piano roll,
   MASTERCLASS and COACH MY SONG, saving / FAVS / LIBRARY / the manual), the real screens with a cursor, highlights and

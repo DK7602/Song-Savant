@@ -2510,6 +2510,136 @@ namespace
         }
     }
 
+    void testKeyboard()
+    {
+        section ("A MIDI keyboard: held notes, the metronome, RECORD and STEP INPUT");
+        const double sr = 48000.0;
+        juce::AudioBuffer<float> buf (2, 512);
+        const ss::SketchPlayer::Host app;
+        {
+            ss::SketchPlayer p;
+            p.prepare (sr);
+            p.liveNoteOn (60, 100, ss::PartType::chords, ss::Kind::piano, 100);
+            p.process (buf, app);
+            const bool sounding = buf.getMagnitude (0, 512) > 0.001f && p.liveVoices() == 1;
+            p.liveNoteOff (60);
+            check (sounding && p.liveVoices() == 0, "a key down plays the card's sound until it's let go");
+            p.liveSustain (true);
+            p.liveNoteOn (62, 100, ss::PartType::bass, ss::Kind::bass, 0);
+            p.liveNoteOff (62);
+            const bool held = p.liveVoices() == 1;
+            p.liveSustain (false);
+            check (held && p.liveVoices() == 0, "the sustain pedal holds a note after the key is let go, until it's lifted");
+            p.liveNoteOn (64, 100, ss::PartType::chords, ss::Kind::piano, 0);
+            p.play();
+            p.process (buf, app);
+            const bool kept = p.liveVoices() == 1;
+            p.stop();
+            p.process (buf, app);
+            check (kept && p.liveVoices() == 1, "pressing PLAY or STOP doesn't cut off the key you're holding");
+            p.liveAllOff();
+        }
+        {
+            // the metronome and RECORD's count-in: a bar of clicks before the section starts
+            const auto plan = ss::planParts (ss::readBrief ("pop 120 BPM in C major"));
+            std::vector<ss::ArrangementPart> parts { { "Keys", "Keys", ss::PartType::chords, ss::Kind::piano, false } };
+            ss::SketchPlayer p;
+            p.prepare (sr);
+            p.setSong (std::make_shared<const ss::SketchSong> (ss::sketchOfParts (plan, parts)));
+            p.metronome = true;
+            p.play (0.0, 4.0);
+            p.process (buf, app);
+            const double first = p.getPosition();
+            const bool clicks = buf.getMagnitude (0, 512) > 0.01f;
+            const int blocksPerBar = (int) std::ceil (4.0 * 60.0 / 120.0 * sr / 512.0);
+            for (int i = 0; i < blocksPerBar; ++i) p.process (buf, app);
+            check (first < 0.0 && first > -4.0 && clicks && p.getPosition() >= 0.0 && p.getPosition() < 0.5,
+                   "RECORD's count-in: a bar of clicks (the position runs from -4 beats to 0), then the section from its start");
+            ss::SketchPlayer q;
+            q.prepare (sr);
+            q.setSong (std::make_shared<const ss::SketchSong> (ss::sketchOfParts (plan, {})));
+            q.play();
+            q.process (buf, app);
+            const bool silentOff = buf.getMagnitude (0, 512) < 1.0e-6;
+            q.metronome = true;
+            float peak = 0.0f;
+            for (int i = 0; i < blocksPerBar; ++i) { q.process (buf, app); peak = juce::jmax (peak, buf.getMagnitude (0, 512)); }
+            check (silentOff && peak > 0.01f, "METRONOME off: no clicks; on: a click on every beat");
+        }
+        {
+            // a take is one step to undo; an empty one leaves nothing behind
+            ss::PatternEditor ed;
+            ss::Pattern pat;
+            pat.bars = 2;
+            pat.notes.push_back ({ 0.0, 1.0, 60, 100 });
+            ed.load (pat, 2);
+            ed.beginTake (false);
+            ed.addTakeNote ({ 1.0, 0.5, 64, 90 });
+            ed.addTakeNote ({ 2.0, 0.5, 67, 90 });
+            ed.addTakeNote ({ 7.9, 2.0, 72, 90 });              // (held past the end: up to the end)
+            ed.endTake();
+            const auto taken = ed.pattern().notes;
+            ed.undo();
+            check (taken.size() == 4 && std::abs (taken.back().start + taken.back().length - 8.0) < 1.0e-6 && ed.pattern().notes.size() == 1,
+                   "RECORD: a take's notes come in together, and UNDO takes the whole take back");
+            const bool couldUndo = ed.canUndo();
+            ed.beginTake (false);
+            ed.endTake();
+            check (ed.canUndo() == couldUndo && ed.pattern().notes.size() == 1, "a take where nothing was played leaves nothing to undo");
+            ed.addStep ({ 60, 64, 67 }, 4.0, 0.5, 80);
+            int at4 = 0;
+            for (auto& n : ed.pattern().notes) if (std::abs (n.start - 4.0) < 1e-9 && std::abs (n.length - 0.5) < 1e-9 && n.velocity == 80) ++at4;
+            ed.undo();
+            check (at4 == 3 && ed.pattern().notes.size() == 1, "STEP INPUT: the chord held goes in at the cursor, the step's length, one UNDO");
+        }
+        {
+            // the processor: notes from the keyboard play and reach the piano roll, with where the playback was
+            SongSavantProcessor proc;
+            proc.prepareToPlay (sr, 512);
+            juce::MidiBuffer midi;
+            midi.addEvent (juce::MidiMessage::noteOn (1, 60, (juce::uint8) 100), 100);
+            proc.processBlock (buf, midi);
+            SongSavantProcessor::KeyEvent e;
+            const bool got = proc.nextKeyEvent (e);
+            check (got && e.note == 60 && e.velocity == 100 && e.beat <= -999.0 && proc.keyboardActivity() == 1 && proc.sketch.liveVoices() == 1
+                       && midi.isEmpty(),
+                   "a key from the keyboard plays the sound and reaches the page (nothing playing: no place in the song)");
+            midi.clear();
+            midi.addEvent (juce::MidiMessage::noteOff (1, 60), 0);
+            proc.processBlock (buf, midi);
+            check (proc.nextKeyEvent (e) && e.velocity == 0 && proc.sketch.liveVoices() == 0, "letting go of it stops it");
+
+            proc.setKeyboardPart (ss::PartType::drums, ss::Kind::drums);
+            check (proc.keyboardDrum (36) == ss::laneNote ("kick") && proc.keyboardDrum (38) == ss::laneNote ("snare")
+                     && proc.keyboardDrum (42) == ss::laneNote ("hat") && proc.keyboardDrum (52) == ss::laneNote ("crash") && proc.keyboardDrum (20) < 0,
+                   "the drum card: C1 the kick, D1 the snare, F#1 the hi-hat (General MIDI)");
+            const auto gg = ss::grooveGrabberDrums();
+            proc.setKeyboardPart (ss::PartType::drums, ss::Kind::drums, &gg);
+            check (proc.keyboardDrum (52) == ss::laneNote ("808") && proc.keyboardDrum (36) == ss::laneNote ("kick"),
+                   "a Groove Grabber kit: its pads (52 the 808)");
+
+            // the beat a note comes at, while a section plays
+            const auto plan = ss::planParts (ss::readBrief ("pop 120 BPM in C major"));
+            std::vector<ss::ArrangementPart> parts { { "Keys", "Keys", ss::PartType::chords, ss::Kind::piano, false } };
+            auto loop = ss::sketchOfParts (plan, parts);
+            proc.updateSketch (SongSavantProcessor::SketchMode::section, std::make_shared<const ss::SketchSong> (loop));
+            proc.setKeyboardPart (ss::PartType::chords, ss::Kind::piano);
+            proc.playSection (0.0);
+            midi.clear();
+            for (int i = 0; i < 10; ++i) proc.processBlock (buf, midi);
+            midi.addEvent (juce::MidiMessage::noteOn (1, 64, (juce::uint8) 90), 256);
+            proc.processBlock (buf, midi);
+            const double spb = sr * 60.0 / 120.0;
+            const double expected = (10.0 * 512.0 + 256.0) / spb;
+            check (proc.nextKeyEvent (e) && e.note == 64 && std::abs (e.beat - expected) < 0.01,
+                   "a note played while it loops knows its beat (" + juce::String (e.beat, 3) + ", expected " + juce::String (expected, 3) + ")");
+            proc.stopSketch();
+            midi.clear();
+            midi.addEvent (juce::MidiMessage::allNotesOff (1), 0);
+            proc.processBlock (buf, midi);
+        }
+    }
+
     void testDrumKits (const ss::Catalog& base)
     {
         // a drum part wants a whole kit you play yourself, not a loop or a single drum
@@ -2866,6 +2996,43 @@ namespace
                         roll.togglePlay();
                         check (proc.isSketchPlaying (SongSavantProcessor::SketchMode::section), "play: the section, looped");
                         roll.togglePlay();
+                        if (name == "piano-roll-keyboard")
+                        {
+                            // RECORD and STEP INPUT on the bass, from a (pretend) MIDI keyboard
+                            const auto before2 = pe.notes().size();
+                            proc.setMetronome (false);
+                            roll.toggleRecord();
+                            const bool rec = roll.isRecording() && proc.isSketchPlaying (SongSavantProcessor::SketchMode::section);
+                            roll.keyEvent (45, 100, 1.0);                // A1 held from beat 1...
+                            roll.keyEvent (45, 0, 2.5);                  // ... to 2.5
+                            roll.keyEvent (52, 90, 3.0);
+                            roll.toggleRecord();                         // stopped with E1 still down: it ends where it got to
+                            bool found = false;
+                            for (auto& n : pe.notes()) found = found || (n.n.note == 45 && std::abs (n.n.start - 1.0) < 1e-6 && std::abs (n.n.length - 1.5) < 1e-6);
+                            check (rec && ! roll.isRecording() && found && pe.notes().size() == before2 + 2 && ! proc.isSketchPlaying (SongSavantProcessor::SketchMode::section),
+                                   "RECORD: the section plays, the notes you play go in where you played them; RECORD again stops");
+                            pe.undo();
+                            roll.edited();
+                            check (pe.notes().size() == before2, "UNDO takes the whole take back");
+                            roll.setStepInput (true);
+                            pe.snap = 0.5;
+                            roll.setStepCursor (4.0);
+                            roll.keyEvent (61, 100, -1000.0);
+                            roll.keyEvent (66, 100, -1000.0);            // a chord: two keys together
+                            roll.keyEvent (61, 0, -1000.0);
+                            const bool waits = pe.notes().size() == before2;   // (it goes in when every key is let go)
+                            roll.keyEvent (66, 0, -1000.0);
+                            int at4 = 0;
+                            for (auto& n : pe.notes())
+                                if ((n.n.note == 61 || n.n.note == 66) && std::abs (n.n.start - 4.0) < 1e-6 && std::abs (n.n.length - 0.5) < 1e-6) ++at4;
+                            check (waits && at4 == 2 && std::abs (roll.getStepCursor() - 4.5) < 1e-6,
+                                   "STEP INPUT: the keys held together go in at the cursor (as long as the snap), then the cursor moves on");
+                            roll.keyEvent (68, 100, -1000.0);
+                            roll.keyEvent (68, 0, -1000.0);
+                            check (std::abs (roll.getStepCursor() - 5.0) < 1e-6, "the next key goes in a step later");
+                            proc.setMetronome (true);
+                            roll.updateButtonsForTests();
+                        }
                         if (name.startsWith ("piano-roll-tools"))
                         {
                             // the building tools, through the page: open the keys, stamp the bar's chord, strum it
@@ -3308,6 +3475,7 @@ namespace
         shoot ("piano-roll-small", false, 1060, 780, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-tools", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-drums", false, 1240, 820, 0, {}, "trap 142 BPM in A minor");
+        shoot ("piano-roll-keyboard", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("piano-roll-tools-small", false, 1060, 780, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("arrange-yours", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
         shoot ("song-yours", false, 1240, 820, 0, {}, "warm modern worship like Elevation Worship, 72 BPM in D major");
@@ -3390,6 +3558,7 @@ int main (int argc, char** argv)
     testFavorites (fc);
     testGrooveGrabberLink (fc);
     testSketch();
+    testKeyboard();
     testTransport();
     testPatterns();
     testPatternEditor();

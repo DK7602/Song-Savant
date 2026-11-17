@@ -129,6 +129,59 @@ namespace ss
         changed();
     }
 
+    void PatternEditor::beginTake (bool replace)
+    {
+        checkpoint();
+        taking = true;
+        takeNotes = 0;
+        takeReplaced = replace && ! items.empty();
+        for (auto& i : items) i.selected = false;
+        if (replace) items.clear();
+        changed();
+    }
+
+    void PatternEditor::endTake()
+    {
+        if (taking && takeNotes == 0 && ! takeReplaced && ! undos.empty())
+        {
+            items = undos.back();                // (nothing came in: as it was, and no step to undo)
+            undos.pop_back();
+        }
+        taking = false;
+    }
+
+    void PatternEditor::addTakeNote (PatternNote n)
+    {
+        if (! taking) beginTake (false);
+        const double total = visible * 4.0;
+        n.start = juce::jlimit (0.0, total - shortest, n.start);
+        n.length = juce::jlimit (shortest, total - n.start, n.length);
+        n.note = juce::jlimit (0, 127, n.note);
+        n.velocity = juce::jlimit (1, 127, n.velocity);
+        items.push_back ({ n, true });
+        ++takeNotes;
+        changed();
+    }
+
+    void PatternEditor::addStep (const std::vector<int>& pitches, double beat, double length, int velocity)
+    {
+        if (pitches.empty()) return;
+        const double total = visible * 4.0;
+        const double start = juce::jlimit (0.0, total - shortest, beat);
+        checkpoint();
+        for (auto& i : items) i.selected = false;
+        for (int p : pitches)
+        {
+            PatternNote n;
+            n.start = start;
+            n.length = juce::jlimit (shortest, total - start, length);
+            n.note = juce::jlimit (0, 127, p);
+            n.velocity = juce::jlimit (1, 127, velocity);
+            items.push_back ({ n, true });
+        }
+        changed();
+    }
+
     void PatternEditor::replaceAll (std::vector<PatternNote> notes)
     {
         checkpoint();

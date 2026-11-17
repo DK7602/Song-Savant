@@ -339,8 +339,51 @@ namespace ss::ui
                 triangle (x + s * 0.74f, true);
                 p.addRectangle (x + s * 0.76f, y, s * 0.16f, s);
                 break;
+            case Icon::record:
+                p.addEllipse (a.reduced (s * 0.08f));
+                g.setColour (stop ? juce::Colours::white : pal().bad);       // red, white while it records
+                break;
         }
         g.fillPath (p);
+    }
+
+    //==============================================================================
+    KeyboardLight::KeyboardLight()
+    {
+        setTooltip ("Lights up when your MIDI keyboard plays. In the app, click here (or Options > Audio/MIDI Settings) and tick "
+                    "your keyboard. In your DAW, select or record-arm Song Savant's track.");
+        setMouseCursor (juce::MouseCursor::PointingHandCursor);
+        startTimerHz (30);
+    }
+
+    void KeyboardLight::timerCallback()
+    {
+        const int now = notesPlayed != nullptr ? notesPlayed() : 0;
+        if (now != seen) { seen = now; glow = 1.0f; repaint(); }
+        else if (glow > 0.0f) { glow = juce::jmax (0.0f, glow - 0.12f); repaint(); }
+    }
+
+    void KeyboardLight::paint (juce::Graphics& g)
+    {
+        const auto& p = pal();
+        auto r = getLocalBounds().toFloat().reduced (1.0f);
+        // a little keyboard: three white keys and two black ones
+        auto icon = r.removeFromLeft (r.getHeight() * 1.3f).reduced (1.0f, 3.0f);
+        const auto on = p.gold.interpolatedWith (juce::Colours::white, 0.2f * glow);
+        const auto colour = (seen > 0 ? p.muted : p.dim).interpolatedWith (on, glow);
+        if (glow > 0.0f)
+        {
+            g.setColour (p.gold.withAlpha (0.25f * glow));
+            g.fillRoundedRectangle (icon.expanded (3.0f), 4.0f);
+        }
+        g.setColour (colour);
+        g.drawRoundedRectangle (icon, 2.0f, 1.2f);
+        const float kw = icon.getWidth() / 3.0f;
+        for (int i = 1; i < 3; ++i) g.fillRect (icon.getX() + kw * (float) i - 0.5f, icon.getY(), 1.0f, icon.getHeight());
+        for (int i = 1; i < 3; ++i) g.fillRect (icon.getX() + kw * (float) i - kw * 0.22f, icon.getY(), kw * 0.44f, icon.getHeight() * 0.58f);
+        r.removeFromLeft (5.0f);
+        g.setFont (sans (11.5f, true));
+        g.drawText ("MIDI", r, juce::Justification::centredLeft, false);
     }
 
     void TransportButton::paintButton (juce::Graphics& g, bool over, bool down)
@@ -360,6 +403,13 @@ namespace ss::ui
             g.setColour (juce::Colours::white.withAlpha (0.35f * alpha));
             g.drawEllipse (r, 1.0f);
             g.setColour (p.goldText.withAlpha (alpha));
+        }
+        else if (icon == Icon::record && getToggleState())
+        {
+            // recording: a red button with a white dot
+            juce::DropShadow (p.bad.withAlpha (0.6f), 14, {}).drawForPath (g, [&] { juce::Path e; e.addEllipse (r); return e; }());
+            g.setColour (p.bad.withAlpha (alpha));
+            g.fillEllipse (r);
         }
         else
         {

@@ -12,6 +12,8 @@
 #include "Widgets.h"
 #include "core/Arrangement.h"
 #include "core/PatternEdit.h"
+#include <map>
+#include <set>
 
 class SongSavantProcessor;
 
@@ -59,6 +61,16 @@ namespace ss::ui
         void pickStampChord (int index);                 // 0: the bar's own chord; then the chips, then MORE's
         int numStampChords() const                       { return (int) stampChords.size(); }
         void togglePlay();
+        // ---- a MIDI keyboard (also the tests): RECORD plays the section (after a count-in when METRONOME is on) and
+        // adds what you play, one take one UNDO; STEP INPUT puts the keys you hold at the cursor, then moves it on a step
+        void toggleRecord();
+        bool isRecording() const                         { return recording; }
+        void setStepInput (bool);
+        bool isStepInput() const                         { return stepInput; }
+        double getStepCursor() const                     { return stepCursor; }
+        void setStepCursor (double beat);
+        void keyEvent (int note, int velocity, double beat);   // a key down (velocity > 0) or up, where the playback was
+        void updateButtonsForTests()                     { updateButtons(); }
         juce::File writeMidi();                          // what the drag chip drags
         // your own chords: a bar's chord (in every section of this name; empty: Song Savant's again), or all back
         void pickChord (int bar, const juce::String& chord);
@@ -88,6 +100,17 @@ namespace ss::ui
         void preview (int note);                         // hear a note straight away
         juce::String patternName() const;
         void findGhosts();                               // the other parts in this section (worked out once, not at every repaint)
+        void stopRecording();
+        void updateKeyboard();                           // the keyboard plays this part's sound
+        double stepLength() const                        { return editor.snap > 0.0 ? editor.snap : 0.25; }
+        struct Held { double start = 0.0; int velocity = 100, pitch = 60; };
+        void addRecorded (const Held&, double length);
+        std::map<int, Held> recHeld;                     // keys down while recording (by the key)
+        std::vector<int> stepChord;                      // STEP INPUT: the notes held together
+        std::set<int> stepHeld;
+        int stepVelocity = 0;
+        bool recording = false, stepInput = false;
+        double stepCursor = 0.0;
         void chordsChanged();
         std::vector<PatternNote> ghostNotes;
         std::vector<juce::Colour> ghostColours;
@@ -120,7 +143,9 @@ namespace ss::ui
                    undoBtn { "UNDO", PillButton::Style::outline },
                    redoBtn { "REDO", PillButton::Style::outline },
                    doneBtn { "DONE", PillButton::Style::gold };
-        TransportButton playBtn { TransportButton::Icon::play };
+        TransportButton playBtn { TransportButton::Icon::play }, recordBtn { TransportButton::Icon::record };
+        PillButton stepBtn { "STEP INPUT", PillButton::Style::subtle },
+                   metronomeBtn { "METRONOME", PillButton::Style::subtle };
 
         // the building tools, on the right
         struct StampChord { juce::String name; std::optional<Chord> chord; };   // no chord: the bar's own

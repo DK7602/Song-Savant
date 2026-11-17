@@ -1,4 +1,5 @@
 #include "MainView.h"
+#include "StandaloneBridge.h"
 #include "PluginProcessor.h"
 
 namespace ss::ui
@@ -54,6 +55,16 @@ namespace ss::ui
         };
         songPage.onSaveSong = [this] { saveSong(); };
         masterclassPage.onUseForSong = [this] { songPage.showForm(); showPage (song); };
+        // a MIDI keyboard: the light in the header, and METRONOME as you left it
+        midiLight.setSource ([this] { return proc.keyboardActivity(); });
+        midiLight.onClick = [this]
+        {
+            // the app: tick your keyboard in its settings; a DAW sends it when the track is selected or record-armed
+            if (standalone::isStandalone()) standalone::showAudioSettings();
+            else showNote ("Your keyboard reaches Song Savant when its track is selected or record-armed in your DAW");
+        };
+        addAndMakeVisible (midiLight);
+        proc.setMetronome (readFlag ("metronome", false));
         // COACH MY SONG: SHOW ME opens the place on ARRANGE or in the piano roll (DONE comes back); a FIX IT changed the song
         masterclassPage.onShowSection = [this] (int section)
         {
@@ -300,6 +311,7 @@ namespace ss::ui
         themeBtn.setBounds (tabs.removeFromRight (40));
         tabs.removeFromRight (8);
         helpBtn.setBounds (tabs.removeFromRight (40));
+        midiLight.setBounds (helpBtn.getX() - 72, helpBtn.getY() + 9, 62, 22);
         headerArea = header.withTrimmedRight (16).toFloat();
         subtitleArea = juce::Rectangle<float> ((float) libraryTab.getRight() - 300.0f, (float) libraryTab.getBottom() + 4.0f, 300.0f, 18.0f);
         songPage.setBounds (r);

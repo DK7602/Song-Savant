@@ -134,7 +134,8 @@ namespace ss::ui
         juce::ComboBox shapeBox;
         PillButton resetBtn { "RESET MAP", PillButton::Style::outline },
                    undoBtn { "UNDO", PillButton::Style::outline },
-                   redoBtn { "REDO", PillButton::Style::outline };
+                   redoBtn { "REDO", PillButton::Style::outline },
+                   metronomeBtn { "METRONOME", PillButton::Style::subtle };
         using Icon = TransportButton::Icon;
         TransportButton toStartBtn { Icon::toStart }, rewindBtn { Icon::rewind }, playBtn { Icon::play },
                         pauseBtn { Icon::pause }, forwardBtn { Icon::forward }, toEndBtn { Icon::toEnd };

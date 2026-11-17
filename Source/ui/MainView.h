@@ -59,6 +59,7 @@ namespace ss::ui
         ThemeButton themeBtn;
         SetupButton setupBtn;
         HelpButton helpBtn;
+        KeyboardLight midiLight;
         using juce::Component::keyPressed;
         bool keyPressed (const juce::KeyPress&, juce::Component*) override;
         juce::Component::SafePointer<juce::Component> listeningTo;

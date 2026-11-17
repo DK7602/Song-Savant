@@ -211,6 +211,15 @@ namespace ss::ui
                     g.setColour (p.gold);
                     g.fillRect ((float) beatX (playhead) - 1.0f, notes.getY(), 2.5f, notes.getHeight());
                 }
+                if (page.stepInput)
+                {
+                    // STEP INPUT's cursor: where the next keys go, and how long they'll be
+                    const float x = (float) beatX (page.stepCursor), x2 = (float) beatX (page.stepCursor + page.stepLength());
+                    g.setColour (p.blue.withAlpha (0.16f));
+                    g.fillRect (x, notes.getY(), juce::jmax (2.0f, x2 - x), notes.getHeight());
+                    g.setColour (p.blue.brighter (0.5f));
+                    g.fillRect (x - 1.0f, notes.getY(), 2.5f, notes.getHeight());
+                }
             }
             drawRuler (g);
             drawKeys (g);
@@ -257,6 +266,11 @@ namespace ss::ui
                     drag = Drag::velocity;
                     repaint();
                 }
+                return;
+            }
+            if (page.stepInput && notes.contains (pos) && ! e.mods.isPopupMenu())
+            {
+                page.setStepCursor (xBeat (pos.x));          // STEP INPUT: the cursor goes where you click
                 return;
             }
             if (ruler.contains (pos) && ! e.mods.isPopupMenu())
@@ -761,7 +775,7 @@ namespace ss::ui
         playBtn.onClick = [this] { togglePlay(); };
         undoBtn.setTooltip ("Ctrl+Z");
         redoBtn.setTooltip ("Ctrl+Y");
-        undoBtn.onClick = [this] { editor.undo(); edited(); };
+        undoBtn.onClick = [this] { if (recording) stopRecording(); editor.undo(); edited(); };
         redoBtn.onClick = [this] { editor.redo(); edited(); };
         doneBtn.setTooltip ("Back (your changes are kept with the song as you make them)");
         doneBtn.onClick = [this] { if (onDone) onDone(); };
@@ -780,10 +794,27 @@ namespace ss::ui
         startBtn.onClick = [this] { showStartMenu(); };
         dragChip.setTooltip ("Drag this part of this section into your DAW as MIDI");
 
+        // a MIDI keyboard: RECORD, STEP INPUT, and the METRONOME (it clicks while it plays, and counts RECORD in)
+        recordBtn.setTooltip ("RECORD: play along on your MIDI keyboard while this section loops; what you play is added. "
+                              "With METRONOME on, one bar of clicks first. Click again (or Space) to stop.");
+        recordBtn.onClick = [this] { toggleRecord(); };
+        stepBtn.setComponentID ("tab");
+        stepBtn.setTooltip ("STEP INPUT: hold a key (or a chord) on your MIDI keyboard and it goes in at the cursor, as long as "
+                            "the snap; the cursor then moves on. Click the grid (or use the left and right arrows) to move the cursor.");
+        stepBtn.onClick = [this] { setStepInput (! stepInput); };
+        metronomeBtn.setComponentID ("tab");
+        metronomeBtn.setTooltip ("METRONOME: on, a click on every beat while it plays (and a bar of clicks before RECORD); off, no clicks");
+        metronomeBtn.onClick = [this]
+        {
+            proc.setMetronome (! proc.getMetronome());
+            writeFlag ("metronome", proc.getMetronome());
+            updateButtons();
+        };
         for (auto* b : { &lengthBtn, &differentBtn, &startBtn, &drawBtn, &selectBtn, &eraseBtn, &snapBtn, &zoomOutBtn, &zoomInBtn,
-                         &ghostsBtn, &aloneBtn, &bandBtn, &undoBtn, &redoBtn, &doneBtn })
+                         &ghostsBtn, &aloneBtn, &bandBtn, &undoBtn, &redoBtn, &doneBtn, &stepBtn, &metronomeBtn })
             addAndMakeVisible (b);
         addAndMakeVisible (playBtn);
+        addAndMakeVisible (recordBtn);
         addAndMakeVisible (dragChip);
         // the keys (Space, Delete, Ctrl+C...) always reach the piano roll, never a button that was just clicked
         for (auto* c : getChildren()) c->setWantsKeyboardFocus (false);
@@ -914,6 +945,14 @@ namespace ss::ui
         if (p == nullptr || ! editable (*p) || a.empty()) { role.clear(); section = -1; return false; }
         section = juce::jlimit (0, (int) a.sections.size() - 1, s < 0 ? juce::jmax (0, mainSection (a, role)) : s);
         proc.setSectionSolo (alone ? role : juce::String());
+        if (recording) stopRecording();
+        {
+            SongSavantProcessor::KeyEvent e;
+            while (proc.nextKeyEvent (e)) {}             // (keys played before it opened don't count)
+        }
+        stepChord.clear();
+        stepHeld.clear();
+        stepCursor = 0.0;
         if (isDrums() && tool == Tool::stamp) tool = Tool::draw;
         status.clear();
         load();
@@ -1089,6 +1128,9 @@ namespace ss::ui
         ghostsBtn.setToggleState (ghosts, juce::dontSendNotification);
         aloneBtn.setToggleState (alone, juce::dontSendNotification);
         bandBtn.setToggleState (! alone, juce::dontSendNotification);
+        recordBtn.setToggleState (recording, juce::dontSendNotification);
+        stepBtn.setToggleState (stepInput, juce::dontSendNotification);
+        metronomeBtn.setToggleState (proc.getMetronome(), juce::dontSendNotification);
         undoBtn.setEnabled (editor.canUndo());
         redoBtn.setEnabled (editor.canRedo());
         snapBtn.setButtonText ("SNAP: " + snapName (editor.snap));
@@ -1099,6 +1141,7 @@ namespace ss::ui
 
     void PianoRollPage::togglePlay()
     {
+        if (recording) { stopRecording(); return; }
         if (proc.isSketchPlaying (SongSavantProcessor::SketchMode::section)) proc.stopSketch();
         else
         {
@@ -1108,9 +1151,141 @@ namespace ss::ui
         updateButtons();
     }
 
+    //==============================================================================
+    void PianoRollPage::updateKeyboard()
+    {
+        const auto* p = part();
+        if (p == nullptr) return;
+        const auto id = "roll:" + p->role + ":" + juce::String ((int) p->type) + ":" + juce::String ((int) p->instrument) + ":" + kit.source;
+        if (proc.keyboardFor == id) return;
+        proc.keyboardFor = id;
+        proc.setKeyboardPart (p->type, p->instrument, isDrums() ? &kit : nullptr);
+    }
+
+    void PianoRollPage::toggleRecord()
+    {
+        if (recording) { stopRecording(); return; }
+        if (part() == nullptr) return;
+        updateKeyboard();
+        SongSavantProcessor::KeyEvent e;
+        while (proc.nextKeyEvent (e)) {}                 // (keys played before RECORD don't count)
+        setStepInput (false);
+        recHeld.clear();
+        editor.beginTake (false);
+        recording = true;
+        updateSketch();
+        proc.playSection (proc.getMetronome() ? 4.0 : 0.0);
+        updateButtons();
+        repaint();
+    }
+
+    void PianoRollPage::stopRecording()
+    {
+        if (! recording) return;
+        // keys still down: up to where it got to
+        const double total = editor.visibleBars() * 4.0, now = proc.sketch.getPosition();
+        for (auto& [key, h] : recHeld)
+        {
+            double length = now >= 0.0 ? now - h.start : 0.25;
+            if (length <= 0.0) length += total;
+            addRecorded (h, isDrums() ? 0.25 : length);
+        }
+        recHeld.clear();
+        editor.endTake();
+        recording = false;
+        if (proc.isSketchPlaying (SongSavantProcessor::SketchMode::section)) proc.stopSketch();
+        status.clear();
+        edited();
+        updateButtons();
+        grid->repaint();
+        repaint();
+    }
+
+    void PianoRollPage::addRecorded (const Held& h, double length)
+    {
+        const double total = editor.visibleBars() * 4.0;
+        const double start = std::fmod (juce::jmax (0.0, h.start), total);
+        PatternNote n;
+        n.start = start;
+        n.length = juce::jmin (length, total - start);
+        n.note = h.pitch;
+        n.velocity = h.velocity;
+        editor.addTakeNote (n);
+        edited();
+    }
+
+    void PianoRollPage::setStepInput (bool on)
+    {
+        if (on && recording) stopRecording();
+        stepInput = on;
+        stepChord.clear();
+        stepHeld.clear();
+        stepVelocity = 0;
+        if (on) updateKeyboard();
+        updateButtons();
+        grid->repaint();
+        repaint();
+    }
+
+    void PianoRollPage::setStepCursor (double beat)
+    {
+        const double total = editor.visibleBars() * 4.0;
+        double b = std::fmod (beat, total);
+        if (b < 0.0) b += total;
+        stepCursor = juce::jlimit (0.0, total - stepLength(), editor.snapDown (b));
+        grid->repaint();
+    }
+
+    void PianoRollPage::keyEvent (int note, int velocity, double beat)
+    {
+        if (part() == nullptr) return;
+        const int pitch = isDrums() ? proc.keyboardDrum (note) : note;
+        if (pitch < 0) return;
+        const double total = editor.visibleBars() * 4.0;
+        if (recording)
+        {
+            if (velocity > 0)
+            {
+                if (beat <= -999.0) return;                          // (not playing yet)
+                if (beat < 0.0) { if (beat < -0.5) return; beat = 0.0; }   // a touch early for the first beat: on it
+                recHeld[note] = { beat, velocity, pitch };
+                return;
+            }
+            const auto it = recHeld.find (note);
+            if (it == recHeld.end()) return;
+            const auto h = it->second;
+            recHeld.erase (it);
+            double length = beat <= -999.0 ? 0.25 : beat - h.start;
+            if (length <= 0.0) length += total;                      // held over the loop's end
+            addRecorded (h, isDrums() ? 0.25 : length);
+            return;
+        }
+        if (! stepInput) return;
+        if (velocity > 0)
+        {
+            if (std::find (stepChord.begin(), stepChord.end(), pitch) == stepChord.end()) stepChord.push_back (pitch);
+            stepHeld.insert (note);
+            stepVelocity = juce::jmax (stepVelocity, velocity);
+            return;
+        }
+        stepHeld.erase (note);
+        if (! stepHeld.empty() || stepChord.empty()) return;
+        // every key let go: the chord goes in, and the cursor moves on a step
+        editor.addStep (stepChord, stepCursor, stepLength(), stepVelocity);
+        stepChord.clear();
+        stepVelocity = 0;
+        stepCursor += stepLength();
+        if (stepCursor >= total - 1.0e-6) stepCursor = 0.0;
+        edited();
+    }
+
     void PianoRollPage::timerCallback()
     {
         if (! isVisible()) return;
+        updateKeyboard();
+        SongSavantProcessor::KeyEvent e;
+        while (proc.nextKeyEvent (e)) keyEvent (e.note, e.velocity, e.beat);
+        if (recording && ! proc.isSketchPlaying (SongSavantProcessor::SketchMode::section)) stopRecording();   // (stopped elsewhere)
         const bool playing = proc.isSketchPlaying (SongSavantProcessor::SketchMode::section);
         if (playing != playBtn.getToggleState()) updateButtons();
         grid->setPlayhead (playing ? proc.sketch.getPosition() : -1.0);
@@ -1119,6 +1294,9 @@ namespace ss::ui
     void PianoRollPage::visibilityChanged()
     {
         if (isVisible()) { grabKeyboardFocus(); return; }
+        if (recording) stopRecording();
+        stepChord.clear();
+        stepHeld.clear();
         stopTimer();
         if (proc.isSketchPlaying (SongSavantProcessor::SketchMode::section)) proc.stopSketch();
     }
@@ -1553,6 +1731,12 @@ namespace ss::ui
         using KP = juce::KeyPress;
         const auto cmd = juce::ModifierKeys::commandModifier;
         auto& ed = editor;
+        if (stepInput && (key == KP::leftKey || key == KP::rightKey))
+        {
+            setStepCursor (stepCursor + (key == KP::rightKey ? stepLength() : -stepLength()));   // a rest, or a step back
+            return true;
+        }
+        if (stepInput && key == KP::homeKey) { setStepCursor (0.0); return true; }
         if (key == KP::deleteKey || key == KP::backspaceKey) { ed.eraseSelected(); edited(); return true; }
         if (key == KP ('a', cmd, 0)) { ed.selectAll(); grid->repaint(); return true; }
         if (key == KP ('c', cmd, 0)) { proc.noteClip = ed.copySelected(); return true; }
@@ -1625,6 +1809,18 @@ namespace ss::ui
         g.setFont (sans (10.5f));
         g.drawText ("the selected notes (or all of them)", shapeLabel.withTrimmedTop (16.0f), juce::Justification::centredLeft, true);
 
+        if (recording || stepInput)
+        {
+            // the MIDI keyboard's modes: what to do, in place of the usual hints
+            g.setColour (recording ? p.bad : p.blue.brighter (0.5f));
+            g.setFont (sans (12.5f, true));
+            g.drawText (recording ? juce::String ("RECORDING: play along on your MIDI keyboard; what you play goes in where you play it  |  "
+                                                  "RECORD or Space: stop  |  UNDO takes the whole take back")
+                                  : juce::String ("STEP INPUT: hold a key or a chord on your MIDI keyboard: it goes in at the blue cursor, as long as the snap  |  "
+                                                  "click the grid or the arrow keys: move the cursor (a rest)  |  Home: back to the start"),
+                        hintArea, juce::Justification::centredLeft, true);
+            return;
+        }
         if (status.isNotEmpty())
         {
             g.setColour (p.good);
@@ -1678,7 +1874,8 @@ namespace ss::ui
         // the tools; play, alone / with the band, undo, redo; the drag chip
         auto row3 = r.removeFromTop (46.0f);
         // a narrow window: everything on this row a little smaller
-        const float need = 3 * 88.0f + 8.0f + 136.0f + 86.0f + 102.0f + 44.0f + 6.0f + 84.0f + 140.0f + 12.0f + 84.0f + 84.0f + 24.0f;
+        const float need = 3 * 88.0f + 8.0f + 136.0f + 86.0f + 102.0f + 44.0f + 6.0f + 84.0f + 140.0f + 12.0f + 84.0f + 84.0f + 24.0f
+                           + 44.0f + 4.0f + 112.0f + 4.0f + 116.0f + 10.0f;
         const float k = juce::jlimit (0.7f, 1.0f, row3.getWidth() / need);
         auto place = [&row3, k] (juce::Component& c, float w, bool fromRight, float h = 34.0f)
         {
@@ -1691,8 +1888,14 @@ namespace ss::ui
         row3.removeFromRight (12.0f * k);
         place (bandBtn, 140.0f, true);
         place (aloneBtn, 84.0f, true);
+        row3.removeFromRight (10.0f * k);
+        place (metronomeBtn, 116.0f, true);
+        row3.removeFromRight (4.0f);
+        place (stepBtn, 112.0f, true);
         row3.removeFromRight (6.0f);
         place (playBtn, 44.0f, true, 44.0f);
+        row3.removeFromRight (4.0f);
+        place (recordBtn, 44.0f, true, 44.0f);
         for (auto* b : { &drawBtn, &selectBtn, &eraseBtn })
         {
             place (*b, 84.0f, false);

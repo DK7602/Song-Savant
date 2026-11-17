@@ -56,6 +56,14 @@ namespace ss
         NoteClip copySelected() const;
         void paste (const NoteClip&, double atBar = -1.0);     // at the bar starting at `atBar` beats (-1: where it came from)
         void duplicateSelected();                              // a copy right after the selection
+        // ---- from a MIDI keyboard
+        // RECORD: a take is one step (one undo), however many notes it adds. `replace`: what was there goes first.
+        void beginTake (bool replace);
+        void addTakeNote (PatternNote);                        // (kept inside the grid; selected, so the take shows)
+        bool inTake() const                                    { return taking; }
+        void endTake();                                        // (a take that added nothing leaves nothing to undo)
+        // STEP INPUT: the keys held together, at `beat`, `length` long (one step each); the chord is selected after
+        void addStep (const std::vector<int>& pitches, double beat, double length, int velocity);
         // A whole pattern dropped in: the bars it covers (from the bar starting at `atBar`), replaced by its notes
         void pasteOver (const std::vector<PatternNote>&, int bars, double atBar);
 
@@ -105,7 +113,8 @@ namespace ss
         std::vector<EditNote> items;
         std::vector<std::vector<EditNote>> undos, redos;
         std::vector<EditNote> dragFrom;
-        bool dragging = false;
+        bool dragging = false, taking = false, takeReplaced = false;
+        int takeNotes = 0;
         int editCount = 0;
     };
 }

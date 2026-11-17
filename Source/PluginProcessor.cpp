@@ -1,11 +1,90 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "core/Paths.h"
+#include "core/DrumLanes.h"
 
 SongSavantProcessor::SongSavantProcessor()
     : juce::AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true))
 {
     locationProvider = [] { return ss::SystemLocations::forThisComputer(); };
+    setKeyboardPart (ss::PartType::chords, ss::Kind::piano);
+}
+
+//==============================================================================
+void SongSavantProcessor::setKeyboardPart (ss::PartType type, ss::Kind kind, const ss::DrumNotes* kit)
+{
+    // the drums: each key plays the drum the kit has there (its own notes first, then its layout), on the sketch's drums
+    const auto gm = ss::generalMidiDrums();
+    for (int n = 0; n < 128; ++n)
+    {
+        juce::String lane;
+        if (kit != nullptr)
+            for (auto& [id, note] : kit->notes)
+                if (note == n && ss::laneNote (id) >= 0) { lane = id; break; }
+        if (lane.isEmpty()) lane = ss::laneForNote (n, kit != nullptr ? kit->source : juce::String ("General MIDI"));
+        const int row = ss::laneNote (lane);
+        drumLane[(size_t) n] = row;
+        drumSound[(size_t) n] = row < 0 ? -1 : gm.note (lane) >= 0 ? gm.note (lane) : row;
+    }
+    keyKind = (int) kind;
+    keyType = (int) type;
+}
+
+void SongSavantProcessor::keyboardEvent (const juce::MidiMessage& m, int offset)
+{
+    const auto type = (ss::PartType) keyType.load();
+    const bool drums = type == ss::PartType::drums;
+    auto push = [this, offset] (int note, int velocity)
+    {
+        // where the sketch is at this note: the start of this block (where the last one ended), and the offset in it
+        KeyEvent e { note, velocity, -1000.0 };
+        if (sketch.isPlaying())
+        {
+            const double spb = juce::jmax (1.0, sketch.getSamplesPerBeat()), loop = sketch.getLoopLength();
+            e.beat = sketch.getPosition() + (double) offset / spb;
+            if (loop > 0.0 && e.beat >= loop) e.beat = std::fmod (e.beat, loop);
+        }
+        const auto scope = keyFifo.write (1);
+        if (scope.blockSize1 > 0) keyEvents[(size_t) scope.startIndex1] = e;
+        else if (scope.blockSize2 > 0) keyEvents[(size_t) scope.startIndex2] = e;
+    };
+    if (m.isNoteOn())
+    {
+        const int n = m.getNoteNumber();
+        if (! drums) sketch.liveNoteOn (n, m.getVelocity(), type, (ss::Kind) keyKind.load(), offset);
+        else if (const int d = drumSound[(size_t) n].load(); d >= 0) sketch.liveNoteOn (d, m.getVelocity(), type, ss::Kind::drums, offset);
+        ++keyActivity;
+        push (n, juce::jmax (1, (int) m.getVelocity()));
+    }
+    else if (m.isNoteOff())
+    {
+        if (! drums) sketch.liveNoteOff (m.getNoteNumber());
+        push (m.getNoteNumber(), 0);
+    }
+    else if (m.isSustainPedalOn())  sketch.liveSustain (true);
+    else if (m.isSustainPedalOff()) sketch.liveSustain (false);
+    else if (m.isAllNotesOff() || m.isAllSoundOff()) sketch.liveAllOff();
+}
+
+bool SongSavantProcessor::nextKeyEvent (KeyEvent& e)
+{
+    const auto scope = keyFifo.read (1);
+    if (scope.blockSize1 > 0) { e = keyEvents[(size_t) scope.startIndex1]; return true; }
+    if (scope.blockSize2 > 0) { e = keyEvents[(size_t) scope.startIndex2]; return true; }
+    return false;
+}
+
+void SongSavantProcessor::playSection (double countIn)
+{
+    sketchMode = SketchMode::section;
+    sketch.setSong (sectionSketch);
+    applySolo();
+    sketch.play (0.0, countIn);
+}
+
+void SongSavantProcessor::setMetronome (bool on)
+{
+    sketch.metronome = on;
 }
 
 void SongSavantProcessor::startScan()
@@ -65,6 +144,7 @@ bool SongSavantProcessor::isBusesLayoutSupported (const BusesLayout& layouts) co
 void SongSavantProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     juce::ScopedNoDenormals noDenormals;
+    for (const auto meta : midi) keyboardEvent (meta.getMessage(), meta.samplePosition);   // a MIDI keyboard
     midi.clear();
     // inside a DAW: its tempo, and whether it's playing and where
     ss::SketchPlayer::Host host;

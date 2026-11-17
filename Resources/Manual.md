@@ -46,6 +46,7 @@ Every page sits under one header. Hover over almost anything to see a tip.
 | ? | This manual (also the F1 key) |
 | Sun / moon | Light or dark look, the same as clicking the logo. Song Savant remembers your choice. |
 | Clipboard with a tick | The setup check: what Song Savant found on this computer |
+| MIDI (a little keyboard, left of ?) | Lights up when your MIDI keyboard plays. In the app, click it to pick your keyboard (see **Playing and recording with a MIDI keyboard**) |
 | SONG | Describe your song and get your palettes and starter parts |
 | ARRANGE | Your song's sections, and which parts play in each |
 | MASTERCLASS | Lessons on any genre or style, and COACH MY SONG |
@@ -183,6 +184,7 @@ You can hear your song's parts in Song Savant before dragging anything into your
 | Pause (two bars) | Stops right where it is: Play carries on from there |
 | Fast forward (two arrows pointing right) | On a bar. Hold it down to keep going |
 | To the end (arrow pointing right and a bar) | Moves the playhead to the end of the song. Play there starts again from bar 1 |
+| METRONOME | On (gold): a click on every beat while it plays (the first beat of each bar higher). Off: no clicks. It's the same switch as the piano roll's, and Song Savant remembers it |
 
 - **The playhead** is the gold line down the map, with a marker on the bar ruler above the sections. It shows where the song will play from, even when it's stopped.
 - **Click or drag on the bar ruler** (the strip of ticks above the section names, one tick per bar) to move the playhead to that bar. While it plays, it carries on from there.
@@ -308,7 +310,10 @@ The piano roll is where you change a part note by note, or write your own from a
 | SNAP | What notes line up to: a bar, 1/2, a beat, 1/8, 1/16, 1/32, triplets, or off |
 | - / + | Zoom out and in (or Ctrl + mouse wheel) |
 | GHOSTS | Shows the other parts' notes faintly behind yours, so you see how they fit |
+| Record (red dot) | RECORD from your MIDI keyboard: see **Playing and recording with a MIDI keyboard** |
 | Play (gold) | Plays this section, looped. Space does too. |
+| STEP INPUT | Your MIDI keyboard puts notes in one step at a time, at a blue cursor |
+| METRONOME | On (gold): a click on every beat while it plays, and a bar of clicks before RECORD. Off: no clicks |
 | ALONE / WITH THE BAND | Hear just this part, or with everything else in the section |
 | UNDO / REDO | Ctrl+Z / Ctrl+Y |
 
@@ -398,6 +403,43 @@ For the drums, Song Savant works out which note is which drum: Groove Grabber's 
 - **NEW IDEA and NEW PALETTES leave them alone.** The parts you haven't touched still change with NEW IDEA.
 - **Change the key** and your notes move with it (to minor or major too). Change the tempo and they keep their place in the bar.
 - **START FROM > Song Savant's suggestion** puts a pattern back to the suggestion (and it follows NEW IDEA again). Undo brings yours back.
+
+## Playing and recording with a MIDI keyboard
+
+Song Savant listens to a MIDI keyboard (or pad controller). Its sounds are simple sketch sounds, there so you can hear the idea: the real sound is the instrument you load in your DAW.
+
+**Connecting it**
+
+- **In the app:** click the **MIDI** light in the header (the little keyboard left of the ?), or **Options > Audio/MIDI Settings** at the top left of the window, and tick your keyboard under the MIDI inputs. Song Savant remembers it. (Song Savant doesn't switch keyboards on by itself: on Windows a keyboard can usually be used by only one program at a time, and it shouldn't take yours away from Cubase.)
+- **In Cubase (or another DAW):** your keyboard reaches Song Savant when its track is selected or record-armed, like any instrument.
+- The **MIDI** light glows each time a key comes in, so you know it's connected.
+
+**Playing**
+
+- **On SONG**, your keyboard plays the **highlighted card's** sound: the bass card sounds like the bass, the keys like the keys, and so on. Click another card to play that one. Notes hold while you hold the key, play as hard as you press, and the sustain pedal works.
+- **The drum card** puts the drums on the keys the usual way (C1 the kick, D1 the snare, F#1 the closed hi-hat, A#1 the open hat, C#2 the crash). A Groove Grabber kit plays its own pads (its 808 too), and a kit you made a drum map for plays that map's notes.
+- **In the piano roll**, it plays the part that's open.
+
+**RECORD (play along)**
+
+1. Open the part and section in the piano roll (a card's **EDIT**, or double-click a box on ARRANGE).
+2. Turn **METRONOME** on if you want the click: RECORD then counts you in with a bar of clicks. With it off, RECORD starts straight away.
+3. Click **RECORD** (the red dot). The section loops, **ALONE** or **WITH THE BAND**, and what you play goes in where you play it. Each time round adds more (you hear what you just played on the next pass).
+4. Click **RECORD** again (or press Space) to stop.
+
+- **UNDO** takes the whole take back in one go.
+- To record onto an empty grid, choose **START FROM > An empty grid** first.
+- Tidy the timing afterwards with **QUANTIZE** (select the notes, or none for all of them).
+- A note held over the end of the loop stops at the end. On the drums each hit is a short note on its drum's row.
+
+**STEP INPUT (one note at a time)**
+
+1. Click **STEP INPUT**. A blue cursor shows where the next note goes (at the start of the section).
+2. Hold a key, or a chord, and let go: it goes in at the cursor, as long as the **SNAP** (1/16, 1/8, a beat...), and the cursor moves on one step. Nothing plays and there's no timing to worry about.
+3. **A rest:** the right arrow key moves the cursor on without a note; the left arrow goes back a step; **Home** goes back to the start. Or click the grid where you want the cursor.
+4. Click **STEP INPUT** again to stop. **UNDO** takes notes back one step at a time.
+
+**METRONOME** (in the piano roll and on ARRANGE): on, it clicks on every beat while Song Savant plays (higher on the first beat of each bar); off, it doesn't. Inside Cubase you may prefer Cubase's own click.
 
 ## FAVS: your songs and sounds
 
@@ -641,6 +683,9 @@ In Cubase (or any VST3 DAW), add Song Savant on an instrument track: it's in the
 | One part, the whole song | Drag the part's name on ARRANGE |
 | The whole song into your DAW | ARRANGE: drag WHOLE SONG |
 | Learn your style | MASTERCLASS |
+| Play a card's sound from your MIDI keyboard | Highlight the card on SONG and play (the app: click the MIDI light to pick your keyboard first) |
+| Record a part from your keyboard | The piano roll: RECORD (the red dot); METRONOME on for a count-in |
+| Put notes in one at a time from your keyboard | The piano roll: STEP INPUT, then hold a key or chord; the arrows move the cursor |
 | Tips for your own song | MASTERCLASS > COACH MY SONG (SHOW ME, FIX IT, UNDO, I MEANT THAT) |
 | Name a kit's pads in Cubase | The drum card's MAKE A DRUM MAP: save the kit as a preset, drop it in, then load the .drm in MIDI > Drum Map Setup |
 | Light or dark | Click the logo, or the sun / moon button |
