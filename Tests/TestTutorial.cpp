@@ -242,6 +242,7 @@ int runTutorial (const juce::File& outDir, const sstest::FakeComputer& fc, const
         cap.mark ("tabs", tabs);
         if (auto h = all<HelpButton> (v); ! h.empty()) cap.mark ("help", h[0]);
         if (auto t = all<ThemeButton> (v); ! t.empty()) cap.mark ("theme", t[0]);
+        if (auto l = all<KeyboardLight> (v); ! l.empty()) cap.mark ("midiLight", l[0]);
     };
     int keysCard = -1, drumsCard = -1, bassCard = -1;
     auto songMarks = [&]
@@ -465,8 +466,10 @@ int runTutorial (const juce::File& outDir, const sstest::FakeComputer& fc, const
         cap.markIn ("velocity", roll, g.withTop (g.getBottom() - 58.0f));
         cap.markIn ("notes", roll, g.withTrimmedTop (34.0f).withTrimmedBottom (66.0f));
         for (auto* k : { "panel", "top", "title" }) cap.markIn (k, roll, roll.tutorialArea (k));
+        for (auto* b : all<TransportButton> (roll))
+            if (b->icon == TransportButton::Icon::record) cap.mark ("record", b);
         for (auto* t : { "DONE", "DRAW", "SELECT", "ERASE", "STAMP CHORDS", "STRUM", "ARPEGGIATE", "QUANTIZE", "HUMANIZE",
-                         "A NEW IDEA FOR THIS PART", "MAKE ONE DIFFERENT", "WITH THE BAND", "ALONE", "UNDO" })
+                         "A NEW IDEA FOR THIS PART", "MAKE ONE DIFFERENT", "WITH THE BAND", "ALONE", "UNDO", "STEP INPUT", "METRONOME" })
             if (auto* b = button (roll, t)) cap.mark (juce::String (t).toLowerCase().replaceCharacter (' ', '_'), b);
         if (auto chips = all<DragChip> (roll); ! chips.empty()) cap.mark ("rollDrag", chips[0]);
         juce::Rectangle<float> partTabs;
@@ -486,6 +489,50 @@ int runTutorial (const juce::File& outDir, const sstest::FakeComputer& fc, const
     pumpFor (300);
     rollMarks();
     cap.snap ("roll-idea");
+    // a MIDI keyboard: RECORD with the metronome's count-in, then STEP INPUT (the keys pressed for the pictures)
+    {
+        auto press = [&] (std::initializer_list<int> notes, bool down)
+        {
+            for (int n : notes)
+            {
+                proc.keyboardEvent (down ? juce::MidiMessage::noteOn (1, n, (juce::uint8) 100) : juce::MidiMessage::noteOff (1, n), 0);
+                SongSavantProcessor::KeyEvent e;
+                while (proc.nextKeyEvent (e)) {}         // (the picture's notes go in below, at the beats wanted)
+            }
+        };
+        proc.setMetronome (true);
+        roll.toggleRecord();
+        press ({ 57, 60, 64 }, true);
+        for (auto [beat, chord] : { std::pair { 0.0, std::vector<int> { 57, 60, 64 } }, std::pair { 4.0, std::vector<int> { 53, 57, 60 } },
+                                     std::pair { 8.0, std::vector<int> { 52, 55, 59 } } })
+        {
+            for (int n : chord) roll.keyEvent (n, 100, beat);
+            for (int n : chord) roll.keyEvent (n, 0, beat + 3.5);
+        }
+        pumpFor (100);
+        rollMarks();
+        cap.snap ("roll-record");
+        press ({ 57, 60, 64 }, false);
+        roll.toggleRecord();
+        pumpFor (200);
+        rollMarks();
+        cap.snap ("roll-recorded");
+        roll.getEditor().snap = 0.5;
+        roll.setStepInput (true);
+        roll.setStepCursor (12.0);
+        for (int n : { 55, 59, 62 }) roll.keyEvent (n, 100, -1000.0);
+        for (int n : { 55, 59, 62 }) roll.keyEvent (n, 0, -1000.0);
+        for (int n : { 57, 60, 64 }) roll.keyEvent (n, 100, -1000.0);
+        for (int n : { 57, 60, 64 }) roll.keyEvent (n, 0, -1000.0);
+        press ({ 57 }, true);
+        pumpFor (100);
+        rollMarks();
+        cap.snap ("roll-step");
+        press ({ 57 }, false);
+        roll.setStepInput (false);
+        roll.getEditor().snap = 0.25;
+        proc.setMetronome (false);
+    }
     if (roll.onDone) roll.onDone();
     pumpFor (300);
 

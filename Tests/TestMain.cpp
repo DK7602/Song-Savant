@@ -1960,6 +1960,11 @@ namespace
                 all = all && ss::laneForNote (note, pads) == lane;
             check (all, "Groove Grabber's bigger kits: Kick 2 (58), 808 2, Closed and Open Hat 2, Clap 2, Rim 2, Crash 2, Ride 2, "
                         "Perc 4 and the FX land on their drums' rows, the second toms (45, 48) on the mid and high tom");
+            // Groove Grabber 1.0.31's Song FX bank: notes 69-76, with its other FX (General MIDI keeps 69 / 70 shakers)
+            bool songFx = true;
+            for (int note = 69; note <= 76; ++note) songFx = songFx && ss::laneForNote (note, pads) == "perc";
+            check (songFx && ss::laneForNote (69, "General MIDI") == "shaker" && ss::laneForNote (70) == "shaker",
+                   "Groove Grabber's Song FX (69 to 76) land on the perc row with its other FX; in General MIDI 69 / 70 stay shakers");
             check (ss::laneForNote (59) == "ride" && ss::laneForNote (60) == "perc" && ss::laneForNote (59, "General MIDI") == "ride"
                      && ss::laneForNote (45) == "tomlow",
                    "a file that doesn't say it's Groove Grabber's keeps the usual layout above 57 (59 a ride, 60 up hand percussion)");

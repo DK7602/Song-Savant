@@ -562,7 +562,9 @@ Built in steps, each one a build the owner can try:
   66 Ride 2, 67 Perc 4, 68 FX 4; 40, 41, 45 and 48 are Snare 2 and the second floor, mid and high toms. A file tagged
   "drums: Groove Grabber's pads" reads them onto those drums' rows (`laneForNote`); a file that doesn't say keeps the
   usual layout above 57 (General MIDI's ride 2 and hand percussion). Song Savant still writes a Groove Grabber kit's
-  part on the 17-sound kit's pads, which every kit size has.
+  part on the 17-sound kit's pads, which every kit size has. 1.10.1: Groove Grabber 1.0.31's Song FX bank (69-76, in
+  every kit) reads onto the perc row with its other FX (General MIDI's 69 / 70 stay shakers); the owner OK'd the
+  Groove Grabber session's change (its branch claude/gg-song-fx-notes), made here without its empty switch.
 - **COACH MY SONG** *(1.9.0; the owner asked for "Coach my Song" in Masterclass: "on songs that I edit, change, or build from
   blank, Song Savant analyzes and gives specific feedback and coaching based on genre, style, layout, era", and chose
   **tips only, no score**, and **FIX IT with undo**, November 2026)*.
@@ -609,7 +611,7 @@ Built in steps, each one a build the owner can try:
   - METRONOME (the piano roll and ARRANGE, one switch, remembered): a click on every beat while it plays (higher on
     beat 1; `SketchPlayer::metronome`), and RECORD's count-in (`play (from, countIn)`: the position runs below 0).
 - **The video tutorial** *(1.9.2; the owner asked for "a video tutorial on how to use Song Savant", November 2026)*:
-  about five minutes, seven chapters (describe your song, your palette, starter parts, ARRANGE, the piano roll,
+  about five and a half minutes, eight chapters since 1.10.1 (describe your song, your palette, starter parts, ARRANGE, the piano roll, playing it on a MIDI keyboard,
   MASTERCLASS and COACH MY SONG, saving / FAVS / LIBRARY / the manual), the real screens with a cursor, highlights and
   subtitles, an offline narrator (Piper, LJ Speech: public domain) and the song's starter parts underneath. Made the
   same way as Groove Grabber's (`tools/tutorial`, `SSTests --tutorial`); see CLAUDE.md.

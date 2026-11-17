@@ -82,13 +82,27 @@ SCRIPT = [
     {"say": "The panel on the right builds parts for you: stamp the chords, strum, arpeggiate, quantize, humanize, or ask for a new idea.",
      "shots": [{"f": "roll", "hl": ["panel"], "zoom": ["panel"], "w": 1.4},
                {"pre": "roll", "f": "roll-idea", "click": "a_new_idea_for_this_part", "hl": ["notes"]}]},
-    {"say": "Press DONE when you're happy. Every chorus plays the same pattern, so change it once and every chorus follows, unless you make one different.",
-     "shots": [{"f": "roll-idea", "hl": ["done"], "point": "done", "zoom": ["done", "make_one_different"]},
-               {"f": "roll-idea", "hl": ["make_one_different"], "point": "make_one_different", "zoom": ["done", "make_one_different"]}]},
 
-    {"chapter": "6", "title": "Learn and get coached"},
+    {"chapter": "6", "title": "Play it on your keyboard"},
+    {"say": "Have a MIDI keyboard? It plays the highlighted card's sound on SONG, and the open part here. In the app, click the MIDI light to pick your keyboard. In your DAW, select Song Savant's track.",
+     "shots": [{"f": "roll-record", "hl": ["midiLight"], "point": "midiLight", "zoom": ["midiLight", "help"], "w": 1.4},
+               {"f": "roll-idea", "hl": ["rollGrid"]}]},
+    {"say": "Turn on the METRONOME and press RECORD. After a bar of clicks, the section loops while you play along, and your notes go in where you play them.",
+     "shots": [{"pre": "roll-idea", "f": "roll-record", "click": "record", "hl": ["record", "metronome"], "zoom": ["record", "metronome", "with_the_band"]},
+               {"f": "roll-record", "hl": ["notes"], "w": 1.3}]},
+    {"say": "Press RECORD again to stop. UNDO takes the whole take back, and QUANTIZE tidies the timing.",
+     "shots": [{"pre": "roll-record", "f": "roll-recorded", "click": "record", "hl": ["undo"], "zoom": ["record", "undo"]},
+               {"f": "roll-recorded", "hl": ["quantize"], "point": "quantize", "zoom": ["panel"]}]},
+    {"say": "Or press STEP INPUT and put the notes in one at a time: hold a key or a chord, let go, and the blue cursor moves on a step. No timing needed.",
+     "shots": [{"pre": "roll-recorded", "f": "roll-step", "click": "step_input", "hl": ["step_input"], "zoom": ["record", "step_input", "metronome"]},
+               {"f": "roll-step", "hl": ["notes"], "w": 1.4}]},
+    {"say": "Press DONE when you're happy. Every chorus plays the same pattern, so change it once and every chorus follows, unless you make one different.",
+     "shots": [{"f": "roll-step", "hl": ["done"], "point": "done", "zoom": ["done", "make_one_different"]},
+               {"f": "roll-step", "hl": ["make_one_different"], "point": "make_one_different", "zoom": ["done", "make_one_different"]}]},
+
+    {"chapter": "7", "title": "Learn and get coached"},
     {"say": "MASTERCLASS teaches how your style is built: its sounds, its drums and bass, the chords in your key, the arrangement and the mix.",
-     "shots": [{"pre": "roll-idea", "f": "lesson", "click": "tab.masterclass", "hl": ["tab.masterclass"]},
+     "shots": [{"pre": "roll-step", "f": "lesson", "click": "tab.masterclass", "hl": ["tab.masterclass"]},
                {"f": "lesson", "w": 1.4}]},
     {"say": "Once the song is yours, COACH MY SONG compares it with what your style usually does, and shows you what's working and what to try.",
      "shots": [{"pre": "lesson", "f": "coach", "click": "coach_my_song", "hl": ["coach_my_song"]},
@@ -99,7 +113,7 @@ SCRIPT = [
                {"pre": "coach", "f": "coach-fixed", "click": "coach.thefix", "hl": ["undo"], "w": 1.1},
                {"f": "coach-fixed", "hl": ["undo"], "point": "undo", "w": 0.7}]},
 
-    {"chapter": "7", "title": "Save and come back"},
+    {"chapter": "8", "title": "Save and come back"},
     {"say": "SAVE SONG keeps everything: the sounds, the map, the chords and your notes.",
      "shots": [{"pre": "song-final", "f": "song-saved", "click": "save_song", "hl": ["save_song"], "zoom": ["form"]}]},
     {"say": "Your songs wait in FAVS, next to the sounds you hearted, ready to open again.",
@@ -119,5 +133,6 @@ TITLE = "Getting started"
 OUTRO_LINE = "The right sounds. Your song."
 OUTRO_SAY = "That's Song Savant: the right sounds from your own library, and a song that's ready to finish in your DAW. Now go make something great."
 INTRO_SAY = ("Welcome to Song Savant. In the next few minutes, you'll describe a song, get sounds for it from the instruments you "
-             "already own, starter parts to drag into your DAW, a map of the whole song, and coaching on the song you make.")
+             "already own, starter parts to drag into your DAW, a map of the whole song, your own parts from your keyboard, "
+             "and coaching on the song you make.")
 DRAG_LABEL = "Keys - starter part.mid"

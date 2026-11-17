@@ -46,6 +46,9 @@ namespace ss
                 case 62: case 67: case 68: return "perc";          // FX 3, Perc 4, FX 4
                 default: break;
             }
+            // from 1.0.31, the song's own FX (its Song FX bank, on every kit): 69-76, on "perc" with the other FX
+            // (General MIDI's 69 and 70, a cabasa and maracas, aren't Groove Grabber's)
+            if (note >= 69 && note <= 76) return "perc";
         }
         switch (note)
         {
