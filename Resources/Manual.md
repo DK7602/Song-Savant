@@ -221,7 +221,7 @@ That's it. Within a few seconds the kit you saved appears on Song Savant's **dru
 
 **Good to know**
 
-- Groove Grabber can be the app or the plug-in in your DAW. If it wasn't open when you sent the song, the song waits in Groove Grabber's **KEY COMPASS** menu under SONG SAVANT SONGS for a day.
+- Groove Grabber can be the app or the plug-in in your DAW. If it wasn't open when you sent the song, the song waits in Groove Grabber's **IMPORT SONG** menu, under FROM SONG SAVANT (its BUILD page offers it for a day).
 - Song Savant sends the key the starter parts use, even when it picked the key for you, so the 808 always matches your parts.
 - Only a kit made for the song you sent goes on the drum card. Every other kit you save shows up among the drum choices, with your kits made for the song's style near the top.
 - The Groove Grabber plug-in itself stays among the drum choices, so you can build new kits any time.

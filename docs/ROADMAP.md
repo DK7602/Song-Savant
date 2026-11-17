@@ -136,7 +136,9 @@ Tags guessed from a preset's name or category are shown as guesses.
   0..23 and `bpm` (the ones the starter parts use, so the 808 matches them even when Song Savant picked the key),
   `sections` (the arrangement's names and bars), `drums`, `sent`). The name is the Key Compass song's, or the first
   words of the description. Groove Grabber offers a song sent in the last day under its description ("Song Savant
-  sent ...: USE IT", with an X to hide it) and lists the newest eight in its KEY COMPASS menu; using one sets the
+  sent ...": USE IT AND BUILD, with an X to hide it) and lists the newest eight in its IMPORT SONG menu (Groove
+  Grabber 1.0.34 replaced its KEY COMPASS button with IMPORT SONG: bounces, MIDI files, Song Savant and Key Compass
+  songs); using one sets the
   description, genre, style, era, key and tempo and builds four kits, tuned to the key. Groove Grabber doesn't use
   the sections yet (it builds kits, not songs).
 - **Saved Groove Grabber kits are drum choices** (`Documents/Groove Grabber/Kits/<genre>/*.ggkit`): a kit, tagged

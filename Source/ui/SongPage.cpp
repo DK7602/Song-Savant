@@ -715,7 +715,7 @@ namespace ss::ui
         if (file == juce::File())
             copiedNote = "Couldn't save the song for Groove Grabber in " + grooveGrabberSongsFolder().getFullPathName() + ".";
         else if (! grooveGrabberInstalled())
-            copiedNote = "Saved \"" + name + "\" for Groove Grabber. It isn't installed on this computer yet: once it is, the song is in its KEY COMPASS menu.";
+            copiedNote = "Saved \"" + name + "\" for Groove Grabber. It isn't installed on this computer yet: once it is, the song is in its IMPORT SONG menu.";
         else
             copiedNote = "Sent \"" + name + "\". In Groove Grabber click USE IT, then SAVE KIT on the one you like: it comes back here on the drum card.";
         repaint();

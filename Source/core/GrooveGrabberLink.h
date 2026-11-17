@@ -1,6 +1,6 @@
 // Song Savant - working with Groove Grabber, both ways:
 //   SEND TO GROOVE GRABBER writes the song (description, genre, style, decade, key, tempo, the arrangement's sections)
-//   to Documents/Song Savant/Songs/<name>.sssong. Groove Grabber offers it on its BUILD page and in its KEY COMPASS menu,
+//   to Documents/Song Savant/Songs/<name>.sssong. Groove Grabber offers it on its BUILD page and in its IMPORT SONG menu,
 //   and builds four kits for it from your own samples, tuned to the key.
 //   The kits you save in Groove Grabber (Documents/Groove Grabber/Kits/<genre>/*.ggkit) are drum choices here, and the
 //   starter drum parts play Groove Grabber's pads (General MIDI drums on 36..51, the 808 on 52, percussion on 53..55).
